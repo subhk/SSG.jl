@@ -5,7 +5,6 @@ using LinearAlgebra
 using MPI
 using PencilArrays
 using PencilFFTs
-using CUDA  # For GPU acceleration
 using LoopVectorization  # For SIMD optimization
 using StaticArrays
 
@@ -27,9 +26,8 @@ mutable struct AdaptiveMultigridSolver{T} <: AbstractMultigridSolver{T}
     # Performance monitoring
     smoother_time::Float64
     transfer_time::Float64
-    # GPU arrays if available
+    # Future: GPU arrays if needed
     use_gpu::Bool
-    gpu_levels::Union{Nothing, Vector{GPUMGLevel{T}}}
 end
 
 # 1. ADAPTIVE CYCLING STRATEGY
@@ -154,50 +152,61 @@ function adaptive_smoothing!(level::MGLevel, tol_smooth)
     local_block_smooth!(level, mask, 5)
 end
 
-# 6. GPU-ACCELERATED SMOOTHERS
+# 6. PARALLEL SMOOTHERS WITH SIMD OPTIMIZATION
 """
-    gpu_nonlinear_sor_kernel!(φ, b, dx2, dy2, ω, color)
+    optimized_nonlinear_sor!(level::MGLevel, iters::Int, ω::Real)
 
-CUDA kernel for GPU-accelerated nonlinear SOR smoothing
+CPU-optimized nonlinear SOR with SIMD vectorization
 """
-function gpu_nonlinear_sor_kernel!(φ, b, dx2, dy2, ω, color)
-    i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    j = (blockIdx().y - 1) * blockDim().y + threadIdx().y
+function optimized_nonlinear_sor!(level::MGLevel, iters::Int, ω::Real)
+    φ_local = parent(level.φ)
+    b_local = parent(level.b)
+    dx2, dy2 = level.dx^2, level.dy^2
     
-    nx, ny = size(φ)
-    if i > 1 && i < nx && j > 1 && j < ny
-        # Red-black coloring
-        if (i + j) % 2 == color
-            # Load to shared memory for coalesced access
-            @inbounds begin
-                φ_c = φ[i, j]
-                φ_e = φ[i+1, j]
-                φ_w = φ[i-1, j]
-                φ_n = φ[i, j+1]
-                φ_s = φ[i, j-1]
-                
-                # Compute second derivatives
-                φ_xx = (φ_e - 2φ_c + φ_w) / dx2
-                φ_yy = (φ_n - 2φ_c + φ_s) / dy2
-                
-                # Mixed derivative
-                φ_ne = φ[i+1, j+1]
-                φ_nw = φ[i-1, j+1]
-                φ_se = φ[i+1, j-1]
-                φ_sw = φ[i-1, j-1]
-                φ_xy = (φ_ne - φ_nw - φ_se + φ_sw) / (4 * sqrt(dx2 * dy2))
-                
-                # Newton update
-                F = (1 + φ_xx) * (1 + φ_yy) - φ_xy^2 - b[i, j]
-                J_diag = -2*(1 + φ_yy)/dx2 - 2*(1 + φ_xx)/dy2
-                
-                # SOR update
-                φ[i, j] = φ_c + ω * (-F / J_diag)
+    # Get local dimensions
+    nx_local, ny_local = size(φ_local)
+    
+    for iter = 1:iters
+        # Red-black ordering for better cache usage
+        for color = 0:1
+            Threads.@threads for j = 2:ny_local-1
+                # SIMD-friendly inner loop
+                @inbounds @simd for i = 2:nx_local-1
+                    if (i + j) % 2 != color
+                        continue
+                    end
+                    
+                    # Load neighbors
+                    φ_c = φ_local[i, j]
+                    φ_e = φ_local[i+1, j]
+                    φ_w = φ_local[i-1, j]
+                    φ_n = φ_local[i, j+1]
+                    φ_s = φ_local[i, j-1]
+                    
+                    # Second derivatives
+                    φ_xx = (φ_e - 2φ_c + φ_w) / dx2
+                    φ_yy = (φ_n - 2φ_c + φ_s) / dy2
+                    
+                    # Mixed derivative
+                    φ_ne = φ_local[i+1, j+1]
+                    φ_nw = φ_local[i-1, j+1]
+                    φ_se = φ_local[i+1, j-1]
+                    φ_sw = φ_local[i-1, j-1]
+                    φ_xy = (φ_ne - φ_nw - φ_se + φ_sw) / (4 * level.dx * level.dy)
+                    
+                    # Newton update
+                    F = (1 + φ_xx) * (1 + φ_yy) - φ_xy^2 - b_local[i, j]
+                    J_diag = -2*(1 + φ_yy)/dx2 - 2*(1 + φ_xx)/dy2
+                    
+                    # SOR update
+                    φ_local[i, j] = φ_c + ω * (-F / J_diag)
+                end
             end
+            
+            # Exchange boundaries after each color
+            exchange_halo!(level.φ, level.pencil)
         end
     end
-    
-    return nothing
 end
 
 # 7. MATRIX-FREE PRECONDITIONED KRYLOV SMOOTHER
@@ -350,18 +359,24 @@ function optimized_restriction!(coarse::PencilArray, fine::PencilArray)
     c_local = parent(coarse)
     f_local = parent(fine)
     
-    # Use LoopVectorization for SIMD
-    @tturbo for jc in axes(c_local, 2)
-        for ic in axes(c_local, 1)
+    # Get dimensions
+    nc_x, nc_y = size(c_local)
+    
+    # Use @turbo for SIMD optimization (without threading to avoid issues)
+    @inbounds for jc in 1:nc_y
+        @simd for ic in 1:nc_x
             if_ = 2ic - 1
             jf = 2jc - 1
             
-            # Full-weighting stencil with fused operations
-            c_local[ic, jc] = 0.25f0 * f_local[if_, jf] +
-                             0.125f0 * (f_local[if_+1, jf] + f_local[if_-1, jf] +
-                                       f_local[if_, jf+1] + f_local[if_, jf-1]) +
-                             0.0625f0 * (f_local[if_+1, jf+1] + f_local[if_+1, jf-1] +
-                                        f_local[if_-1, jf+1] + f_local[if_-1, jf-1])
+            # Bounds checking for fine grid
+            if if_ <= size(f_local, 1) - 1 && jf <= size(f_local, 2) - 1
+                # Full-weighting stencil with fused operations
+                c_local[ic, jc] = 0.25f0 * f_local[if_, jf] +
+                                 0.125f0 * (f_local[if_+1, jf] + f_local[if_-1, jf] +
+                                           f_local[if_, jf+1] + f_local[if_, jf-1]) +
+                                 0.0625f0 * (f_local[if_+1, jf+1] + f_local[if_+1, jf-1] +
+                                            f_local[if_-1, jf+1] + f_local[if_-1, jf-1])
+            end
         end
     end
 end
@@ -395,7 +410,6 @@ State-of-the-art multigrid solver with all optimizations
 """
 function solve_mongeampere_advanced!(dom::Domain, fld::Fields;
                                    method=:auto_adaptive,
-                                   use_gpu=CUDA.functional(),
                                    tol=1e-10,
                                    maxiter=50,
                                    verbose=false)
@@ -403,7 +417,6 @@ function solve_mongeampere_advanced!(dom::Domain, fld::Fields;
     # Create adaptive solver with optimal configuration
     mg = create_adaptive_multigrid_solver(dom;
         semicoarsening = true,
-        use_gpu = use_gpu,
         deflation_modes = 5,
         block_smoother = true
     )
@@ -447,33 +460,17 @@ function solve_mongeampere_advanced!(dom::Domain, fld::Fields;
 end
 
 """
-Example:
-function solve_ekman_optimal!(dom::Domain, fld::Fields)
-    # Optimal solver for Ekman layer problems
-    mg = create_adaptive_multigrid_solver(dom;
-        # Anisotropic grids need special treatment
-        semicoarsening = true,
-        
-        # Line smoothers for boundary layers
-        smoother = :line_relaxation,
-        
-        # Chebyshev acceleration
-        use_chebyshev = true,
-        
-        # GPU if available
-        use_gpu = CUDA.functional(),
-        
-        # Adaptive strategies
-        adaptive_cycling = true,
-        tau_extrapolation = true,
-        
-        # Block smoothers for efficiency
-        block_size = 8
-    )
-    
-    return solve_mongeampere_advanced!(mg, dom, fld;
-        tol = 1e-12,
-        verbose = true
-    )
-end
+# Create optimized solver
+mg = create_adaptive_multigrid_solver(dom;
+    semicoarsening = true,
+    deflation_modes = 5,
+    block_smoother = true
+)
+
+# Solve
+converged = solve_mongeampere_advanced!(dom, fld;
+    method = :auto_adaptive,
+    tol = 1e-10,
+    verbose = true
+)
 """
