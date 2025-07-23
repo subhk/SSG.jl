@@ -17,6 +17,11 @@ using Random
 using Dates
 using NetCDF
 
+using LoopVectorization  # For SIMD optimization
+using StaticArrays
+using Parameters
+using BenchmarkTools
+
 # Constants
 const FT = Float64
 
@@ -48,16 +53,16 @@ end # module SSG
 
 #=
 src/
-├── SSGPencil.jl          # Main module (above)
+├── SSG.jl                # Main module (above)
 ├── utils.jl              # Utility functions and macros
 ├── domain.jl             # Domain setup and grid management
-├── fields.jl             # Field allocation and management
+├── fields.jl              # Field allocation and management
 ├── transforms.jl         # FFT operations and spectral derivatives
 ├── params.jl             # Parameter structures
 ├── physics.jl            # Physical computations (velocities, Jacobian)
 ├── monge_ampere.jl       # Monge-Ampère equation solver
 ├── timestep.jl           # Time stepping schemes
-├── filter.jl             # Spectral filtering
+├── filter.jl              # Spectral filtering
 ├── hyperdiffusion.jl     # Hyperdiffusion operators
 ├── io.jl                 # Input/output operations
 ├── run.jl                # Main simulation driver

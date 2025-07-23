@@ -1,13 +1,6 @@
 # src/monge_ampere_multigrid_advanced.jl
 # Advanced improvements for the multigrid Monge-Ampère solver
 
-using LinearAlgebra
-using MPI
-using PencilArrays
-using PencilFFTs
-using LoopVectorization  # For SIMD optimization
-using StaticArrays
-
 """
     AdaptiveMultigridSolver{T}
 
