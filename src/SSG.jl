@@ -61,8 +61,7 @@ src/
 ├── hyperdiffusion.jl     # Hyperdiffusion operators
 ├── io.jl                 # Input/output operations
 ├── run.jl                # Main simulation driver
-└── examples/
-    ├── basic_run.jl      # Basic example
-    ├── high_res_run.jl   # High resolution example
-    └── parameter_study.jl # Parameter sweep example
+
+examples/
+├── basic_run.jl      # Basic example
 =#
