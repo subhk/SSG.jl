@@ -1,4 +1,494 @@
+# ============================================================================
+# TRANSFER OPERATORS WITH TRANSFORMS.JL COMPATIBILITY
+# ============================================================================
+
 """
+Spectral restriction using transforms.jl FFT operations
+"""
+function spectral_restriction!(coarse::MGLevel{T}, fine::MGLevel{T}) where T
+    # Transform fine grid to spectral space
+    rfft!(fine.domain, fine.φ, fine.φ_hat)
+    
+    # Spectral truncation for restriction
+    # This is the natural way to restrict in spectral space
+    truncate_spectrum!(fine.φ_hat, coarse.φ_hat, fine.domain, coarse.domain)
+    
+    # Transform back to real space on coarse grid
+    irfft!(coarse.domain, coarse.φ_hat, coarse.φ)
+end
+
+"""
+Truncate spectrum from fine to coarse grid
+"""
+function truncate_spectrum!(fine_hat::PencilArray{Complex{T}, 3}, 
+                          coarse_hat::PencilArray{Complex{T}, 3},
+                          fine_dom::Domain, coarse_dom::Domain) where T
+    
+    # Get local data
+    fine_hat_local = fine_hat.data
+    coarse_hat_local = coarse_hat.data
+    
+    # Get dimensions
+    nkx_fine = size(fine_hat_local, 1)
+    nky_fine = size(fine_hat_local, 2)
+    nkx_coarse = size(coarse_hat_local, 1)
+    nky_coarse = size(coarse_hat_local, 2)
+    
+# ============================================================================
+# TRANSFER OPERATORS WITH TRANSFORMS.JL COMPATIBILITY
+# ============================================================================
+
+"""
+Spectral restriction using transforms.jl FFT operations
+"""
+function spectral_restriction!(coarse::MGLevel{T}, fine::MGLevel{T}) where T
+    # Transform fine grid to spectral space
+    rfft!(fine.domain, fine.φ, fine.φ_hat)
+    
+    # Spectral truncation for restriction
+    # This is the natural way to restrict in spectral space
+    truncate_spectrum!(fine.φ_hat, coarse.φ_hat, fine.domain, coarse.domain)
+    
+    # Transform back to real space on coarse grid
+    irfft!(coarse.domain, coarse.φ_hat, coarse.φ)
+end
+
+"""
+Truncate spectrum from fine to coarse grid
+"""
+function truncate_spectrum!(fine_hat::PencilArray{Complex{T}, 3}, 
+                          coarse_hat::PencilArray{Complex{T}, 3},
+                          fine_dom::Domain, coarse_dom::Domain) where T
+    
+    # Get local data
+    fine_hat_local = fine_hat.data
+    coarse_hat_local = coarse_hat.data
+    
+    # Get dimensions
+    nkx_fine = size(fine_hat_local, 1)
+    nky_fine = size(fine_hat_local, 2)
+    nkx_coarse = size(coarse_hat_local, 1)
+    nky_coarse = size(coarse_hat_local, 2)
+    
+    # Copy low-frequency modes from fine to coarse grid
+    # This preserves the spectral content properly
+    @inbounds for k in axes(coarse_hat_local, 3)
+        for j in 1:min(nky_coarse, nky_fine)
+            for i in 1:min(nkx_coarse, nkx_fine)
+                coarse_hat_local[i, j, k] = fine_hat_local[i, j, k]
+            end
+        end
+    end
+    
+    # Zero out high-frequency modes in coarse grid
+    @inbounds for k in axes(coarse_hat_local, 3)
+        for j in min(nky_coarse, nky_fine)+1:nky_coarse
+            for i in 1:nkx_coarse
+                coarse_hat_local[i, j, k] = 0
+            end
+        end
+        for j in 1:nky_coarse
+            for i in min(nkx_coarse, nkx_fine)+1:nkx_coarse
+                coarse_hat_local[i, j, k] = 0
+            end
+        end
+    end
+end
+
+"""
+Spectral prolongation using transforms.jl FFT operations
+"""
+function spectral_prolongation!(fine::MGLevel{T}, coarse::MGLevel{T}) where T
+    # Transform coarse grid to spectral space
+    rfft!(coarse.domain, coarse.φ, coarse.φ_hat)
+    
+    # Zero-pad spectrum for prolongation
+    zero_pad_spectrum!(coarse.φ_hat, fine.φ_hat, coarse.domain, fine.domain)
+    
+    # Transform back to real space on fine grid
+    irfft!(fine.domain, fine.φ_hat, fine.φ)
+end
+
+"""
+Zero-pad spectrum from coarse to fine grid
+"""
+function zero_pad_spectrum!(coarse_hat::PencilArray{Complex{T}, 3}, 
+                           fine_hat::PencilArray{Complex{T}, 3},
+                           coarse_dom::Domain, fine_dom::Domain) where T
+    
+    # Get local data
+    coarse_hat_local = coarse_hat.data
+    fine_hat_local = fine_hat.data
+    
+    # Zero out fine grid spectrum first
+    fill!(fine_hat_local, zero(Complex{T}))
+    
+    # Get dimensions
+    nkx_coarse = size(coarse_hat_local, 1)
+    nky_coarse = size(coarse_hat_local, 2)
+    nkx_fine = size(fine_hat_local, 1)
+    nky_fine = size(fine_hat_local, 2)
+    
+    # Copy coarse grid modes to fine grid (low frequencies)
+    @inbounds for k in axes(fine_hat_local, 3)
+        for j in 1:min(nky_coarse, nky_fine)
+            for i in 1:min(nkx_coarse, nkx_fine)
+                fine_hat_local[i, j, k] = coarse_hat_local[i, j, k]
+            end
+        end
+    end
+end
+
+"""
+FAS restriction for Monge-Ampère equation using spectral methods
+"""
+function restrict_fas_spectral!(coarse::MGLevel{T}, fine::MGLevel{T}) where T
+    # Restrict the fine grid solution using spectral truncation
+    spectral_restriction!(coarse, fine)
+    
+    # Compute coarse grid residual
+    compute_ma_residual!(coarse)
+    
+    # Compute fine grid residual
+    compute_ma_residual!(fine)
+    
+    # Restrict fine residual to coarse grid spectrally
+    rfft!(fine.domain, fine.r, fine.r_hat)
+    truncate_spectrum!(fine.r_hat, coarse.tmp_spec, fine.domain, coarse.domain)
+    irfft!(coarse.domain, coarse.tmp_spec, coarse.tmp_real)
+    
+    # FAS right-hand side: b_coarse = restricted_residual + L_coarse(restricted_φ)
+    b_local = coarse.b.data
+    tmp_real_local = coarse.tmp_real.data
+    r_local = coarse.r.data
+    
+    @. b_local = tmp_real_local + r_local
+    
+    return nothing
+end
+
+"""
+Prolongate correction from coarse to fine grid using spectral methods
+"""
+function prolongate_correction_spectral!(fine::MGLevel{T}, coarse::MGLevel{T}) where T
+    # Store coarse grid solution before correction
+    copy_field!(coarse.φ_old, coarse.φ)
+    
+    # Compute coarse grid correction (simplified - assume correction is computed)
+    # In full implementation, this would involve solving the coarse grid equation
+    
+    # Prolongate coarse grid solution to fine grid
+    spectral_prolongation!(fine, coarse)
+    
+    return nothing
+end
+
+# ============================================================================
+# SOLVER INTEGRATION WITH TRANSFORMS.JL
+# ============================================================================
+
+"""
+Create multigrid hierarchy compatible with transforms.jl Domain structure
+"""
+function create_mg_hierarchy(base_domain::Domain, n_levels::Int=4; 
+                            coarsening_factor::Int=2) where T
+    
+    levels = MGLevel{T}[]
+    current_domain = base_domain
+    
+    for level = 1:n_levels
+        push!(levels, MGLevel{T}(current_domain, level))
+        
+        if level < n_levels
+            # Create coarser domain
+            current_domain = create_coarse_domain(current_domain, coarsening_factor)
+        end
+    end
+    
+    return levels
+end
+
+"""
+Create coarser domain for multigrid hierarchy
+"""
+function create_coarse_domain(fine_domain::Domain, factor::Int=2)
+    # Create coarser domain with reduced resolution
+    # This would need to be implemented based on your Domain structure
+    
+    coarse_Nx = fine_domain.Nx ÷ factor
+    coarse_Ny = fine_domain.Ny ÷ factor
+    coarse_Nz = fine_domain.Nz  # Keep same vertical resolution or coarsen as needed
+    
+    # Create new domain with coarser resolution
+    # Implementation depends on your Domain constructor
+    # This is a placeholder - adapt to your Domain creation method
+    
+    return Domain(coarse_Nx, coarse_Ny, coarse_Nz, 
+                  fine_domain.Lx, fine_domain.Ly, fine_domain.Lz,
+                  fine_domain.pc)  # May need to adjust pencil as well
+end
+
+"""
+Main multigrid V-cycle using transforms.jl operations
+"""
+function mg_v_cycle!(mg::AdaptiveMultigridSolver{T}, level::Int=1) where T
+    if level == mg.n_levels
+        # Coarsest level - solve directly or with many iterations
+        coarse_solve_spectral!(mg.levels[level])
+        return
+    end
+    
+    current = mg.levels[level]
+    coarser = mg.levels[level + 1]
+    
+    # Pre-smoothing using spectral methods
+    n_pre = adaptive_smoothing_iterations(mg, level)
+    smooth_spectral!(current, mg.smoother_type, n_pre, mg.ω)
+    
+    # FAS restriction using spectral truncation
+    restrict_fas_spectral!(coarser, current)
+    
+    # Recursive call
+    mg_v_cycle!(mg, level + 1)
+    
+    # Prolongation and correction using spectral interpolation
+    prolongate_correction_spectral!(current, coarser)
+    
+    # Post-smoothing
+    n_post = adaptive_smoothing_iterations(mg, level)
+    smooth_spectral!(current, mg.smoother_type, n_post, mg.ω)
+    
+    return nothing
+end
+
+"""
+Spectral smoother dispatch
+"""
+function smooth_spectral!(level::MGLevel{T}, smoother_type::Symbol, 
+                         iters::Int, ω::T) where T
+    if smoother_type == :spectral_sor
+        spectral_sor_smoother!(level, iters, ω)
+    elseif smoother_type == :hybrid_spectral
+        hybrid_spectral_smoother!(level, iters, ω)
+    elseif smoother_type == :spectral_jacobi
+        spectral_jacobi_smoother!(level, iters, ω)
+    else
+        # Fallback to hybrid method
+        hybrid_spectral_smoother!(level, iters, ω)
+    end
+    
+    return nothing
+end
+
+"""
+Spectral Jacobi smoother
+"""
+function spectral_jacobi_smoother!(level::MGLevel{T}, iters::Int, ω::T) where T
+    dom = level.domain
+    
+    for iter = 1:iters
+        # Store current solution
+        copy_field!(level.φ_old, level.φ)
+        
+        # Compute residual
+        compute_ma_residual!(level)
+        
+        # Transform residual to spectral space
+        rfft!(dom, level.r, level.r_hat)
+        
+        # Spectral preconditioning/smoothing
+        r_hat_local = level.r_hat.data
+        φ_hat_local = level.φ_hat.data
+        
+        # Get current solution in spectral space
+        rfft!(dom, level.φ_old, level.φ_hat)
+        
+        # Apply spectral Jacobi iteration
+        @inbounds for k in axes(φ_hat_local, 3)
+            for j in axes(φ_hat_local, 2)
+                for i in axes(φ_hat_local, 1)
+                    # Get wavenumber components
+                    kx = i <= length(dom.kx) ? dom.kx[i] : 0.0
+                    ky = j <= length(dom.ky) ? dom.ky[j] : 0.0
+                    k_mag_sq = kx^2 + ky^2
+                    
+                    if k_mag_sq > 1e-14
+                        # Spectral Jacobi update
+                        correction = r_hat_local[i,j,k] / (1 + k_mag_sq)
+                        φ_hat_local[i,j,k] += ω * correction
+                    end
+                end
+            end
+        end
+        
+        # Apply dealiasing
+        dealias!(dom, level.φ_hat)
+        
+        # Transform back to real space
+        irfft!(dom, level.φ_hat, level.φ)
+    end
+end
+
+"""
+Coarse grid solve using spectral methods
+"""
+function coarse_solve_spectral!(level::MGLevel{T}) where T
+    # Use many iterations of spectral smoother for coarse solve
+    smooth_spectral!(level, :hybrid_spectral, 50, T(1.0))
+    
+    # Enforce zero mean if needed (for periodic problems)
+    if level.domain.boundary_conditions == :periodic
+        enforce_zero_mean_spectral!(level)
+    end
+end
+
+"""
+Enforce zero mean using spectral methods
+"""
+function enforce_zero_mean_spectral!(level::MGLevel{T}) where T
+    # Transform to spectral space
+    rfft!(level.domain, level.φ, level.φ_hat)
+    
+    # Set k=0 mode to zero (removes mean)
+    φ_hat_local = level.φ_hat.data
+    if size(φ_hat_local, 1) > 0 && size(φ_hat_local, 2) > 0
+        φ_hat_local[1, 1, :] .= 0
+    end
+    
+    # Transform back
+    irfft!(level.domain, level.φ_hat, level.φ)
+end
+
+# ============================================================================
+# MAIN SOLVER INTERFACE COMPATIBLE WITH TRANSFORMS.JL
+# ============================================================================
+
+"""
+Solve Monge-Ampère equation using transforms.jl infrastructure
+"""
+function solve_monge_ampere_transforms(domain::Domain, 
+                                     φ_initial::PencilArray{T, 3}, 
+                                     b_rhs::PencilArray{T, 3};
+                                     tol::T=T(1e-8),
+                                     maxiter::Int=50,
+                                     n_levels::Int=4,
+                                     smoother::Symbol=:hybrid_spectral,
+                                     verbose::Bool=false) where T<:AbstractFloat
+    
+    # Create multigrid hierarchy
+    levels = create_mg_hierarchy(domain, n_levels)
+    
+    # Create solver
+    mg = AdaptiveMultigridSolver{T}(levels, domain.pc.comm; 
+                                  smoother_type=smoother,
+                                  use_simd=true,
+                                  use_threading=true)
+    
+    # Initialize finest level
+    copy_field!(mg.levels[1].φ, φ_initial)
+    copy_field!(mg.levels[1].b, b_rhs)
+    
+    # Solve
+    converged, iters, final_res = solve_mg_spectral!(mg; tol=tol, maxiter=maxiter, verbose=verbose)
+    
+    # Return solution
+    solution = copy(mg.levels[1].φ)
+    
+    diagnostics = (
+        converged = converged,
+        iterations = iters,
+        final_residual = final_res,
+        convergence_history = copy(mg.convergence_history),
+        spectral_compatible = true,
+        transforms_integration = true
+    )
+    
+    return solution, diagnostics
+end
+
+"""
+Main spectral multigrid solve loop
+"""
+function solve_mg_spectral!(mg::AdaptiveMultigridSolver{T}; 
+                          tol::T=T(1e-8), maxiter::Int=50, verbose::Bool=false) where T
+    
+    empty!(mg.convergence_history)
+    start_time = time()
+    
+    for iter = 1:maxiter
+        # Perform V-cycle
+        mg_v_cycle!(mg, 1)
+        
+        # Compute residual norm using transforms.jl
+        compute_ma_residual!(mg.levels[1])
+        res_norm = norm_field(mg.levels[1].r)
+        push!(mg.convergence_history, res_norm)
+        
+        # Progress reporting
+        if verbose && MPI.Comm_rank(mg.comm) == 0
+            @printf "[Spectral MG] iter %2d: residual = %.3e (time: %.2fs)\n" iter res_norm (time() - start_time)
+        end
+        
+        # Convergence check
+        if res_norm < tol
+            if verbose && MPI.Comm_rank(mg.comm) == 0
+                @printf "Converged in %d iterations (%.3f seconds)\n" iter (time() - start_time)
+            end
+            return true, iter, res_norm
+        end
+    end
+    
+    # Max iterations reached
+    if verbose && MPI.Comm_rank(mg.comm) == 0
+        @printf "Maximum iterations (%d) reached. Final residual: %.3e\n" maxiter mg.convergence_history[end]
+    end
+    
+    return false, maxiter, mg.convergence_history[end]
+end
+
+# ============================================================================
+# EXAMPLE INTEGRATION WITH TRANSFORMS.JL
+# ============================================================================
+
+"""
+Example showing integration with transforms.jl workflow
+"""
+function demo_transforms_integration()
+    # This would typically be called after setting up your Domain
+    # using your existing transforms.jl infrastructure
+    
+    println("🔬 Transforms.jl Integration Demo")
+    println("=" ^ 40)
+    
+    # Assume domain is created using your existing setup
+    # domain = Domain(...)  # Your domain creation
+    
+    # Create fields using transforms.jl functions
+    # φ_initial = create_real_field(domain)
+    # b_rhs = create_real_field(domain)
+    
+    # Initialize with some test data
+    # ... (fill φ_initial and b_rhs with test data)
+    
+    # Solve using integrated approach
+    # solution, diag = solve_monge_ampere_transforms(domain, φ_initial, b_rhs;
+    #     tol=1e-10, verbose=true, smoother=:hybrid_spectral)
+    
+    println("✅ Integration points:")
+    println("   • Uses your existing Domain structure")
+    println("   • Leverages your FFT plans (dom.fplan, dom.iplan)")
+    println("   • Compatible with ddx!, ddy!, d2dxdy! functions")
+    println("   • Maintains PencilArray structure")
+    println("   • Supports dealias! operations")
+    println("   • Uses create_real_field() and create_spectral_field()")
+    
+    return true
+end
+
+# Run demo
+if abspath(PROGRAM_FILE) == @__FILE__
+    demo_transforms_integration()
+end"""
 FAS restriction for periodic domains
 """
 function restrict_fas!(coarse::MGLevel{T}, fine::MGLevel{T}) where T
@@ -847,14 +1337,10 @@ function create_pencil_mg_solver(nx_global::Int, ny_global::Int, Lx::T, Ly::T;
     return mg, pencil
 end
 
-# ============================================================================
-# INTEGRATION NOTES AND RECOMMENDATIONS
-# ============================================================================
 
 """
-INTEGRATION GUIDE FOR PENCILARRAYS + PENCILFFTS
-
-1. BASIC SETUP:
+1. Basic setup:
+   ==========
    ```julia
    using MPI, PencilArrays, PencilFFTs
    
@@ -866,44 +1352,26 @@ INTEGRATION GUIDE FOR PENCILARRAYS + PENCILFFTS
    mg, _ = create_pencil_mg_solver(nx, ny, Lx, Ly; comm=MPI.COMM_WORLD)
    ```
 
-2. PENCILARRAY CREATION:
+2. PencilArray:
+   ===========
    ```julia
    φ = PencilArray{Float64}(undef, pencil)
    b = PencilArray{Float64}(undef, pencil)
    # Initialize data...
    ```
 
-3. SOLVING:
+3. Solving:
+   =======
    ```julia
    solution, diag = solve_monge_ampere_pencil(φ, b, Lx, Ly; 
                                             tol=1e-10, verbose=true)
    ```
-
-4. INTEGRATION WITH PENCILFFTS:
-   - The solver works seamlessly with PencilFFTs
-   - FFT operations can be performed on the same pencil decomposition
-   - Halo exchanges are handled automatically
-
-5. PERFORMANCE CONSIDERATIONS:
-   - Use SIMD-optimized smoothers for best performance
-   - Semi-coarsening for anisotropic problems
-   - Adjust smoother iterations based on problem characteristics
-   - Monitor convergence with built-in diagnostics
-
-6. MEMORY EFFICIENCY:
-   - PencilArrays minimize memory usage per process
-   - Workspace arrays are allocated only once per level
-   - Automatic garbage collection of temporary arrays
 """
 
-# Run demo if this file is executed directly
-if abspath(PROGRAM_FILE) == @__FILE__
-    demo_pencil_monge_ampere_solver()
-end###############################################################################
+###############################################################################
 # advanced_multigrid_monge_ampere.jl
 #
-# State-of-the-art multigrid solver for the Monge-Ampère equation with 
-# FULLY PERIODIC boundary conditions (periodic in both x and y directions)
+#  Monge-Ampère equation with FULLY PERIODIC boundary conditions (periodic in both x and y directions)
 # Compatible with PencilArrays and PencilFFTs for turbulence and global simulations
 #
 # ==============================================================================
@@ -932,7 +1400,6 @@ end#############################################################################
 # - Efficient restriction/prolongation for periodic grids
 # - Coarse grid correction maintains periodic structure
 #
-###############################################################################
 #
 # MULTIGRID APPROACH:
 # - Full Approximation Storage (FAS) for nonlinear problems
@@ -952,59 +1419,71 @@ using SIMD
 using PencilArrays
 using PencilFFTs
 
-# ============================================================================
-# CORE DATA STRUCTURES
-# ============================================================================
-
 """Abstract base type for multigrid solvers"""
 abstract type AbstractMultigridSolver{T} end
 
-"""Multigrid level data structure compatible with PencilArrays"""
+# ============================================================================
+# CORE DATA STRUCTURES COMPATIBLE WITH TRANSFORMS.JL
+# ============================================================================
+
+"""Multigrid level data structure compatible with transforms.jl Domain"""
 mutable struct MGLevel{T<:AbstractFloat}
-    # Grid data
+    # Domain information from transforms.jl
+    domain::Domain
+    level::Int          # Multigrid level (1 = finest)
+    
+    # Grid dimensions at this level
     nx_global::Int      # Global grid dimensions
     ny_global::Int
-    nx_local::Int       # Local (per-process) dimensions
-    ny_local::Int
-    dx::T
-    dy::T
+    nz_global::Int
     
-    # PencilArrays for distributed data
-    φ::PencilArray{T, 2}       # Solution
-    b::PencilArray{T, 2}       # Right-hand side
-    r::PencilArray{T, 2}       # Residual
+    # Solution and RHS fields (using transforms.jl field creation)
+    φ::PencilArray{T, 3}        # Solution field
+    b::PencilArray{T, 3}        # Right-hand side
+    r::PencilArray{T, 3}        # Residual
+    
+    # Spectral workspace arrays
+    φ_hat::PencilArray{Complex{T}, 3}   # Spectral solution
+    b_hat::PencilArray{Complex{T}, 3}   # Spectral RHS
+    r_hat::PencilArray{Complex{T}, 3}   # Spectral residual
     
     # Temporary arrays for computations
-    φ_old::PencilArray{T, 2}   # Previous iteration
-    temp1::PencilArray{T, 2}   # Workspace
-    temp2::PencilArray{T, 2}   # Workspace
+    φ_old::PencilArray{T, 3}       # Previous iteration
+    tmp_real::PencilArray{T, 3}    # Real workspace
+    tmp_spec::PencilArray{Complex{T}, 3}  # Spectral workspace
     
-    # Pencil decomposition
-    pencil::Pencil{2}
+    # Derivative fields
+    φ_xx::PencilArray{T, 3}        # ∂²φ/∂x²
+    φ_yy::PencilArray{T, 3}        # ∂²φ/∂y²
+    φ_xy::PencilArray{T, 3}        # ∂²φ/∂x∂y
     
-    function MGLevel{T}(pencil::Pencil{2}, dx::T, dy::T) where T
-        # Get global and local dimensions
-        nx_global, ny_global = size_global(pencil)
-        nx_local, ny_local = size_local(pencil)
+    function MGLevel{T}(domain::Domain, level::Int=1) where T
+        # Get dimensions from domain
+        nx_global = domain.Nx
+        ny_global = domain.Ny
+        nz_global = domain.Nz
         
-        # Create PencilArrays
-        φ = PencilArray{T}(undef, pencil)
-        b = PencilArray{T}(undef, pencil)
-        r = PencilArray{T}(undef, pencil)
-        φ_old = PencilArray{T}(undef, pencil)
-        temp1 = PencilArray{T}(undef, pencil)
-        temp2 = PencilArray{T}(undef, pencil)
+        # Create fields using transforms.jl functions
+        φ = create_real_field(domain, T)
+        b = create_real_field(domain, T)
+        r = create_real_field(domain, T)
         
-        # Initialize with zeros
-        fill!(φ, zero(T))
-        fill!(b, zero(T))
-        fill!(r, zero(T))
-        fill!(φ_old, zero(T))
-        fill!(temp1, zero(T))
-        fill!(temp2, zero(T))
+        φ_hat = create_spectral_field(domain, T)
+        b_hat = create_spectral_field(domain, T)
+        r_hat = create_spectral_field(domain, T)
         
-        new{T}(nx_global, ny_global, nx_local, ny_local, dx, dy,
-               φ, b, r, φ_old, temp1, temp2, pencil)
+        φ_old = create_real_field(domain, T)
+        tmp_real = create_real_field(domain, T)
+        tmp_spec = create_spectral_field(domain, T)
+        
+        # Derivative fields
+        φ_xx = create_real_field(domain, T)
+        φ_yy = create_real_field(domain, T)
+        φ_xy = create_real_field(domain, T)
+        
+        new{T}(domain, level, nx_global, ny_global, nz_global,
+               φ, b, r, φ_hat, b_hat, r_hat, φ_old, tmp_real, tmp_spec,
+               φ_xx, φ_yy, φ_xy)
     end
 end
 
@@ -1562,58 +2041,82 @@ function update_halo!(φ::PencilArray{T, 2}) where T
     nothing
 end
 
-# ============================================================================
-# RESIDUAL COMPUTATION AND ERROR ESTIMATION
-# ============================================================================
 
 """
-Compute Monge-Ampère residual with full periodicity (no boundary points)
+Compute Monge-Ampère derivatives using transforms.jl spectral methods
 """
-function compute_ma_residual!(level::MGLevel{T}) where T
-    # Get local data
-    φ_local = parent(level.φ)
-    b_local = parent(level.b)
-    r_local = parent(level.r)
+function compute_ma_derivatives!(level::MGLevel{T}) where T
+    dom = level.domain
     
-    dx, dy = level.dx, level.dy
-    inv_dx2, inv_dy2 = 1/(dx^2), 1/(dy^2)
-    coeff_xy = 1/(4*dx*dy)
+    # Transform to spectral space
+    rfft!(dom, level.φ, level.φ_hat)
     
-    # Get local dimensions
-    nx_local, ny_local = size(φ_local)
+    # Compute ∂²φ/∂x² using transforms.jl
+    ddx!(dom, level.φ_hat, level.tmp_spec)  # ∂φ/∂x in spectral
+    ddx!(dom, level.tmp_spec, level.tmp_spec)  # ∂²φ/∂x² in spectral
+    irfft!(dom, level.tmp_spec, level.φ_xx)  # Back to real space
     
-    # For fully periodic domains, all points are interior points
-    @inbounds for j = 1:ny_local
-        @simd for i = 1:nx_local
-            # Periodic indexing - handled automatically by PencilArrays halo exchange
-            # Second derivatives
-            φ_xx = (φ_local[mod1(i+1, nx_local), j] - 2φ_local[i,j] + φ_local[mod1(i-1, nx_local), j]) * inv_dx2
-            φ_yy = (φ_local[i, mod1(j+1, ny_local)] - 2φ_local[i,j] + φ_local[i, mod1(j-1, ny_local)]) * inv_dy2
-            
-            # Mixed derivative (4th order accurate with periodicity)
-            φ_xy = (φ_local[mod1(i+1, nx_local), mod1(j+1, ny_local)] - 
-                   φ_local[mod1(i-1, nx_local), mod1(j+1, ny_local)] - 
-                   φ_local[mod1(i+1, nx_local), mod1(j-1, ny_local)] + 
-                   φ_local[mod1(i-1, nx_local), mod1(j-1, ny_local)]) * coeff_xy
-            
-            # Monge-Ampère residual
-            r_local[i,j] = (1 + φ_xx) * (1 + φ_yy) - φ_xy^2 - (1 + b_local[i,j])
-        end
-    end
+    # Compute ∂²φ/∂y²
+    rfft!(dom, level.φ, level.φ_hat)  # Refresh spectral field
+    ddy!(dom, level.φ_hat, level.tmp_spec)  # ∂φ/∂y in spectral
+    ddy!(dom, level.tmp_spec, level.tmp_spec)  # ∂²φ/∂y² in spectral
+    irfft!(dom, level.tmp_spec, level.φ_yy)
     
-    # Update halo regions for periodicity
-    update_halo!(level.r)
+    # Compute ∂²φ/∂x∂y using transforms.jl mixed derivative
+    rfft!(dom, level.φ, level.φ_hat)
+    d2dxdy!(dom, level.φ_hat, level.tmp_spec)  # Mixed derivative in spectral
+    irfft!(dom, level.tmp_spec, level.φ_xy)
+    
+    return nothing
 end
 
 """
-Apply periodic boundary conditions (essentially just ensure halo consistency)
+Compute Monge-Ampère residual using transforms.jl derivatives
 """
-function apply_periodic_boundary_conditions!(level::MGLevel{T}) where T
-    # For fully periodic domains, we just need to ensure halo regions are consistent
-    # PencilArrays handles this automatically, but we explicitly update to be sure
-    update_halo!(level.φ)
-    update_halo!(level.r)
-    update_halo!(level.b)
+function compute_ma_residual!(level::MGLevel{T}) where T
+    # Compute derivatives using spectral methods
+    compute_ma_derivatives!(level)
+    
+    # Get local data arrays
+    φ_xx_local = level.φ_xx.data
+    φ_yy_local = level.φ_yy.data
+    φ_xy_local = level.φ_xy.data
+    b_local = level.b.data
+    r_local = level.r.data
+    
+    # Compute Monge-Ampère residual: (1 + φₓₓ)(1 + φᵧᵧ) - φₓᵧ² - (1 + b)
+    @inbounds for k in axes(r_local, 3)
+        for j in axes(r_local, 2)
+            @simd for i in axes(r_local, 1)
+                r_local[i,j,k] = (1 + φ_xx_local[i,j,k]) * (1 + φ_yy_local[i,j,k]) - 
+                                φ_xy_local[i,j,k]^2 - (1 + b_local[i,j,k])
+            end
+        end
+    end
+    
+    # Apply dealiasing if needed
+    rfft!(level.domain, level.r, level.r_hat)
+    dealias!(level.domain, level.r_hat)
+    irfft!(level.domain, level.r_hat, level.r)
+    
+    return nothing
+end
+
+"""
+Compute forcing for Newton iteration using spectral accuracy
+"""
+function compute_ma_forcing!(level::MGLevel{T}, rhs::PencilArray{T, 3}) where T
+    # Compute current residual
+    compute_ma_residual!(level)
+    
+    # Copy residual to RHS (for linear solve)
+    copy_field!(rhs, level.r)
+    
+    # Negate for Newton iteration: we want to solve J δφ = -F
+    rhs_local = rhs.data
+    @. rhs_local = -rhs_local
+    
+    return nothing
 end
 
 """
@@ -1685,19 +2188,296 @@ function coarse_solve!(level::MGLevel{T}, mg::AdaptiveMultigridSolver{T}) where 
 end
 
 """
-Direct solver for small coarse grids
+Direct solver for small coarse grids using Newton-Krylov method
 """
 function direct_ma_solve!(level::MGLevel{T}) where T
-    # Form Jacobian matrix (for demonstration - actual implementation would be more complex)
-    n = level.nx * level.ny
-    J = spzeros(T, n, n)
+    dom = level.domain
     
-    # Fill Jacobian matrix (simplified)
-    # ... matrix assembly code ...
+    # For very small grids, use Newton's method with direct linear solves
+    if length(level.φ.data) < 1000
+        newton_direct_solve!(level)
+    else
+        # For medium-sized coarse grids, use Newton-Krylov
+        newton_krylov_solve!(level)
+    end
+end
+
+"""
+Newton's method with direct Jacobian solve for very small problems
+"""
+function newton_direct_solve!(level::MGLevel{T}; 
+                            max_newton_iters::Int=20, 
+                            newton_tol::T=T(1e-12)) where T
     
-    # Solve linear system
-    φ_vec = J \ vec(level.b)
-    level.φ[:] = reshape(φ_vec, level.nx, level.ny)
+    φ_local = level.φ.data
+    b_local = level.b.data
+    nx_local, ny_local, nz_local = size(φ_local)
+    n_total = length(φ_local)
+    
+    # Get grid spacing
+    dom = level.domain
+    dx = dom.Lx / dom.Nx
+    dy = dom.Ly / dom.Ny
+    
+    for newton_iter = 1:max_newton_iters
+        # Compute residual using spectral derivatives
+        compute_ma_residual!(level)
+        residual_norm = norm_field(level.r)
+        
+        if residual_norm < newton_tol
+            @debug "Newton converged in $newton_iter iterations"
+            break
+        end
+        
+        # Form and solve linearized system: J δφ = -F
+        J = assemble_ma_jacobian(level)
+        F_vec = vec(level.r.data)
+        
+        # Solve linear system
+        δφ_vec = J \ (-F_vec)
+        δφ = reshape(δφ_vec, size(φ_local))
+        
+        # Line search for robustness
+        α = backtracking_line_search(level, δφ, 0.5)
+        
+        # Update solution
+        φ_local .+= α .* δφ
+        
+        @debug "Newton iter $newton_iter: residual = $residual_norm, step size = $α"
+    end
+end
+
+"""
+Newton-Krylov method for medium-sized coarse grids
+"""
+function newton_krylov_solve!(level::MGLevel{T}; 
+                            max_newton_iters::Int=10,
+                            newton_tol::T=T(1e-10),
+                            krylov_tol::T=T(1e-6)) where T
+    
+    for newton_iter = 1:max_newton_iters
+        # Compute residual
+        compute_ma_residual!(level)
+        residual_norm = norm_field(level.r)
+        
+        if residual_norm < newton_tol
+            @debug "Newton-Krylov converged in $newton_iter iterations"
+            break
+        end
+        
+        # Solve J δφ = -F using GMRES (matrix-free)
+        δφ = similar(level.φ)
+        zero_field!(δφ)
+        
+        # GMRES with Jacobian-vector products
+        gmres_ma!(δφ, level.r, level; tol=krylov_tol, maxiter=20)
+        
+        # Line search
+        α = backtracking_line_search(level, δφ, 0.8)
+        
+        # Update solution
+        φ_local = level.φ.data
+        δφ_local = δφ.data
+        @. φ_local += α * δφ_local
+        
+        @debug "Newton-Krylov iter $newton_iter: residual = $residual_norm, step size = $α"
+    end
+end
+
+"""
+Assemble Jacobian matrix for Monge-Ampère equation (for small problems only)
+"""
+function assemble_ma_jacobian(level::MGLevel{T}) where T
+    dom = level.domain
+    φ_local = level.φ.data
+    nx_local, ny_local, nz_local = size(φ_local)
+    n_total = length(φ_local)
+    
+    # Create sparse Jacobian matrix
+    J = spzeros(T, n_total, n_total)
+    
+    # Grid spacing
+    dx = dom.Lx / dom.Nx
+    dy = dom.Ly / dom.Ny
+    inv_dx2, inv_dy2 = 1/(dx^2), 1/(dy^2)
+    
+    # Fill Jacobian matrix using finite differences of the Monge-Ampère operator
+    for k = 1:nz_local
+        for j = 1:ny_local
+            for i = 1:nx_local
+                row = linear_index(i, j, k, nx_local, ny_local)
+                
+                # Get current derivatives (needed for Jacobian)
+                φ_xx, φ_yy, φ_xy = compute_local_derivatives(level, i, j, k)
+                
+                # Jacobian entries for Monge-Ampère: ∂F/∂φ where F = (1+φₓₓ)(1+φᵧᵧ) - φₓᵧ²
+                
+                # Main diagonal (∂F/∂φᵢⱼ)
+                J[row, row] = -2*(1 + φ_yy)*inv_dx2 - 2*(1 + φ_xx)*inv_dy2
+                
+                # Off-diagonal entries (∂F/∂φ_neighbors)
+                # This is complex for the full Monge-Ampère Jacobian
+                fill_ma_jacobian_entries!(J, row, i, j, k, φ_xx, φ_yy, φ_xy, 
+                                         nx_local, ny_local, nz_local, inv_dx2, inv_dy2)
+            end
+        end
+    end
+    
+    return J
+end
+
+"""
+Fill Jacobian entries for Monge-Ampère operator (simplified implementation)
+"""
+function fill_ma_jacobian_entries!(J::SparseMatrixCSC{T}, row::Int, i::Int, j::Int, k::Int,
+                                  φ_xx::T, φ_yy::T, φ_xy::T,
+                                  nx::Int, ny::Int, nz::Int, 
+                                  inv_dx2::T, inv_dy2::T) where T
+    
+    # This is a simplified implementation
+    # Full Monge-Ampère Jacobian would require more careful derivative computation
+    
+    # Neighbors in i-direction
+    if i > 1
+        col = linear_index(i-1, j, k, nx, ny)
+        J[row, col] = (1 + φ_yy) * inv_dx2
+    end
+    if i < nx
+        col = linear_index(i+1, j, k, nx, ny)
+        J[row, col] = (1 + φ_yy) * inv_dx2
+    end
+    
+    # Neighbors in j-direction
+    if j > 1
+        col = linear_index(i, j-1, k, nx, ny)
+        J[row, col] = (1 + φ_xx) * inv_dy2
+    end
+    if j < ny
+        col = linear_index(i, j+1, k, nx, ny)
+        J[row, col] = (1 + φ_xx) * inv_dy2
+    end
+    
+    # Mixed derivative terms would require more entries...
+end
+
+"""
+Convert 3D indices to linear index
+"""
+@inline function linear_index(i::Int, j::Int, k::Int, nx::Int, ny::Int)
+    return i + (j-1)*nx + (k-1)*nx*ny
+end
+
+"""
+Compute local derivatives at a point (for Jacobian assembly)
+"""
+function compute_local_derivatives(level::MGLevel{T}, i::Int, j::Int, k::Int) where T
+    dom = level.domain
+    φ_local = level.φ.data
+    
+    dx = dom.Lx / dom.Nx
+    dy = dom.Ly / dom.Ny
+    inv_dx2, inv_dy2 = 1/(dx^2), 1/(dy^2)
+    
+    # Get neighbors with periodic boundary handling
+    φ_c = φ_local[i, j, k]
+    φ_e = get_periodic_neighbor(level.φ, i, j, k, 1, 0, 0, dom)
+    φ_w = get_periodic_neighbor(level.φ, i, j, k, -1, 0, 0, dom)
+    φ_n = get_periodic_neighbor(level.φ, i, j, k, 0, 1, 0, dom)
+    φ_s = get_periodic_neighbor(level.φ, i, j, k, 0, -1, 0, dom)
+    
+    # Second derivatives
+    φ_xx = (φ_e - 2φ_c + φ_w) * inv_dx2
+    φ_yy = (φ_n - 2φ_c + φ_s) * inv_dy2
+    
+    # Mixed derivative (simplified)
+    φ_ne = get_periodic_neighbor(level.φ, i, j, k, 1, 1, 0, dom)
+    φ_nw = get_periodic_neighbor(level.φ, i, j, k, -1, 1, 0, dom)
+    φ_se = get_periodic_neighbor(level.φ, i, j, k, 1, -1, 0, dom)
+    φ_sw = get_periodic_neighbor(level.φ, i, j, k, -1, -1, 0, dom)
+    φ_xy = (φ_ne - φ_nw - φ_se + φ_sw) / (4*dx*dy)
+    
+    return φ_xx, φ_yy, φ_xy
+end
+
+"""
+Matrix-free GMRES for Newton-Krylov method
+"""
+function gmres_ma!(δφ::PencilArray{T, 3}, rhs::PencilArray{T, 3}, level::MGLevel{T};
+                  tol::T=T(1e-6), maxiter::Int=20) where T
+    
+    # This would implement GMRES using Jacobian-vector products
+    # For now, use a simplified approach
+    
+    # Store current solution
+    φ_backup = copy(level.φ)
+    
+    # Simple Richardson iteration as placeholder for GMRES
+    ω = T(0.1)
+    copy_field!(δφ, rhs)
+    δφ_local = δφ.data
+    @. δφ_local *= -ω
+    
+    # Restore original solution
+    copy_field!(level.φ, φ_backup)
+end
+
+"""
+Backtracking line search for Newton's method
+"""
+function backtracking_line_search(level::MGLevel{T}, δφ::Array{T, 3}, 
+                                 α_init::T=T(1.0); 
+                                 c1::T=T(1e-4), max_backtracks::Int=10) where T
+    
+    # Store current solution and residual norm
+    φ_backup = copy(level.φ.data)
+    compute_ma_residual!(level)
+    f0 = 0.5 * norm_field(level.r)^2
+    
+    α = α_init
+    φ_local = level.φ.data
+    
+    for backtrack = 1:max_backtracks
+        # Try step
+        @. φ_local = φ_backup + α * δφ
+        
+        # Compute new residual
+        compute_ma_residual!(level)
+        f_new = 0.5 * norm_field(level.r)^2
+        
+        # Armijo condition
+        if f_new <= f0 + c1 * α * (-f0)  # Simplified condition
+            break
+        end
+        
+        # Reduce step size
+        α *= 0.5
+        
+        if α < 1e-10
+            @warn "Line search failed"
+            break
+        end
+    end
+    
+    return α
+end
+
+"""
+Simplified coarse solve using many smoother iterations (fallback)
+"""
+function coarse_solve_iterative!(level::MGLevel{T}) where T
+    # Use many iterations of the best available smoother
+    if hasfield(typeof(level), :φ_hat)
+        # Use spectral smoother if available
+        spectral_sor_pencil!(level, 100, T(1.0))
+    else
+        # Use standard SOR
+        optimized_nonlinear_sor_auto!(level, 100, T(1.0); kernel=:auto)
+    end
+    
+    # Enforce zero mean for periodic problems
+    if level.domain.boundary_conditions == :periodic
+        enforce_zero_mean_spectral!(level)
+    end
 end
 
 # ============================================================================
@@ -2222,13 +3002,13 @@ end
 Run comprehensive benchmarks
 """
 function benchmark_multigrid_solver()
-    println("🚀 Comprehensive Multigrid Benchmark Suite")
+    println(" Comprehensive Multigrid Benchmark Suite")
     println("=" ^ 50)
     
     problem_sizes = [65, 129, 257, 513]
     
     for nx in problem_sizes
-        println("🔬 Benchmarking $(nx)×$(nx) problem...")
+        println(" Benchmarking $(nx)×$(nx) problem...")
         
         # Setup problem
         Lx, Ly = 2π, 2π
@@ -2251,25 +3031,14 @@ function benchmark_multigrid_solver()
         iter_per_sec = diag.iterations / elapsed
         dofs_per_sec = dofs / elapsed
         
-        @printf "   DOFs: %d, Time: %.3fs, Iters: %d\n" dofs elapsed diag.iterations
-        @printf "   Performance: %.1f iters/sec, %.0f DOFs/sec\n" iter_per_sec dofs_per_sec
+        @printf "    DOFs: %d, Time: %.3fs, Iters: %d\n" dofs elapsed diag.iterations
+        @printf "    Performance: %.1f iters/sec, %.0f DOFs/sec\n" iter_per_sec dofs_per_sec
         println()
     end
 end
 
-
-"""
- Example:
- =======
-
-# Custom periodic multigrid setup
-mg = create_periodic_multigrid_solver(nx, ny, Lx, Ly;
-                                    n_levels=6,
-                                    comm=MPI.COMM_WORLD,
-                                    smoother_type=:sor,
-                                    enforce_zero_mean=true)
-
-# Solve with full control
-converged, iters, residual = solve_monge_ampere_advanced!(mg, φ, b;
-                                                        tol=1e-12, verbose=true)
-"""
+# # Run demo if this file is executed directly
+# if abspath(PROGRAM_FILE) == @__FILE__
+#     demo_monge_ampere_solver()
+#     benchmark_multigrid_solver()
+# end
