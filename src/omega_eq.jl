@@ -169,7 +169,7 @@ function compute_monge_ampere_forcing!(DΦₕ::AbstractMatrix{Complex{T}},
             temp1[i,j] = -grid.kr[i,j]^2 * sol[i,j]
         end
     end
-    ldiv!(Φxx, grid.rfftplan, temp1)
+    ldiv!(Φxx, rfftplan, temp1)
 
     # Compute ∂ᵧᵧΦ  
     @inbounds @threads for j in 1:size(sol, 2)
@@ -177,7 +177,7 @@ function compute_monge_ampere_forcing!(DΦₕ::AbstractMatrix{Complex{T}},
             temp2[i,j] = -grid.l[i,j]^2 * sol[i,j]
         end
     end
-    ldiv!(Φyy, grid.rfftplan, temp2)
+    ldiv!(Φyy, rfftplan, temp2)
     
     # Compute ∂ₓᵧΦ
     @inbounds @threads for j in 1:size(sol, 2)
@@ -185,7 +185,7 @@ function compute_monge_ampere_forcing!(DΦₕ::AbstractMatrix{Complex{T}},
             temp1[i,j] = -grid.kr[i,j] * grid.l[i,j] * sol[i,j]
         end
     end
-    ldiv!(Φxy, grid.rfftplan, temp1)
+    ldiv!(Φxy, rfftplan, temp1)
 
     # Compute DΦ = ∂ₓₓΦ·∂ᵧᵧΦ - (∂ₓᵧΦ)²
     @inbounds @threads for j in 1:size(Φxx, 2)
@@ -195,7 +195,7 @@ function compute_monge_ampere_forcing!(DΦₕ::AbstractMatrix{Complex{T}},
     end
     
     # Transform back to spectral space
-    mul!(DΦₕ, grid.rfftplan, Φxx)
+    mul!(DΦₕ, rfftplan, Φxx)
     
     return nothing
 end
@@ -296,8 +296,8 @@ function compute_relative_error(sol_new::AbstractMatrix{Complex{T}},
     Φ_new = similar(sol_new, real(T), grid.nx, grid.ny)
     Φ_old = similar(sol_old, real(T), grid.nx, grid.ny)
     
-    ldiv!(Φ_new, grid.rfftplan, sol_new)
-    ldiv!(Φ_old, grid.rfftplan, sol_old)
+    ldiv!(Φ_new, rfftplan, sol_new)
+    ldiv!(Φ_old, rfftplan, sol_old)
     
     # Compute relative L2 error
     numerator = sum(abs2, Φ_new .- Φ_old)
@@ -306,10 +306,14 @@ function compute_relative_error(sol_new::AbstractMatrix{Complex{T}},
     return sqrt(numerator / (denominator + eps(T)))
 end
 
+
 """
-Optimized divergence calculation for Q vector
-Q₁ = ∂ˣuᵍ·∂ˣb + ∂ˣvᵍ·∂ʸb  
-Q₂ = ∂ʸuᵍ·∂ˣb + ∂ʸvᵍ·∂ʸb
+calculating the forcing terms that appears
+in the vertical velocity equation
+    Q ≡ (Q₁, Q₂)
+    Q₁ = ∂ˣuᵍ * ∂ˣb + ∂ˣvᵍ * ∂ʸb
+    Q₂ = ∂ʸuᵍ * ∂ˣb + ∂ʸvᵍ * ∂ʸb 
+    (x, y) ≡ Geostrophic momentum coordinate
 """
 function compute_divergence_Q!(divQ_h::Array{Complex{T}, 3}, 
                               sol_Φ3d::Array{Complex{T}, 3},
@@ -327,7 +331,7 @@ function compute_divergence_Q!(divQ_h::Array{Complex{T}, 3},
             temp1[i,j] = 1im * grid.kr[i,j] * sol_b[i,j]
         end
     end
-    ldiv!(∂ˣb, grid.rfftplan, temp1)
+    ldiv!(∂ˣb, rfftplan, temp1)
     
     # ∂ʸb = il * b̂
     @inbounds @threads for j in 1:grid.nl
@@ -335,7 +339,7 @@ function compute_divergence_Q!(divQ_h::Array{Complex{T}, 3},
             temp1[i,j] = 1im * grid.l[i,j] * sol_b[i,j]
         end
     end
-    ldiv!(∂ʸb, grid.rfftplan, temp1)
+    ldiv!(∂ʸb, rfftplan, temp1)
 
     # Process each z-level
     @threads for kt in 1:grid.nz
@@ -356,33 +360,33 @@ function compute_divergence_Q!(divQ_h::Array{Complex{T}, 3},
         @inbounds for j in 1:grid.nl, i in 1:grid.nkr
             local_temp1[i,j] = grid.kr[i,j] * grid.l[i,j] * Φ_slice[i,j]
         end
-        ldiv!(local_field, grid.rfftplan, local_temp1)
+        ldiv!(local_field, rfftplan, local_temp1)
         @. local_Q₁ += local_field * ∂ˣb
         
         # ∂ʸuᵍ = -∂ʸʸΦ  
         @inbounds for j in 1:grid.nl, i in 1:grid.nkr
             local_temp1[i,j] = grid.l[i,j]^2 * Φ_slice[i,j]
         end
-        ldiv!(local_field, grid.rfftplan, local_temp1)
+        ldiv!(local_field, rfftplan, local_temp1)
         @. local_Q₂ += local_field * ∂ˣb
 
         # ∂ˣvᵍ = ∂ˣˣΦ
         @inbounds for j in 1:grid.nl, i in 1:grid.nkr
             local_temp1[i,j] = -grid.kr[i,j]^2 * Φ_slice[i,j]
         end
-        ldiv!(local_field, grid.rfftplan, local_temp1)
+        ldiv!(local_field, rfftplan, local_temp1)
         @. local_Q₁ += local_field * ∂ʸb
 
         # ∂ʸvᵍ = ∂ˣʸΦ
         @inbounds for j in 1:grid.nl, i in 1:grid.nkr
             local_temp1[i,j] = -grid.kr[i,j] * grid.l[i,j] * Φ_slice[i,j]
         end
-        ldiv!(local_field, grid.rfftplan, local_temp1)
+        ldiv!(local_field, rfftplan, local_temp1)
         @. local_Q₂ += local_field * ∂ʸb
 
         # Transform Q components and compute divergence
-        mul!(local_temp1, grid.rfftplan, local_Q₁)
-        mul!(local_temp2, grid.rfftplan, local_Q₂)
+        mul!(local_temp1, rfftplan, local_Q₁)
+        mul!(local_temp2, rfftplan, local_Q₂)
 
         @inbounds for j in 1:grid.nl, i in 1:grid.nkr
             divQ_h[i,j,kt] = -2 * grid.ε * (1im * grid.kr[i,j] * local_temp1[i,j] + 
@@ -552,7 +556,7 @@ function compute_vertical_velocity(vars, grid;
     
     # Transform to spectral space
     sol_b = similar(workspace.temp_complex1)
-    mul!(sol_b, grid.rfftplan, b₁)
+    mul!(sol_b, rfftplan, b₁)
     
     # Initialize arrays
     sol_Φ3d = workspace.temp_3d_complex
@@ -587,14 +591,14 @@ function compute_vertical_velocity(vars, grid;
             @inbounds for j in 1:grid.nl, i in 1:grid.nkr
                 local_temp[i,j] = -grid.kr[i,j]^2 * Φ_slice[i,j]
             end
-            ldiv!(workspace.temp_real2, grid.rfftplan, local_temp)
+            ldiv!(workspace.temp_real2, rfftplan, local_temp)
             @. local_field -= grid.ε * workspace.temp_real2
             
             # ∂ᵧᵧΦ contribution  
             @inbounds for j in 1:grid.nl, i in 1:grid.nkr
                 local_temp[i,j] = -grid.l[i,j]^2 * Φ_slice[i,j]
             end
-            ldiv!(workspace.temp_real2, grid.rfftplan, local_temp)
+            ldiv!(workspace.temp_real2, rfftplan, local_temp)
             @. local_field -= grid.ε * workspace.temp_real2
             
             # Store result
@@ -616,7 +620,7 @@ function compute_vertical_velocity(vars, grid;
     @time "Final transformation" begin
         @threads for kt in 1:grid.nz
             local_w = similar(workspace.temp_real1)
-            ldiv!(local_w, grid.rfftplan, w_spectral[:,:,kt])
+            ldiv!(local_w, rfftplan, w_spectral[:,:,kt])
             
             # Apply coordinate transformation: w = w*/J
             @inbounds for j in 1:grid.ny, i in 1:grid.nx
