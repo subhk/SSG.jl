@@ -366,6 +366,7 @@ function save_spectral_snapshot(filename::String, prob::SemiGeostrophicProblem{T
         file["Nx"] = prob.domain.Nx
         file["Ny"] = prob.domain.Ny
         file["Nz"] = prob.domain.Nz
+        
         file["Lx"] = prob.domain.Lx
         file["Ly"] = prob.domain.Ly
         file["Lz"] = prob.domain.Lz
