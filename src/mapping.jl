@@ -20,12 +20,12 @@
 # 4. Maps fields (buoyancy, potential, vorticity) onto the new coordinate system
 
 
-using FFTW
-using Statistics: mean
-using LinearAlgebra
-using Interpolations
-using Base.Threads
-using JLD2
+# using FFTW
+# using Statistics: mean
+# using LinearAlgebra
+# using Interpolations
+# using Base.Threads
+# using JLD2
 
 # Custom exception types for better error handling
 struct ConvergenceError <: Exception

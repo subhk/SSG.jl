@@ -61,6 +61,10 @@ module SSG
 
 
 
+    # mapping.jl
+    export 
+        create_geostrophic_mapping,
+        map_geostrophic,
 
 
 
