@@ -45,6 +45,12 @@ module SSG
         ddx!,
         ddy!,
         ddz!,
+        d2dxdy!,
+        d2dz2!,
+        laplacian_h!,
+        gradient_h!,
+        
+
 
 
 
