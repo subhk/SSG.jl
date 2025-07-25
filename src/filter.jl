@@ -1,7 +1,6 @@
 # src/filter.jl
 # Spectral filtering for surface semi-geostrophic equations
 # Supports exponential, hyperviscosity, and custom filter functions
-# Compatible with PencilArrays and PencilFFTs for distributed memory parallelism
 
 using PencilArrays
 using PencilFFTs
@@ -583,41 +582,6 @@ Create hyperviscosity filter for subgrid-scale modeling.
 """
 function subgrid_filter(dom::Domain, T::Type=Float64; coefficient::Real=1e-4, order::Int=2)
     return HyperviscosityFilter{T}(T(coefficient), order)
-end
-
-# ============================================================================
-# ANISOTROPIC FILTERING (ADVANCED)
-# ============================================================================
-
-"""
-    AnisotropicFilter{T} <: AbstractSpectralFilter{T}
-
-Filter with different behavior in x and y directions.
-"""
-struct AnisotropicFilter{T<:AbstractFloat} <: AbstractSpectralFilter{T}
-    filter_x::AbstractSpectralFilter{T}
-    filter_y::AbstractSpectralFilter{T}
-    
-    function AnisotropicFilter{T}(fx::AbstractSpectralFilter{T}, 
-                                 fy::AbstractSpectralFilter{T}) where T
-        new{T}(fx, fy)
-    end
-end
-
-"""
-    apply_anisotropic_filter!(field_local, local_ranges, dom, filter)
-
-Apply different filters in x and y directions.
-"""
-function apply_anisotropic_filter!(field_local::AbstractArray{Complex{T}, N},
-                                  local_ranges, dom::Domain,
-                                  filter::AnisotropicFilter{T}) where {T, N}
-    
-    # This would require separate application of filters in each direction
-    # Implementation would be more complex, involving 1D FFTs
-    @warn "Anisotropic filtering not fully implemented yet"
-    
-    return nothing
 end
 
 """
