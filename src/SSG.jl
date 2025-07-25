@@ -55,11 +55,15 @@ module SSG
         timestep!, integrate!, step_until!, stepforward!, run!,
         AB2_LowStorage, RK3, RK3_LowStorage
 
-
     # output.jl exports
     export OutputFrequency, OutputManager, save_simulation_state_full,
         save_snapshot, save_spectral_snapshot, process_all_outputs!,
         load_simulation_state_full, DiagnosticTimeSeries
+
+
+    # filter.jl exports
+    export AbstractSpectralFilter, ExponentialFilter, HyperviscosityFilter,
+        CutoffFilter, CesaroFilter, apply_spectral_filter!, create_filter
 
     # mapping.jl
     export 
