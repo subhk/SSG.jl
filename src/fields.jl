@@ -83,19 +83,23 @@ end
 Set all fields to zero.
 """
 function zero_fields!(domain::Fields)
-    fields.b .= 0
-    fields.φ .= 0
-    fields.u .= 0
-    fields.v .= 0
+    fields.b    .= 0
+    fields.φ    .= 0
+    fields.u    .= 0
+    fields.v    .= 0
+
     fields.φ_mg .= 0
     fields.b_mg .= 0
-    fields.R .= 0
-    fields.tmp .= 0
+    fields.R    .= 0
+
+    fields.tmp  .= 0
     fields.tmp2 .= 0
     fields.tmp3 .= 0
+
     fields.bhat .= 0
     fields.φhat .= 0
-    fields.tmpc .= 0
+    
+    fields.tmpc  .= 0
     fields.tmpc2 .= 0
     return fields
 end
@@ -130,7 +134,6 @@ function copy_field!(dest, src)
     dest .= src
     return dest
 end
-
 
 
 """

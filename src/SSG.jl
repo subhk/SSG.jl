@@ -70,7 +70,6 @@ module SSG
     include("fields.jl")
     include("transforms.jl")
     include("params.jl")
-    include("physics.jl")
     include("poisson.jl")
     include("timestep.jl")
     include("filter.jl")
@@ -96,7 +95,6 @@ src/
 ├── fields.jl              # Field allocation and management
 ├── transforms.jl         # FFT operations and spectral derivatives
 ├── params.jl             # Parameter structures
-├── physics.jl            # Physical computations (velocities, Jacobian)
 ├── poisson.jl            # 3D Poisson solver
 ├── timestep.jl           # Time stepping schemes
 ├── filter.jl              # Spectral filtering
@@ -104,5 +102,5 @@ src/
 ├── run.jl                # Main simulation driver
 
 examples/
-├── basic_run.jl      # Basic example
+├── basic_run.jl          # Basic example
 =#
