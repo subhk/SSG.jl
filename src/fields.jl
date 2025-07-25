@@ -29,6 +29,10 @@ struct Fields{T, PA, PC}
     φ::PA           # streamfunction
     u::PA           # x-velocity
     v::PA           # y-velocity
+
+    # Multigrid workspace
+    φ_mg::PA           # Multigrid solution workspace
+    b_mg::PA           # Multigrid RHS workspace
     
     # Scratch arrays (real space)
     R::PA           # residual for MA equation
@@ -89,6 +93,29 @@ function zero_fields!(fld::Fields)
     return fld
 end
 
+
+
+function ensure_same_grid(dest::PencilArray, src::PencilArray)
+    # Check compatible sizes
+    if size(dest) != size(src)
+        throw(ArgumentError("PencilArrays have incompatible sizes: $(size(dest)) vs $(size(src))"))
+    end
+    
+    # Check MPI communicator compatibility
+    if dest.pencil.comm != src.pencil.comm
+        throw(ArgumentError("PencilArrays have different MPI communicators"))
+    end
+    
+    return true
+end
+
+macro ensuresamegrid(dest, src)
+    return quote
+        ensure_same_grid($(esc(dest)), $(esc(src)))
+    end
+end
+
+
 """
     copy_field!(dest, src)
 Copy one field to another (must be same type and size).
@@ -98,6 +125,8 @@ function copy_field!(dest, src)
     dest .= src
     return dest
 end
+
+
 
 """
     field_stats(field) -> (mean, std, min, max)
