@@ -71,7 +71,6 @@ module SSG
     include("poisson.jl")
     include("timestep.jl")
     include("filter.jl")
-    include("hyperdiffusion.jl")
     include("output.jl")
 
 
@@ -97,7 +96,6 @@ src/
 ├── poisson.jl            # 3D Poisson solver
 ├── timestep.jl           # Time stepping schemes
 ├── filter.jl              # Spectral filtering
-├── hyperdiffusion.jl     # Hyperdiffusion operators
 ├── output.jl             # Input/output operations
 ├── run.jl                # Main simulation driver
 

@@ -46,32 +46,32 @@ struct Fields{T, PA, PC}
 end
 
 """
-    allocate_fields(dom::Domain{T}) -> Fields{T}
+    allocate_fields(domain::Domain{T}) -> Fields{T}
 Allocate all field arrays for the given domain.
 
 # Arguments
-- `dom`: Domain structure
+- `domain`: Domain structure
 
 # Returns
 - `Fields`: Allocated field structure
 """
-function allocate_fields(dom::Domain{T}) where T
+function allocate_fields(domain::Domain{T}) where T
     # Real-space fields
-    b    = PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
-    φ    = PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
-    u    = PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
-    v    = PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
-    R    = PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
-    tmp  = PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
-    tmp2 = PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
+    b    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    φ    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    u    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    v    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    R    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    tmp  = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    tmp2 = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     
-    φ_mg = PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
-    b_mg = PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
+    φ_mg = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    b_mg = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
 
     # Spectral fields
-    bhat = PencilArray(dom.pc, zeros(Complex{T}, local_size(dom.pc)))
-    φhat = PencilArray(dom.pc, zeros(Complex{T}, local_size(dom.pc)))
-    tmpc = PencilArray(dom.pc, zeros(Complex{T}, local_size(dom.pc)))
+    bhat = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+    φhat = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+    tmpc = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
     
     return Fields{T, typeof(b), typeof(bhat)}(
         b, φ, u, v, R, tmp, tmp2, bhat, φhat, tmpc
@@ -79,25 +79,25 @@ function allocate_fields(dom::Domain{T}) where T
 end
 
 """
-    zero_fields!(fld::Fields)
+    zero_fields!(fields::Fields)
 Set all fields to zero.
 """
-function zero_fields!(fld::Fields)
-    fld.b .= 0
-    fld.φ .= 0
-    fld.u .= 0
-    fld.v .= 0
-    fld.φ_mg .= 0
-    fld.b_mg .= 0
-    fld.R .= 0
-    fld.tmp .= 0
-    fld.tmp2 .= 0
-    fld.tmp3 .= 0
-    fld.bhat .= 0
-    fld.φhat .= 0
-    fld.tmpc .= 0
-    fld.tmpc2 .= 0
-    return fld
+function zero_fields!(domain::Fields)
+    fields.b .= 0
+    fields.φ .= 0
+    fields.u .= 0
+    fields.v .= 0
+    fields.φ_mg .= 0
+    fields.b_mg .= 0
+    fields.R .= 0
+    fields.tmp .= 0
+    fields.tmp2 .= 0
+    fields.tmp3 .= 0
+    fields.bhat .= 0
+    fields.φhat .= 0
+    fields.tmpc .= 0
+    fields.tmpc2 .= 0
+    return fields
 end
 
 
@@ -143,14 +143,14 @@ function field_stats(field)
 end
 
 """
-    Base.show(io::IO, fld::Fields)
+    Base.show(io::IO, fields::Fields)
 Pretty print field information.
 """
-function Base.show(io::IO, fld::Fields)
-    T = eltype(fld.b)
+function Base.show(io::IO, fields::Fields)
+    T = eltype(fields.b)
     println(io, "Fields{$T}:")
     println(io, "  Prognostic: b (buoyancy)")
     println(io, "  Diagnostic: φ (streamfunction), u, v (velocities)")
     println(io, "  Scratch   : R, tmp, tmp2 (real), tmpc (spectral)")
-    println(io, "  Local size: $(size(fld.b))")
+    println(io, "  Local size: $(size(fields.b))")
 end
