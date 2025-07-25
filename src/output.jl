@@ -688,11 +688,11 @@ function demo_mixed_frequencies()
     #     save_spectral_data=true)
     
     println("Mixed frequency capabilities:")
-    println("  ✅ Different frequencies for different output types")
-    println("  ✅ Time-based for physics (diagnostics, snapshots)")  
-    println("  ✅ Step-based for numerical analysis (spectral)")
-    println("  ✅ Flexible configuration per output type")
-    println("  ✅ Independent timing for each output stream")
+    println("  Different frequencies for different output types")
+    println("  Time-based for physics (diagnostics, snapshots)")  
+    println("  Step-based for numerical analysis (spectral)")
+    println("  Flexible configuration per output type")
+    println("  Independent timing for each output stream")
     
     return true
 end
