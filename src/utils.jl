@@ -57,21 +57,21 @@ end
 # =============================================================================
 
 """
-    create_real_field(dom::Domain, ::Type{T}=FT) where T
+    create_real_field(domain::Domain, ::Type{T}=FT) where T
 
 Create a PencilArray for real-space fields.
 """
-function create_real_field(dom::Domain, ::Type{T}=FT) where T
-    return PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
+function create_real_field(domain::Domain, ::Type{T}=FT) where T
+    return PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
 end
 
 """
-    create_spectral_field(dom::Domain, ::Type{T}=FT) where T
+    create_spectral_field(domain::Domain, ::Type{T}=FT) where T
 
 Create a PencilArray for spectral-space fields.
 """
-function create_spectral_field(dom::Domain, ::Type{T}=FT) where T
-    return PencilArray(dom.pc, zeros(Complex{T}, local_size(dom.pc)))
+function create_spectral_field(domain::Domain, ::Type{T}=FT) where T
+    return PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
 end
 
 """
@@ -138,26 +138,26 @@ end
 # =============================================================================
 
 """
-    gridpoints(dom::Domain) -> (X, Y, Z)
+    gridpoints(domain::Domain) -> (X, Y, Z)
 
 Return 3D coordinate arrays for the domain.
 """
-function gridpoints(dom::Domain)
-    X = [dom.x[i] for i=1:dom.Nx, j=1:dom.Ny, k=1:dom.Nz]
-    Y = [dom.y[j] for i=1:dom.Nx, j=1:dom.Ny, k=1:dom.Nz]
-    Z = [dom.z[k] for i=1:dom.Nx, j=1:dom.Ny, k=1:dom.Nz]
+function gridpoints(domain::Domain)
+    X = [domain.x[i] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
+    Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
+    Z = [domain.z[k] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
     
     return X, Y, Z
 end
 
 """
-    gridpoints_2d(dom::Domain) -> (X, Y)
+    gridpoints_2d(domain::Domain) -> (X, Y)
 
 Return 2D horizontal coordinate arrays for the domain.
 """
-function gridpoints_2d(dom::Domain)
-    X = [dom.x[i] for i=1:dom.Nx, j=1:dom.Ny]
-    Y = [dom.y[j] for i=1:dom.Nx, j=1:dom.Ny]
+function gridpoints_2d(domain::Domain)
+    X = [domain.x[i] for i=1:domain.Nx, j=1:domain.Ny]
+    Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny]
     
     return X, Y
 end
@@ -171,21 +171,21 @@ end
 # =============================================================================
 
 """
-    create_real_field(dom::Domain, ::Type{T}=FT) where T
+    create_real_field(domain::Domain, ::Type{T}=FT) where T
 
 Create a PencilArray for real-space fields.
 """
-function create_real_field(dom::Domain, ::Type{T}=FT) where T
-    return PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
+function create_real_field(domain::Domain, ::Type{T}=FT) where T
+    return PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
 end
 
 """
-    create_spectral_field(dom::Domain, ::Type{T}=FT) where T
+    create_spectral_field(domain::Domain, ::Type{T}=FT) where T
 
 Create a PencilArray for spectral-space fields.
 """
-function create_spectral_field(dom::Domain, ::Type{T}=FT) where T
-    return PencilArray(dom.pc, zeros(Complex{T}, local_size(dom.pc)))
+function create_spectral_field(domain::Domain, ::Type{T}=FT) where T
+    return PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
 end
 
 """
@@ -252,26 +252,26 @@ end
 # =============================================================================
 
 """
-    gridpoints(dom::Domain) -> (X, Y, Z)
+    gridpoints(domain::Domain) -> (X, Y, Z)
 
 Return 3D coordinate arrays for the domain.
 """
-function gridpoints(dom::Domain)
-    X = [dom.x[i] for i=1:dom.Nx, j=1:dom.Ny, k=1:dom.Nz]
-    Y = [dom.y[j] for i=1:dom.Nx, j=1:dom.Ny, k=1:dom.Nz]
-    Z = [dom.z[k] for i=1:dom.Nx, j=1:dom.Ny, k=1:dom.Nz]
+function gridpoints(domain::Domain)
+    X = [domain.x[i] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
+    Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
+    Z = [domain.z[k] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
     
     return X, Y, Z
 end
 
 """
-    gridpoints_2d(dom::Domain) -> (X, Y)
+    gridpoints_2d(domain::Domain) -> (X, Y)
 
 Return 2D horizontal coordinate arrays for the domain.
 """
-function gridpoints_2d(dom::Domain)
-    X = [dom.x[i] for i=1:dom.Nx, j=1:dom.Ny]
-    Y = [dom.y[j] for i=1:dom.Nx, j=1:dom.Ny]
+function gridpoints_2d(domain::Domain)
+    X = [domain.x[i] for i=1:domain.Nx, j=1:domain.Ny]
+    Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny]
     
     return X, Y
 end
@@ -281,7 +281,7 @@ end
 # =============================================================================
 
 """
-    parsevalsum2(uh, dom::Domain)
+    parsevalsum2(uh, domain::Domain)
 
 Return the sum of `|uh|²` on the domain, which equals the domain integral of `u²`.
 For a 3D domain with horizontal spectral representation:
@@ -293,7 +293,7 @@ For a 3D domain with horizontal spectral representation:
 When the input `uh` comes from a real-FFT transform, `parsevalsum2` takes care to
 count the contribution from certain k-modes twice to account for conjugate symmetry.
 """
-function parsevalsum2(uh, dom::Domain)
+function parsevalsum2(uh, domain::Domain)
     # Get local array from PencilArray
     uh_local = uh.data
     local_ranges = local_range(uh.pencil)
@@ -302,7 +302,7 @@ function parsevalsum2(uh, dom::Domain)
     local_sum = 0.0
     
     # Handle real FFT conjugate symmetry
-    if size(uh_local, 2) == length(dom.ky)  # Real FFT case
+    if size(uh_local, 2) == length(domain.ky)  # Real FFT case
         
         # Sum over all z levels
         for k in axes(uh_local, 3)
@@ -313,14 +313,14 @@ function parsevalsum2(uh, dom::Domain)
             end
             
             # k = nx/2 modes (count once)
-            if dom.Nx÷2 + 1 in local_ranges[1]
-                i_local = findfirst(x -> x == dom.Nx÷2 + 1, local_ranges[1])
+            if domain.Nx÷2 + 1 in local_ranges[1]
+                i_local = findfirst(x -> x == domain.Nx÷2 + 1, local_ranges[1])
                 local_sum += sum(abs2, @view uh_local[i_local, :, k])
             end
             
             # 0 < k < nx/2 modes (count twice for conjugate symmetry)
             for (i_local, i_global) in enumerate(local_ranges[1])
-                if 1 < i_global < dom.Nx÷2 + 1
+                if 1 < i_global < domain.Nx÷2 + 1
                     local_sum += 2 * sum(abs2, @view uh_local[i_local, :, k])
                 end
             end
@@ -334,13 +334,13 @@ function parsevalsum2(uh, dom::Domain)
     global_sum = MPI.Allreduce(local_sum, MPI.SUM, uh.pencil.comm)
     
     # Normalization for DFT
-    normalization = (dom.Lx * dom.Ly * dom.Lz) / (dom.Nx^2 * dom.Ny^2 * dom.Nz)
+    normalization = (domain.Lx * domain.Ly * domain.Lz) / (domain.Nx^2 * domain.Ny^2 * domain.Nz)
     
     return global_sum * normalization
 end
 
 """
-    parsevalsum(uh, dom::Domain)
+    parsevalsum(uh, domain::Domain)
 
 Return the real part of the sum of `uh` on the domain. For a 3D domain:
 
@@ -351,7 +351,7 @@ Return the real part of the sum of `uh` on the domain. For a 3D domain:
 When the input `uh` comes from a real-FFT transform, `parsevalsum` accounts for
 conjugate symmetry by counting certain k-modes twice.
 """
-function parsevalsum(uh, dom::Domain)
+function parsevalsum(uh, domain::Domain)
     # Get local array from PencilArray
     uh_local = uh.data
     local_ranges = local_range(uh.pencil)
@@ -360,7 +360,7 @@ function parsevalsum(uh, dom::Domain)
     local_sum = 0.0 + 0.0im
     
     # Handle real FFT conjugate symmetry
-    if size(uh_local, 2) == length(dom.ky)  # Real FFT case
+    if size(uh_local, 2) == length(domain.ky)  # Real FFT case
         
         # Sum over all z levels
         for k in axes(uh_local, 3)
@@ -371,14 +371,14 @@ function parsevalsum(uh, dom::Domain)
             end
             
             # k = nx/2 modes (count once)
-            if dom.Nx÷2 + 1 in local_ranges[1]
-                i_local = findfirst(x -> x == dom.Nx÷2 + 1, local_ranges[1])
+            if domain.Nx÷2 + 1 in local_ranges[1]
+                i_local = findfirst(x -> x == domain.Nx÷2 + 1, local_ranges[1])
                 local_sum += sum(@view uh_local[i_local, :, k])
             end
             
             # 0 < k < nx/2 modes (count twice for conjugate symmetry)
             for (i_local, i_global) in enumerate(local_ranges[1])
-                if 1 < i_global < dom.Nx÷2 + 1
+                if 1 < i_global < domain.Nx÷2 + 1
                     local_sum += 2 * sum(@view uh_local[i_local, :, k])
                 end
             end
@@ -392,7 +392,7 @@ function parsevalsum(uh, dom::Domain)
     global_sum = MPI.Allreduce(local_sum, MPI.SUM, uh.pencil.comm)
     
     # Normalization for DFT
-    normalization = (dom.Lx * dom.Ly * dom.Lz) / (dom.Nx^2 * dom.Ny^2 * dom.Nz)
+    normalization = (domain.Lx * domain.Ly * domain.Lz) / (domain.Nx^2 * domain.Ny^2 * domain.Nz)
     
     return real(global_sum * normalization)
 end
@@ -402,7 +402,7 @@ end
 # =============================================================================
 
 """
-    jacobianh(a, b, dom::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
+    jacobianh(a, b, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
 
 Return the Fourier transform of the horizontal Jacobian of `a` and `b`:
 
@@ -413,17 +413,17 @@ J(a, b) = \\frac{∂a}{∂x} \\frac{∂b}{∂y} - \\frac{∂a}{∂y} \\frac{∂b
 This is computed in spectral space for efficiency. The function uses scratch arrays
 to avoid allocation and is compatible with PencilArrays.
 """
-function jacobianh(a, b, dom::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
+function jacobianh(a, b, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
     # Transform b to spectral space using PencilFFTs
-    rfft!(dom, b, tmp_spec1)  # tmp_spec1 = b̂
+    rfft!(domain, b, tmp_spec1)  # tmp_spec1 = b̂
     
     # Compute ∂b/∂x using transforms module
-    ddx!(dom, tmp_spec1, tmp_spec2)  # tmp_spec2 = ik_x * b̂
-    irfft!(dom, tmp_spec2, tmp_real1)  # tmp_real1 = ∂b/∂x
+    ddx!(domain, tmp_spec1, tmp_spec2)  # tmp_spec2 = ik_x * b̂
+    irfft!(domain, tmp_spec2, tmp_real1)  # tmp_real1 = ∂b/∂x
     
     # Compute ∂b/∂y using transforms module
-    ddy!(dom, tmp_spec1, tmp_spec2)  # tmp_spec2 = ik_y * b̂
-    irfft!(dom, tmp_spec2, tmp_real2)  # tmp_real2 = ∂b/∂y
+    ddy!(domain, tmp_spec1, tmp_spec2)  # tmp_spec2 = ik_y * b̂
+    irfft!(domain, tmp_spec2, tmp_real2)  # tmp_real2 = ∂b/∂y
     
     # Compute a * ∂b/∂y and a * ∂b/∂x (work with local arrays)
     a_local = a.data
@@ -434,11 +434,11 @@ function jacobianh(a, b, dom::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2
     @. by_local = a_local * by_local  # a * ∂b/∂y
     
     # Transform back to spectral space and take derivatives
-    rfft!(dom, tmp_real2, tmp_spec1)  # tmp_spec1 = F[a * ∂b/∂y]
-    ddx!(dom, tmp_spec1, tmp_spec2)   # tmp_spec2 = ik_x * F[a * ∂b/∂y]
+    rfft!(domain, tmp_real2, tmp_spec1)  # tmp_spec1 = F[a * ∂b/∂y]
+    ddx!(domain, tmp_spec1, tmp_spec2)   # tmp_spec2 = ik_x * F[a * ∂b/∂y]
     
-    rfft!(dom, tmp_real1, tmp_spec1)  # tmp_spec1 = F[a * ∂b/∂x]
-    ddy!(dom, tmp_spec1, tmp_spec1)   # tmp_spec1 = ik_y * F[a * ∂b/∂x]
+    rfft!(domain, tmp_real1, tmp_spec1)  # tmp_spec1 = F[a * ∂b/∂x]
+    ddy!(domain, tmp_spec1, tmp_spec1)   # tmp_spec1 = ik_y * F[a * ∂b/∂x]
     
     # Compute Jacobian: ∂(a∂b/∂y)/∂x - ∂(a∂b/∂x)/∂y
     jac_local = tmp_spec2.data
@@ -449,7 +449,7 @@ function jacobianh(a, b, dom::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2
 end
 
 """
-    jacobian(a, b, dom::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2, output)
+    jacobian(a, b, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2, output)
 
 Compute the horizontal Jacobian of `a` and `b` in physical space:
 
@@ -459,27 +459,27 @@ J(a, b) = \\frac{∂a}{∂x} \\frac{∂b}{∂y} - \\frac{∂a}{∂y} \\frac{∂b
 
 The result is stored in `output`. Compatible with PencilArrays.
 """
-function jacobian(a, b, dom::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2, output)
+function jacobian(a, b, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2, output)
     # Compute Jacobian in spectral space
-    jac_spec = jacobianh(a, b, dom, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
+    jac_spec = jacobianh(a, b, domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
     
     # Transform back to physical space using PencilFFTs
-    irfft!(dom, jac_spec, output)
+    irfft!(domain, jac_spec, output)
     
     return output
 end
 
 """
-    advection_term!(result, u, v, field, dom::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
+    advection_term!(result, u, v, field, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
 
 Compute the advection term -u·∇field = -(u∂field/∂x + v∂field/∂y) for surface flows.
 
 This is a common operation in surface semigeostrophic equations for computing
 the advection of buoyancy or other scalars.
 """
-function advection_term!(result, u, v, field, dom::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
+function advection_term!(result, u, v, field, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
     # Compute field gradients using the transforms module functions
-    gradient_h!(dom, field, tmp_spec1, tmp_real1, tmp_real2, tmp_spec2, tmp_spec1)
+    gradient_h!(domain, field, tmp_spec1, tmp_real1, tmp_real2, tmp_spec2, tmp_spec1)
     
     # tmp_real1 = ∂field/∂x, tmp_real2 = ∂field/∂y
     result_local = result.data
@@ -495,13 +495,13 @@ function advection_term!(result, u, v, field, dom::Domain, tmp_spec1, tmp_spec2,
 end
 
 """
-    vorticity_advection!(result, u, v, ω, dom::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
+    vorticity_advection!(result, u, v, ω, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
 
 Compute the vorticity advection term for 2D flows: -u·∇ω.
 This is used in vorticity-based formulations of the surface equations.
 """
-function vorticity_advection!(result, u, v, ω, dom::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
-    return advection_term!(result, u, v, ω, dom, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
+function vorticity_advection!(result, u, v, ω, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
+    return advection_term!(result, u, v, ω, domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
 end
 
 # =============================================================================
@@ -509,82 +509,82 @@ end
 # =============================================================================
 
 """
-    compute_enstrophy(ω, dom::Domain) -> Float64
+    compute_enstrophy(ω, domain::Domain) -> Float64
 
 Compute the total enstrophy (0.5 * ∫ω² dA) of the flow.
 This is a conserved quantity for inviscid 2D flows.
 Uses PencilFFTs for spectral transform.
 """
-function compute_enstrophy(ω, dom::Domain)
+function compute_enstrophy(ω, domain::Domain)
     # Create temporary spectral field
-    ω_spec = create_spectral_field(dom)
+    ω_spec = create_spectral_field(domain)
     
     # Transform to spectral space using PencilFFTs
-    rfft!(dom, ω, ω_spec)
+    rfft!(domain, ω, ω_spec)
     
     # Compute enstrophy using Parseval's theorem
-    enstrophy = 0.5 * parsevalsum2(ω_spec, dom)
+    enstrophy = 0.5 * parsevalsum2(ω_spec, domain)
     
     return enstrophy
 end
 
 """
-    compute_energy(u, v, dom::Domain) -> Float64
+    compute_energy(u, v, domain::Domain) -> Float64
 
 Compute the total kinetic energy (0.5 * ∫(u² + v²) dA) of the flow.
 Uses PencilFFTs for spectral transforms.
 """
-function compute_energy(u, v, dom::Domain)
+function compute_energy(u, v, domain::Domain)
     # Create temporary spectral fields
-    u_spec = create_spectral_field(dom)
-    v_spec = create_spectral_field(dom)
+    u_spec = create_spectral_field(domain)
+    v_spec = create_spectral_field(domain)
     
     # Transform to spectral space using PencilFFTs
-    rfft!(dom, u, u_spec)
-    rfft!(dom, v, v_spec)
+    rfft!(domain, u, u_spec)
+    rfft!(domain, v, v_spec)
     
     # Compute energy using Parseval's theorem
-    energy = 0.5 * (parsevalsum2(u_spec, dom) + parsevalsum2(v_spec, dom))
+    energy = 0.5 * (parsevalsum2(u_spec, domain) + parsevalsum2(v_spec, domain))
     
     return energy
 end
 
 """
-    compute_total_buoyancy(b, dom::Domain) -> Float64
+    compute_total_buoyancy(b, domain::Domain) -> Float64
 
 Compute the total buoyancy integral ∫b dA.
 This should be conserved in the absence of diabatic forcing.
 Uses PencilFFTs for spectral transform.
 """
-function compute_total_buoyancy(b, dom::Domain)
+function compute_total_buoyancy(b, domain::Domain)
     # Create temporary spectral field
-    b_spec = create_spectral_field(dom)
+    b_spec = create_spectral_field(domain)
     
     # Transform to spectral space using PencilFFTs
-    rfft!(dom, b, b_spec)
+    rfft!(domain, b, b_spec)
     
     # Compute integral using Parseval's theorem
-    total_b = parsevalsum(b_spec, dom)
+    total_b = parsevalsum(b_spec, domain)
     
     return total_b
 end
 
 """
-    compute_buoyancy_variance(b, dom::Domain) -> Float64
+    compute_buoyancy_variance(b, domain::Domain) -> Float64
 
 Compute the buoyancy variance ∫b² dA.
 This measures the strength of buoyancy gradients.
 Uses PencilFFTs for spectral transform.
 """
-function compute_buoyancy_variance(b, dom::Domain)
+function compute_buoyancy_variance(b, domain::Domain)
     # Create temporary spectral field
-    b_spec = create_spectral_field(dom)
+    b_spec = create_spectral_field(domain)
     
     # Transform to spectral space using PencilFFTs
-    rfft!(dom, b, b_spec)
+    rfft!(domain, b, b_spec)
     
     # Compute variance using Parseval's theorem
-    variance = parsevalsum2(b_spec, dom)
+    variance = parsevalsum2(b_spec, domain)
     
     return variance
 end
@@ -594,11 +594,11 @@ end
 # =============================================================================
 
 """
-    compute_cfl_number(u, v, dom::Domain, dt::Real) -> Float64
+    compute_cfl_number(u, v, domain::Domain, dt::Real) -> Float64
 
 Compute the maximum CFL number for the current velocity field.
 """
-function compute_cfl_number(u, v, dom::Domain, dt::Real)
+function compute_cfl_number(u, v, domain::Domain, dt::Real)
     u_local = u.data
     v_local = v.data
     
@@ -611,8 +611,8 @@ function compute_cfl_number(u, v, dom::Domain, dt::Real)
     vel_max_global = MPI.Allreduce(vel_max_local, MPI.MAX, u.pencil.comm)
     
     # Grid spacing
-    dx = dom.Lx / dom.Nx
-    dy = dom.Ly / dom.Ny
+    dx = domain.Lx / domain.Nx
+    dy = domain.Ly / domain.Ny
     h_min = min(dx, dy)
     
     # CFL number
@@ -622,11 +622,11 @@ function compute_cfl_number(u, v, dom::Domain, dt::Real)
 end
 
 """
-    compute_spectral_diagnostics(field_spec, dom::Domain) -> NamedTuple
+    compute_spectral_diagnostics(field_spec, domain::Domain) -> NamedTuple
 
 Compute spectral diagnostics including energy in different wavenumber bands.
 """
-function compute_spectral_diagnostics(field_spec, dom::Domain)
+function compute_spectral_diagnostics(field_spec, domain::Domain)
     field_local = field_spec.data
     local_ranges = local_range(field_spec.pencil)
     
@@ -636,7 +636,7 @@ function compute_spectral_diagnostics(field_spec, dom::Domain)
     total_energy = 0.0
     
     # Define scale separation (can be adjusted)
-    k_cutoff = min(dom.Nx, length(dom.ky)) ÷ 3
+    k_cutoff = min(domain.Nx, length(domain.ky)) ÷ 3
     
     for k in axes(field_local, 3)
         for (j_local, j_global) in enumerate(local_ranges[2])
@@ -644,15 +644,15 @@ function compute_spectral_diagnostics(field_spec, dom::Domain)
                 energy_density = abs2(field_local[i_local, j_local, k])
                 
                 # Apply conjugate symmetry factor for real FFT
-                if size(field_local, 1) == dom.Nx && 1 < i_global < dom.Nx÷2 + 1
+                if size(field_local, 1) == domain.Nx && 1 < i_global < domain.Nx÷2 + 1
                     energy_density *= 2
                 end
                 
                 total_energy += energy_density
                 
                 # Classify by scale
-                k_mag = sqrt(dom.kx[i_global]^2 + dom.ky[j_global]^2)
-                if k_mag < k_cutoff * 2π / max(dom.Lx, dom.Ly)
+                k_mag = sqrt(domain.kx[i_global]^2 + domain.ky[j_global]^2)
+                if k_mag < k_cutoff * 2π / max(domain.Lx, domain.Ly)
                     large_scale_energy += energy_density
                 else
                     small_scale_energy += energy_density
@@ -667,7 +667,7 @@ function compute_spectral_diagnostics(field_spec, dom::Domain)
     small_scale_energy = MPI.Allreduce(small_scale_energy, MPI.SUM, field_spec.pencil.comm)
     
     # Normalization
-    norm_factor = (dom.Lx * dom.Ly * dom.Lz) / (dom.Nx^2 * dom.Ny^2 * dom.Nz)
+    norm_factor = (domain.Lx * domain.Ly * domain.Lz) / (domain.Nx^2 * domain.Ny^2 * domain.Nz)
     
     return (
         total_energy = total_energy * norm_factor,
@@ -678,16 +678,16 @@ function compute_spectral_diagnostics(field_spec, dom::Domain)
 end
 
 """
-    print_conservation_summary(dom::Domain, fields::Fields; step::Int=0, time::Real=0.0)
+    print_conservation_summary(domain::Domain, fields::Fields; step::Int=0, time::Real=0.0)
 
 Print a summary of conserved quantities for monitoring simulation health.
 """
-function print_conservation_summary(dom::Domain, fields::Fields; step::Int=0, time::Real=0.0)
-    if MPI.Comm_rank(dom.pr.comm) == 0
+function print_conservation_summary(domain::Domain, fields::Fields; step::Int=0, time::Real=0.0)
+    if MPI.Comm_rank(domain.pr.comm) == 0
         # Compute conserved quantities
-        energy = compute_energy(fields.u, fields.v, dom)
-        enstrophy = compute_enstrophy(fields.ω_z, dom)
-        total_buoyancy = compute_total_buoyancy(fields.b, dom)
+        energy = compute_energy(fields.u, fields.v, domain)
+        enstrophy = compute_enstrophy(fields.ω_z, domain)
+        total_buoyancy = compute_total_buoyancy(fields.b, domain)
         
         println("=" ^60)
         println("Conservation Summary - Step: $step, Time: $(round(time, digits=4))")
