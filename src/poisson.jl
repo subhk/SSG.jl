@@ -712,58 +712,6 @@ function zero_field!(φ::PencilArray{T, 3}) where T
     fill!(φ.data, zero(T))
 end
 
-# ============================================================================
-# PLACEHOLDER FUNCTIONS FOR TRANSFORMS.JL INTEGRATION
-# ============================================================================
-# These need to be replaced with your actual transforms.jl implementations
-
-"""
-Simplified field creation for demo (replace with actual transforms.jl functions)
-"""
-function create_real_field(domain, ::Type{T}) where T
-    # Replace with your actual field creation from transforms.jl
-    pencil = Pencil((domain.Nx, domain.Ny, domain.Nz), domain.pc.comm)
-    return PencilArray{T}(undef, pencil)
-end
-
-function create_spectral_field(domain, ::Type{T}) where T
-    # Replace with your actual spectral field creation
-    pencil = Pencil((domain.Nx÷2+1, domain.Ny, domain.Nz), domain.pc.comm)
-    return PencilArray{Complex{T}}(undef, pencil)
-end
-
-"""
-Placeholder transforms.jl functions (replace with actual implementations)
-"""
-function rfft!(domain, real_field, spec_field)
-    # Replace with your actual rfft! implementation
-    @debug "rfft! placeholder called - replace with transforms.jl function"
-end
-
-function irfft!(domain, spec_field, real_field)
-    # Replace with your actual irfft! implementation
-    @debug "irfft! placeholder called - replace with transforms.jl function"
-end
-
-function ddx!(domain, spec_field, result_spec_field)
-    # Replace with your actual ddx! implementation
-    @debug "ddx! placeholder called - replace with transforms.jl function"
-end
-
-function ddy!(domain, spec_field, result_spec_field)
-    # Replace with your actual ddy! implementation
-    @debug "ddy! placeholder called - replace with transforms.jl function"
-end
-
-function d2dxdy!(domain, spec_field, result_spec_field)
-    # Replace with your actual mixed derivative implementation
-    @debug "d2dxdy! placeholder called - replace with transforms.jl function"
-end
-
-function dealias!(domain, spec_field)
-    # Replace with your actual dealiasing implementation
-    @debug "dealias! placeholder called - replace with transforms.jl function"
-end
 
 function create_coarse_domain(fine_domain, factor::Int)
     # Replace with your actual domain coarsening function
@@ -785,7 +733,7 @@ function demo_ssg_solver()
     rank = MPI.Comm_rank(comm)
     
     if rank == 0
-        println("🌊 SSG Equation Solver Demo (Appendix A Implementation)")
+        println(" SSG Equation Solver Demo (Appendix A Implementation)")
         println("=" ^ 60)
         println("Solving: ∇²Φ = εDΦ")
         println("where DΦ = ∂²Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²")

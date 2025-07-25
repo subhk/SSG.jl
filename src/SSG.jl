@@ -37,6 +37,9 @@ module SSG
             save_snapshot, 
             create_output_file
 
+    # coarse_domain.jl
+    export 
+
     # fields.jl
     allocate_fields,
     zero_fields!,
@@ -72,6 +75,7 @@ module SSG
     include("timestep.jl")
     include("filter.jl")
     include("output.jl")
+    include("coarse_domain.jl")
 
 
 
