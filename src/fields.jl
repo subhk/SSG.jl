@@ -65,6 +65,9 @@ function allocate_fields(dom::Domain{T}) where T
     tmp  = PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
     tmp2 = PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
     
+    φ_mg = PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
+    b_mg = PencilArray(dom.pr, zeros(T, local_size(dom.pr)))
+
     # Spectral fields
     bhat = PencilArray(dom.pc, zeros(Complex{T}, local_size(dom.pc)))
     φhat = PencilArray(dom.pc, zeros(Complex{T}, local_size(dom.pc)))
@@ -84,15 +87,18 @@ function zero_fields!(fld::Fields)
     fld.φ .= 0
     fld.u .= 0
     fld.v .= 0
+    fld.φ_mg .= 0
+    fld.b_mg .= 0
     fld.R .= 0
     fld.tmp .= 0
     fld.tmp2 .= 0
+    fld.tmp3 .= 0
     fld.bhat .= 0
     fld.φhat .= 0
     fld.tmpc .= 0
+    fld.tmpc2 .= 0
     return fld
 end
-
 
 
 function ensure_same_grid(dest::PencilArray, src::PencilArray)
@@ -114,7 +120,6 @@ macro ensuresamegrid(dest, src)
         ensure_same_grid($(esc(dest)), $(esc(src)))
     end
 end
-
 
 """
     copy_field!(dest, src)
