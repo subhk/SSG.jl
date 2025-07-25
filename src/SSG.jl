@@ -27,41 +27,39 @@ module SSG
 
     # Export main functions
 
-    # domain.jl
-    export Domain, 
-            Fields, 
-            Params,
-            make_domain, 
-            allocate_fields,
-            run_ssg
-            save_snapshot, 
-            create_output_file
+    # domain.jl exports
+    export Domain, make_domain, gridpoints, gridpoints_2d
 
-    # coarse_domain.jl export
-    export 
+    # fields.jl exports  
+    export Fields, allocate_fields, zero_fields!, copy_field!, field_stats
 
+    # params.jl exports
+    export Params, has_diffusion, has_hyperdiffusion, has_filter
 
-    # fields.jl export
-    export 
-        allocate_fields,
-        zero_fields!
+    # coarse_domain.jl exports
+    export create_coarse_domain, validate_coarsening, estimate_mg_memory
 
 
     # transforms.jl export
     export rfft!, irfft!, dealias!, ddx!, ddy!, ddz!, d2dxdy!, d2dz2!,
-       laplacian_h!, laplacian_3d!, divergence_3d!, gradient_h!,
-       compute_vorticity_z!, parsevalsum, parsevalsum2
+        laplacian_h!, laplacian_3d!, divergence_3d!, gradient_h!,
+        compute_vorticity_z!, parsevalsum, parsevalsum2
 
     # utils.jl exports
     export jacobian, jacobianh, advection_term!, compute_energy, compute_enstrophy,
-       compute_total_buoyancy, compute_buoyancy_variance, compute_cfl_number,
-       norm_field, inner_product, create_real_field, create_spectral_field
+        compute_total_buoyancy, compute_buoyancy_variance, compute_cfl_number,
+        norm_field, inner_product, create_real_field, create_spectral_field
 
     # timestep.jl exports
     export TimeScheme, TimeParams, TimeState, SemiGeostrophicProblem,
-       timestep!, integrate!, step_until!, stepforward!, run!,
-       AB2_LowStorage, RK3, RK3_LowStorage
+        timestep!, integrate!, step_until!, stepforward!, run!,
+        AB2_LowStorage, RK3, RK3_LowStorage
 
+
+    # output.jl exports
+    export OutputFrequency, OutputManager, save_simulation_state_full,
+        save_snapshot, save_spectral_snapshot, process_all_outputs!,
+        load_simulation_state_full, DiagnosticTimeSeries
 
     # mapping.jl
     export 
