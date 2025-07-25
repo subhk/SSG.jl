@@ -151,8 +151,11 @@ function green_function!(Gₖ::AbstractMatrix{Complex{T}}, dfact::AbstractMatrix
 end
 
 """
-Optimized forcing calculation for Monge-Ampère equation
-Computes DΦ = ∂ₓₓΦ·∂ᵧᵧΦ - (∂ₓᵧΦ)² efficiently
+Solving the Monge-Ampere equation,
+    ∇²Φ = εDΦ
+    ∇² ≡ ∂_xx + ∂_yy + ∂_zz 
+    DΦ ≡ ∂_xx(Φ) * ∂_yy(Φ) - (∂_xy(Φ))²
+    = ∂_x(∂_x Φ * ∂_yy Φ) - ∂_y(∂_x Φ * ∂_xy Φ)
 """
 function compute_monge_ampere_forcing!(DΦₕ::AbstractMatrix{Complex{T}}, 
                                       sol::AbstractMatrix{Complex{T}},
