@@ -5,45 +5,56 @@
 # src/SSG.jl - Main module file
 module SSG
 
-using MPI
-using PencilArrays
-using PencilFFTs
-using FFTW
-using LinearAlgebra
-using Statistics
-using Printf
-using KrylovKit
-using Random
-using Dates
-using NetCDF
+    using MPI
+    using PencilArrays
+    using PencilFFTs
+    using FFTW
+    using LinearAlgebra
+    using Statistics
+    using Printf
+    using KrylovKit
+    using Random
+    using Dates
+    using NetCDF
 
-using LoopVectorization  # For SIMD optimization
-using StaticArrays
-using Parameters
-using BenchmarkTools
+    using LoopVectorization  # For SIMD optimization
+    using StaticArrays
+    using Parameters
+    using BenchmarkTools
 
-# Constants
-const FT = Float64
-
-# Include all submodules
-include("utils.jl")
-include("domain.jl")
-include("fields.jl")
-include("transforms.jl")
-include("params.jl")
-include("physics.jl")
-include("monge_ampere.jl")
-include("timestep.jl")
-include("filter.jl")
-include("hyperdiffusion.jl")
-include("output.jl")
+    # Constants
+    const FT = Float64
 
 
-# Export main functions
-export Domain, Fields, Params
-export make_domain, allocate_fields
-export run_ssg
-export save_snapshot, create_output_file
+    # Export main functions
+    export Domain, 
+            Fields, 
+            Params,
+            make_domain, 
+            allocate_fields,
+            run_ssg
+            save_snapshot, 
+            create_output_file
+
+    # output.jl
+    export 
+
+
+
+    # Include all submodules
+    include("utils.jl")
+    include("domain.jl")
+    include("fields.jl")
+    include("transforms.jl")
+    include("params.jl")
+    include("physics.jl")
+    include("monge_ampere.jl")
+    include("timestep.jl")
+    include("filter.jl")
+    include("hyperdiffusion.jl")
+    include("output.jl")
+
+
 
 
 
