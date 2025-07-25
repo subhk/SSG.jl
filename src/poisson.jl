@@ -1,28 +1,21 @@
-# ============================================================================
-# SSG EQUATION SOLVER 
-# ============================================================================
 # 
-# Implements equation (A1): ∇²Φ = εDΦ
-# with boundary conditions (A4):
+# Implements equation: ∇²Φ = εDΦ,
+# with boundary conditions:
 #   ∂Φ/∂Z = b̃s  at Z = 0
 #   ∂Φ/∂Z = 0   at Z = -1
 #
 # Where:
-#   ∇² = ∂²/∂X² + ∂²/∂Y² + ∂²/∂Z²   (3D Laplacian in geostrophic coordinates)
-#   DΦ = ∂²Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²   (nonlinear differential operator)
-#   ε is an external parameter      (Global Rossby number)
+#   ∇² = ∂²/∂X² + ∂²/∂Y² + ∂²/∂Z²  (3D Laplacian in geostrophic coordinates)
+#   DΦ = ∂²Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²  (nonlinear differential operator)
+#   ε is an external parameter     (measure of global Rossby number)
 #
 # ============================================================================
 
-using MPI
-using LinearAlgebra
-using Printf
-using PencilArrays
-using PencilFFTs
-
-# ============================================================================
-# CORE DATA STRUCTURES
-# ============================================================================
+# using MPI
+# using LinearAlgebra
+# using Printf
+# using PencilArrays
+# using PencilFFTs
 
 """Performance monitoring structure"""
 mutable struct PerformanceMonitor
@@ -79,28 +72,27 @@ mutable struct SSGLevel{T<:AbstractFloat}
         ny_global = domain.Ny
         nz_global = domain.Nz
         
-        # Create 3D fields using transforms.jl functions
-        Φ = create_real_field(domain, T)
-        b = create_real_field(domain, T)
-        r = create_real_field(domain, T)
+        # Create 3D fields using your existing field allocation pattern
+        Φ = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+        b = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+        r = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
         
-        Φ_hat = create_spectral_field(domain, T)
-        b_hat = create_spectral_field(domain, T)
-        r_hat = create_spectral_field(domain, T)
+        Φ_hat = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+        b_hat = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+        r_hat = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
         
-        Φ_old = create_real_field(domain, T)
-        tmp_real = create_real_field(domain, T)
-        tmp_spec = create_spectral_field(domain, T)
+        Φ_old = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+        tmp_real = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+        tmp_spec = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
         
         # Derivative fields
-        Φ_xx = create_real_field(domain, T)
-        Φ_yy = create_real_field(domain, T)
-        Φ_zz = create_real_field(domain, T)
-        Φ_xy = create_real_field(domain, T)
+        Φ_xx = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+        Φ_yy = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+        Φ_zz = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+        Φ_xy = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
         
         # Boundary condition (2D field at surface)
-        surface_pencil = Pencil((nx_global, ny_global), domain.pc.comm)
-        bs_surface = PencilArray{T}(undef, surface_pencil)
+        bs_surface = create_surface_field(domain, T)
         
         new{T}(domain, level, nx_global, ny_global, nz_global,
                Φ, b, r, Φ_hat, b_hat, r_hat, Φ_old, tmp_real, tmp_spec,
@@ -145,24 +137,24 @@ Compute 3D Laplacian using transforms.jl spectral methods
 ∇²Φ = ∂²Φ/∂X² + ∂²Φ/∂Y² + ∂²Φ/∂Z²
 """
 function compute_3d_laplacian!(level::SSGLevel{T}, result::PencilArray{T, 3}) where T
-    dom = level.domain
+    domain = level.domain
     
     # Transform to spectral space
-    rfft!(dom, level.Φ, level.Φ_hat)
+    rfft!(domain, level.Φ, level.Φ_hat)
     
     # Compute ∂²Φ/∂X²
-    ddx!(dom, level.Φ_hat, level.tmp_spec)  # ∂Φ/∂X
-    ddx!(dom, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂X²
-    irfft!(dom, level.tmp_spec, level.Φ_xx)
+    ddx!(domain, level.Φ_hat, level.tmp_spec)  # ∂Φ/∂X
+    ddx!(domain, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂X²
+    irfft!(domain, level.tmp_spec, level.Φ_xx)
     
     # Compute ∂²Φ/∂Y²
-    rfft!(dom, level.Φ, level.Φ_hat)  # Refresh spectral field
-    ddy!(dom, level.Φ_hat, level.tmp_spec)  # ∂Φ/∂Y
-    ddy!(dom, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂Y²
-    irfft!(dom, level.tmp_spec, level.Φ_yy)
+    rfft!(domain, level.Φ, level.Φ_hat)  # Refresh spectral field
+    ddy!(domain, level.Φ_hat, level.tmp_spec)  # ∂Φ/∂Y
+    ddy!(domain, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂Y²
+    irfft!(domain, level.tmp_spec, level.Φ_yy)
     
     # Compute ∂²Φ/∂Z² using finite differences (since Z is not spectral)
-    compute_d2dz2_finite_diff!(level.Φ, level.Φ_zz, dom)
+    compute_d2dz2_finite_diff!(level.Φ, level.Φ_zz, domain)
     
     # Sum all components: ∇²Φ = Φ_xx + Φ_yy + Φ_zz
     result_local = result.data
@@ -183,26 +175,26 @@ end
 Compute nonlinear operator DΦ = ∂²Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²
 """
 function compute_d_operator!(level::SSGLevel{T}, result::PencilArray{T, 3}) where T
-    dom = level.domain
+    domain = level.domain
     
     # Transform to spectral space
-    rfft!(dom, level.Φ, level.Φ_hat)
+    rfft!(domain, level.Φ, level.Φ_hat)
     
     # Compute ∂²Φ/∂X∂Y using spectral methods
-    ddx!(dom, level.Φ_hat, level.tmp_spec)  # ∂Φ/∂X
-    ddy!(dom, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂X∂Y
-    irfft!(dom, level.tmp_spec, level.Φ_xy)
+    ddx!(domain, level.Φ_hat, level.tmp_spec)     # ∂Φ/∂X
+    ddy!(domain, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂X∂Y
+    irfft!(domain, level.tmp_spec, level.Φ_xy)
     
     # Compute ∂²Φ/∂X²∂Y² (fourth-order mixed derivative)
     # First get ∂²Φ/∂X² in spectral space
-    rfft!(dom, level.Φ, level.Φ_hat)
-    ddx!(dom, level.Φ_hat, level.tmp_spec)  # ∂Φ/∂X
-    ddx!(dom, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂X²
+    rfft!(domain, level.Φ, level.Φ_hat)
+    ddx!(domain, level.Φ_hat, level.tmp_spec)     # ∂Φ/∂X
+    ddx!(domain, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂X²
     
     # Then differentiate twice with respect to Y
-    ddy!(dom, level.tmp_spec, level.tmp_spec)  # ∂³Φ/∂X²∂Y
-    ddy!(dom, level.tmp_spec, level.tmp_spec)  # ∂⁴Φ/∂X²∂Y²
-    irfft!(dom, level.tmp_spec, level.tmp_real)  # ∂²Φ/∂X²∂Y²
+    ddy!(domain, level.tmp_spec, level.tmp_spec)    # ∂³Φ/∂X²∂Y
+    ddy!(domain, level.tmp_spec, level.tmp_spec)    # ∂⁴Φ/∂X²∂Y²
+    irfft!(domain, level.tmp_spec, level.tmp_real)  # ∂²Φ/∂X²∂Y²
     
     # Compute DΦ = ∂²Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²
     result_local = result.data
@@ -326,10 +318,10 @@ SOR smoother for SSG equation
 function ssg_sor_smoother!(level::SSGLevel{T}, iters::Int, ω::T, ε::T) where T
     Φ_local = level.Φ.data
     
-    dom = level.domain
-    dx = dom.Lx / dom.Nx
-    dy = dom.Ly / dom.Ny
-    dz = dom.Lz / dom.Nz
+    domain = level.domain
+    dx = domain.Lx / domain.Nx
+    dy = domain.Ly / domain.Ny
+    dz = domain.Lz / domain.Nz
     inv_dx2, inv_dy2, inv_dz2 = 1/(dx^2), 1/(dy^2), 1/(dz^2)
     
     nx_local, ny_local, nz_local = size(Φ_local)
@@ -381,29 +373,29 @@ end
 Spectral smoother for SSG equation (using spectral accuracy in X,Y)
 """
 function ssg_spectral_smoother!(level::SSGLevel{T}, iters::Int, ω::T, ε::T) where T
-    dom = level.domain
+    domain = level.domain
     
     for iter = 1:iters
         # Compute current residual
         compute_ssg_residual!(level, ε)
         
         # Transform residual to spectral space in X,Y
-        rfft!(dom, level.r, level.r_hat)
+        rfft!(domain, level.r, level.r_hat)
         
         # Spectral smoothing (simple preconditioning)
         r_hat_local = level.r_hat.data
         Φ_hat_local = level.Φ_hat.data
         
         # Transform current solution to spectral space
-        rfft!(dom, level.Φ, level.Φ_hat)
+        rfft!(domain, level.Φ, level.Φ_hat)
         
         # Apply spectral preconditioning (simplified)
         @inbounds for k in axes(Φ_hat_local, 3)
             for j in axes(Φ_hat_local, 2)
                 for i in axes(Φ_hat_local, 1)
                     # Get wavenumber components
-                    kx = i <= length(dom.kx) ? dom.kx[i] : 0.0
-                    ky = j <= length(dom.ky) ? dom.ky[j] : 0.0
+                    kx = i <= length(domain.kx) ? domain.kx[i] : 0.0
+                    ky = j <= length(domain.ky) ? domain.ky[j] : 0.0
                     k_mag_sq = kx^2 + ky^2
                     
                     if k_mag_sq > 1e-14
@@ -416,10 +408,10 @@ function ssg_spectral_smoother!(level::SSGLevel{T}, iters::Int, ω::T, ε::T) wh
         end
         
         # Apply dealiasing
-        dealias!(dom, level.Φ_hat)
+        dealias!(domain, level.Φ_hat)
         
         # Transform back to real space
-        irfft!(dom, level.Φ_hat, level.Φ)
+        irfft!(domain, level.Φ_hat, level.Φ)
         
         # Apply boundary conditions
         apply_ssg_boundary_conditions!(level)
@@ -692,17 +684,41 @@ function norm_field(φ::PencilArray{T, 3}) where T
 end
 
 """
-Copy field utility for 3D PencilArrays
+Copy field utility functions matching your framework
 """
 function copy_field!(dest::PencilArray{T, 3}, src::PencilArray{T, 3}) where T
-    copyto!(dest.data, src.data)
+    @ensuresamegrid(dest, src)
+    dest .= src
+    return dest
+end
+
+function copy_field!(dest::PencilArray{T, 2}, src::PencilArray{T, 2}) where T
+    @ensuresamegrid(dest, src)  
+    dest .= src
+    return dest
 end
 
 """
-Copy field utility for 2D PencilArrays
+Ensure same grid utility (from your fields.jl)
 """
-function copy_field!(dest::PencilArray{T, 2}, src::PencilArray{T, 2}) where T
-    copyto!(parent(dest), parent(src))
+function ensure_same_grid(dest::PencilArray, src::PencilArray)
+    # Check compatible sizes
+    if size(dest) != size(src)
+        throw(ArgumentError("PencilArrays have incompatible sizes: $(size(dest)) vs $(size(src))"))
+    end
+    
+    # Check MPI communicator compatibility
+    if dest.pencil.comm != src.pencil.comm
+        throw(ArgumentError("PencilArrays have different MPI communicators"))
+    end
+    
+    return true
+end
+
+macro ensuresamegrid(dest, src)
+    return quote
+        ensure_same_grid($(esc(dest)), $(esc(src)))
+    end
 end
 
 """
@@ -712,13 +728,108 @@ function zero_field!(φ::PencilArray{T, 3}) where T
     fill!(φ.data, zero(T))
 end
 
+# ============================================================================
+# PLACEHOLDER FUNCTIONS FOR TRANSFORMS.JL INTEGRATION
+# ============================================================================
+# These need to be replaced with your actual transforms.jl implementations
 
-# function create_coarse_domain(fine_domain, factor::Int)
-#     # Replace with your actual domain coarsening function
-#     @debug "create_coarse_domain placeholder called - replace with transforms.jl function"
-#     return fine_domain  # Placeholder return
-# end
+"""
+Field creation functions matching your existing framework
+"""
+function create_real_field(domain::Domain, ::Type{T}) where T
+    # Use your existing pattern from allocate_fields
+    return PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+end
 
+function create_spectral_field(domain::Domain, ::Type{T}) where T
+    # Use your existing pattern from allocate_fields  
+    return PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+end
+
+"""
+Create 2D surface field (for boundary conditions)
+"""
+function create_surface_field(domain::Domain, ::Type{T}) where T
+    # Create 2D pencil for surface (Z=0) boundary conditions
+    # This assumes your domain has a way to create 2D pencils
+    # You may need to adjust this based on your specific 2D pencil creation
+    
+    # Option 1: If you have a 2D pencil in your domain
+    if hasfield(typeof(domain), :pr_2d)
+        return PencilArray(domain.pr_2d, zeros(T, local_size(domain.pr_2d)))
+    end
+    
+    # Option 2: Create 2D pencil from existing communicator
+    pencil_2d = Pencil((domain.Nx, domain.Ny), domain.pr.comm)
+    return PencilArray(pencil_2d, zeros(T, local_size(pencil_2d)))
+end
+
+"""
+Placeholder transforms.jl functions (replace with actual implementations)
+"""
+function rfft!(domain, real_field, spec_field)
+    # Replace with your actual rfft! implementation
+    @debug "rfft! placeholder called - replace with transforms.jl function"
+end
+
+function irfft!(domain, spec_field, real_field)
+    # Replace with your actual irfft! implementation
+    @debug "irfft! placeholder called - replace with transforms.jl function"
+end
+
+function ddx!(domain, spec_field, result_spec_field)
+    # Replace with your actual ddx! implementation
+    @debug "ddx! placeholder called - replace with transforms.jl function"
+end
+
+function ddy!(domain, spec_field, result_spec_field)
+    # Replace with your actual ddy! implementation
+    @debug "ddy! placeholder called - replace with transforms.jl function"
+end
+
+function d2dxdy!(domain, spec_field, result_spec_field)
+    # Replace with your actual mixed derivative implementation
+    @debug "d2dxdy! placeholder called - replace with transforms.jl function"
+end
+
+function dealias!(domain, spec_field)
+    # Replace with your actual dealiasing implementation
+    @debug "dealias! placeholder called - replace with transforms.jl function"
+end
+
+"""
+Create coarser domain for multigrid hierarchy
+This should match your Domain constructor pattern
+"""
+function create_coarse_domain(fine_domain::Domain, factor::Int=2)
+    # Coarsen grid resolution
+    coarse_Nx = max(fine_domain.Nx ÷ factor, 8)  # Minimum size for FFT
+    coarse_Ny = max(fine_domain.Ny ÷ factor, 8)
+    coarse_Nz = fine_domain.Nz  # Don't coarsen Z for ocean models
+    
+    # Ensure even numbers for FFT compatibility
+    coarse_Nx = coarse_Nx % 2 == 0 ? coarse_Nx : coarse_Nx + 1
+    coarse_Ny = coarse_Ny % 2 == 0 ? coarse_Ny : coarse_Ny + 1
+    
+    # Create coarser domain using your Domain constructor
+    # You'll need to replace this with your actual Domain constructor
+    coarse_domain = Domain(
+        Nx = coarse_Nx,
+        Ny = coarse_Ny, 
+        Nz = coarse_Nz,
+        Lx = fine_domain.Lx,  # Physical size unchanged
+        Ly = fine_domain.Ly,
+        Lz = fine_domain.Lz,
+        # Copy other parameters from fine_domain as needed
+        # This will depend on your specific Domain constructor
+    )
+    
+    return coarse_domain
+end
+
+# ============================================================================
+# SSG EQUATION DEMO AND TESTING
+# ============================================================================
 
 """
 Demo function for SSG equation solver
@@ -730,7 +841,7 @@ function demo_ssg_solver()
     rank = MPI.Comm_rank(comm)
     
     if rank == 0
-        println(" SSG Equation Solver Demo (Appendix A Implementation)")
+        println("🌊 SSG Equation Solver Demo (Appendix A Implementation)")
         println("=" ^ 60)
         println("Solving: ∇²Φ = εDΦ")
         println("where DΦ = ∂²Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²")
@@ -747,8 +858,8 @@ function demo_ssg_solver()
     ε = 0.1  # External parameter
     
     if rank == 0
-        println("Problem size: $(nx_global)×$(ny_global)×$(nz_global)")
-        println("Domain: [0,$(Lx)] × [0,$(Ly)] × [-1,0]")
+        println(" Problem size: $(nx_global)×$(ny_global)×$(nz_global)")
+        println(" Domain: [0,$(Lx)] × [0,$(Ly)] × [-1,0]")
         println(" ε parameter: $(ε)")
         println(" Target tolerance: 1e-8")
         println("")
@@ -819,7 +930,7 @@ function demo_ssg_solver()
         println("")
         
         if diag.converged
-            println(" SSG equation solver working correctly!")
+            println("🏆 SSG equation solver working correctly!")
             println("    3D Laplacian computed with spectral accuracy")
             println("    Nonlinear operator DΦ implemented")
             println("    Boundary conditions (A4) applied")
@@ -840,32 +951,30 @@ function demo_ssg_solver()
 end
 
 """
-Create demo domain structure (placeholder for actual Domain constructor)
+Create demo domain structure matching your Domain pattern
 """
 function create_demo_domain(nx::Int, ny::Int, nz::Int, Lx::T, Ly::T, Lz::T, comm::MPI.Comm) where T
-    # This is a placeholder - replace with your actual Domain constructor from transforms.jl
+    # This is a simplified demo domain - replace with your actual Domain constructor
+    # Your Domain likely has more fields like FFT plans, derivative operators, etc.
     
-    struct DemoDomain
+    # Create pencil decompositions
+    pr = Pencil((nx, ny, nz), comm)          # Real-space pencil  
+    pc = Pencil((nx÷2+1, ny, nz), comm)      # Complex/spectral pencil
+    
+    # Create a simplified Domain structure for demo
+    # Replace this with your actual Domain constructor
+    struct DemoDomain{T} <: Domain{T}
         Nx::Int
-        Ny::Int
+        Ny::Int  
         Nz::Int
         Lx::T
         Ly::T
         Lz::T
-        pc::NamedTuple  # Pencil configuration
-        kx::Vector{T}   # Wavenumbers
-        ky::Vector{T}
-        boundary_conditions::Symbol
+        pr::typeof(pr)  # Real-space pencil
+        pc::typeof(pc)  # Complex pencil
     end
     
-    # Create pencil configuration
-    pc = (comm = comm,)
-    
-    # Wavenumber arrays (simplified)
-    kx = T[2π*i/Lx for i in 0:nx÷2]
-    ky = T[2π*i/Ly for i in 0:ny÷2]
-    
-    return DemoDomain(nx, ny, nz, Lx, Ly, Lz, pc, kx, ky, :mixed)
+    return DemoDomain{T}(nx, ny, nz, Lx, Ly, Lz, pr, pc)
 end
 
 # ============================================================================
@@ -932,14 +1041,14 @@ demo_ssg_solver()
 ```
 
 ## FEATURES IMPLEMENTED:
- Equation: ∇²Φ = εDΦ
- Boundary conditions: ∂Φ/∂Z = b̃s at Z=0, ∂Φ/∂Z = 0 at Z=-H  
- 3D Laplacian with spectral accuracy in X,Y directions
- Nonlinear operator DΦ = ∂²Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²
- Multigrid acceleration for fast convergence
- Spectral and SOR smoothers
- MPI parallel support via PencilArrays
- Compatible with transforms.jl framework
+    Equation (A1): ∇²Φ = εDΦ
+    Boundary conditions (A4): ∂Φ/∂Z = b̃s at Z=0, ∂Φ/∂Z = 0 at Z=-1  
+    3D Laplacian with spectral accuracy in X,Y directions
+    Nonlinear operator DΦ = ∂²Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²
+    Multigrid acceleration for fast convergence
+    Spectral and SOR smoothers
+    MPI parallel support via PencilArrays
+    Compatible with transforms.jl framework
 
 ## TECHNICAL NOTES:
 - Spectral derivatives in X,Y for maximum accuracy
@@ -948,4 +1057,3 @@ demo_ssg_solver()
 - Nonlinear operator computed with fourth-order mixed derivatives
 - Multigrid coarsening preserves boundary structure
 """
-
