@@ -1,2 +1,2 @@
-# SSG.jl
+# 🌊 SSG.jl
 
