@@ -25,7 +25,7 @@ function create_coarse_domain(domain::Domain, factor::Int=2)
     # Coarsen grid resolution
     coarse_Nx = max(fine_Nx ÷ factor, 5)  # Ensure minimum size
     coarse_Ny = max(fine_Ny ÷ factor, 5)
-    coarse_Nz = fine_Nz  # Typically don't coarsen in Z for ocean models
+    coarse_Nz = fine_Nz  #  don't coarsen in the z-direction
     
     # For FFT compatibility, ensure even numbers
     coarse_Nx = coarse_Nx % 2 == 0 ? coarse_Nx : coarse_Nx + 1
