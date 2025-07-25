@@ -1,12 +1,12 @@
 """
-    set_b!(prob, b_field, dom::Domain)
+    set_b!(prob, b_field, domain::Domain)
 
 Set the buoyancy field and update all derived variables for SSG solver.
 
 # Arguments
 - `prob`: SemiGeostrophicProblem structure
 - `b_field`: Buoyancy field (PencilArray or Matrix)
-- `dom`: Domain structure from SSG.jl
+- `domain`: Domain structure from SSG.jl
 
 # Updates
 - Sets buoyancy field with zero mean constraint
@@ -15,7 +15,7 @@ Set the buoyancy field and update all derived variables for SSG solver.
 - Computes geostrophic velocities
 - Calculates initial kinetic energy diagnostics
 """
-function set_b!(prob::SemiGeostrophicProblem{T}, b_field, dom::Domain) where T
+function set_b!(prob::SemiGeostrophicProblem{T}, b_field, domain::Domain) where T
     # Ensure buoyancy field is properly sized
     @ensuresamegrid(prob.fields.b, b_field)
     
@@ -24,7 +24,7 @@ function set_b!(prob::SemiGeostrophicProblem{T}, b_field, dom::Domain) where T
     
     # Zero mean constraint for spectral methods (critical for periodic domains)
     # Transform to spectral space first
-    rfft!(dom, prob.fields.b, prob.fields.bhat)
+    rfft!(domain, prob.fields.b, prob.fields.bhat)
     
     # Set k=0 mode to zero (removes domain average)
     # Handle PencilArray structure and local ranges
@@ -41,55 +41,55 @@ function set_b!(prob::SemiGeostrophicProblem{T}, b_field, dom::Domain) where T
     end
     
     # Apply dealiasing in spectral space
-    dealias!(dom, prob.fields.bhat)
+    dealias!(domain, prob.fields.bhat)
     
     # Transform back to physical space
-    irfft!(dom, prob.fields.bhat, prob.fields.b)
+    irfft!(domain, prob.fields.bhat, prob.fields.b)
     
     # Solve Monge-Ampère equation: det(D²φ) = b
-    solve_monge_ampere_fields!(prob.fields, dom; 
+    solve_monge_ampere_fields!(prob.fields, domain; 
                               tol=1e-10, 
                               maxiter=20, 
                               verbose=false)
     
     # Compute geostrophic velocities from streamfunction
-    compute_geostrophic_velocities!(prob.fields, dom)
+    compute_geostrophic_velocities!(prob.fields, domain)
     
     # Calculate surface kinetic energy diagnostics
     # Using spectral energy calculation for accuracy
-    ke_total = compute_kinetic_energy(prob.fields, dom)
+    ke_total = compute_kinetic_energy(prob.fields, domain)
     
     # Alternative: Direct spectral calculation as in original
     # Transform velocities to spectral space
-    rfft!(dom, prob.fields.u, prob.fields.tmpc)
-    ke_u = 0.5 * parsevalsum2(prob.fields.tmpc, dom)
+    rfft!(domain, prob.fields.u, prob.fields.tmpc)
+    ke_u = 0.5 * parsevalsum2(prob.fields.tmpc, domain)
     
-    rfft!(dom, prob.fields.v, prob.fields.tmpc)
-    ke_v = 0.5 * parsevalsum2(prob.fields.tmpc, dom)
+    rfft!(domain, prob.fields.v, prob.fields.tmpc)
+    ke_v = 0.5 * parsevalsum2(prob.fields.tmpc, domain)
     
     # Report initial energy (matching original format)
     @printf "initial surface KE 1/2 ∫(u²+v²) dx dy: %f \n" (ke_u + ke_v)
     
     # Update diagnostics if enabled
     if prob.diagnostics !== nothing
-        update_diagnostics!(prob.diagnostics, prob.fields, dom, prob.clock)
+        update_diagnostics!(prob.diagnostics, prob.fields, domain, prob.clock)
     end
     
     return nothing
 end
 
 """
-    set_φ!(prob, φ_field, dom::Domain)
+    set_φ!(prob, φ_field, domain::Domain)
 
 Set streamfunction field and compute derived buoyancy (alternative initialization).
 Based on original setICs.jl set_Φ! function.
 """
-function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, dom::Domain) where T
+function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, domain::Domain) where T
     # Copy streamfunction field
     copy_field!(prob.fields.φ, φ_field)
     
     # Zero mean constraint - handle PencilArray distribution
-    rfft!(dom, prob.fields.φ, prob.fields.φhat)
+    rfft!(domain, prob.fields.φ, prob.fields.φhat)
     local_ranges = local_range(prob.fields.φhat.pencil)
     φhat_local = prob.fields.φhat.data
     
@@ -101,16 +101,16 @@ function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, dom::Domain) where T
             φhat_local[i_local, j_local, :] .= 0.0
         end
     end
-    irfft!(dom, prob.fields.φhat, prob.fields.φ)
+    irfft!(domain, prob.fields.φhat, prob.fields.φ)
     
     # Compute buoyancy from streamfunction using Monge-Ampère relation
     # This would need the inverse relationship - simplified here
-    rfft!(dom, prob.fields.φ, prob.fields.φhat)
-    laplacian_h!(dom, prob.fields.φhat, prob.fields.bhat)  # ∇²φ
-    irfft!(dom, prob.fields.bhat, prob.fields.b)
+    rfft!(domain, prob.fields.φ, prob.fields.φhat)
+    laplacian_h!(domain, prob.fields.φhat, prob.fields.bhat)  # ∇²φ
+    irfft!(domain, prob.fields.bhat, prob.fields.b)
     
     # Apply zero mean to buoyancy as well - handle PencilArray distribution
-    rfft!(dom, prob.fields.b, prob.fields.bhat)
+    rfft!(domain, prob.fields.b, prob.fields.bhat)
     local_ranges = local_range(prob.fields.bhat.pencil)
     bhat_local = prob.fields.bhat.data
     
@@ -122,13 +122,13 @@ function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, dom::Domain) where T
             bhat_local[i_local, j_local, :] .= 0.0
         end
     end
-    irfft!(dom, prob.fields.bhat, prob.fields.b)
+    irfft!(domain, prob.fields.bhat, prob.fields.b)
     
     # Compute velocities and diagnostics
-    compute_geostrophic_velocities!(prob.fields, dom)
+    compute_geostrophic_velocities!(prob.fields, domain)
     
     # Energy diagnostics
-    ke_total = compute_kinetic_energy(prob.fields, dom)
+    ke_total = compute_kinetic_energy(prob.fields, domain)
     b_stats = field_stats(prob.fields.b)
     
     @printf "min/max value of u: %f %f\n" extrema(prob.fields.u.data)...
@@ -140,12 +140,12 @@ function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, dom::Domain) where T
 end
 
 """
-    solve_monge_ampere_fields!(fields::Fields, dom::Domain; kwargs...)
+    solve_monge_ampere_fields!(fields::Fields, domain::Domain; kwargs...)
 
 Solve Monge-Ampère equation using SSG.jl's multigrid solver.
 Wrapper to integrate with the fields structure.
 """
-function solve_monge_ampere_fields!(fields::Fields{T}, dom::Domain;
+function solve_monge_ampere_fields!(fields::Fields{T}, domain::Domain;
                                    tol::T=T(1e-10),
                                    maxiter::Int=20,
                                    verbose::Bool=false) where T
@@ -154,7 +154,7 @@ function solve_monge_ampere_fields!(fields::Fields{T}, dom::Domain;
     solution, diagnostics = solve_monge_ampere_pencil(
         fields.φ,           # Initial guess
         fields.b,           # RHS (buoyancy)
-        dom.Lx, dom.Ly;     # Domain size
+        domain.Lx, domain.Ly;     # Domain size
         tol=tol,
         maxiter=maxiter,
         verbose=verbose,
@@ -173,39 +173,39 @@ function solve_monge_ampere_fields!(fields::Fields{T}, dom::Domain;
 end
 
 """
-    compute_geostrophic_velocities!(fields::Fields, dom::Domain)
+    compute_geostrophic_velocities!(fields::Fields, domain::Domain)
 
 Compute geostrophic velocities from streamfunction using spectral derivatives.
 u = -∂φ/∂y, v = ∂φ/∂x
 """
-function compute_geostrophic_velocities!(fields::Fields{T}, dom::Domain) where T
+function compute_geostrophic_velocities!(fields::Fields{T}, domain::Domain) where T
     # Transform streamfunction to spectral space
-    rfft!(dom, fields.φ, fields.φhat)
+    rfft!(domain, fields.φ, fields.φhat)
     
     # Compute u = -∂φ/∂y
-    ddy!(dom, fields.φhat, fields.tmpc)
-    irfft!(dom, fields.tmpc, fields.u)
+    ddy!(domain, fields.φhat, fields.tmpc)
+    irfft!(domain, fields.tmpc, fields.u)
     fields.u.data .*= -1  # Apply negative sign
     
     # Compute v = ∂φ/∂x  
-    ddx!(dom, fields.φhat, fields.tmpc)
-    irfft!(dom, fields.tmpc, fields.v)
+    ddx!(domain, fields.φhat, fields.tmpc)
+    irfft!(domain, fields.tmpc, fields.v)
     
     return nothing
 end
 
 """
-    compute_kinetic_energy(fields::Fields, dom::Domain) -> Real
+    compute_kinetic_energy(fields::Fields, domain::Domain) -> Real
 
 Compute total kinetic energy using spectral methods.
 """
-function compute_kinetic_energy(fields::Fields{T}, dom::Domain) where T
+function compute_kinetic_energy(fields::Fields{T}, domain::Domain) where T
     # Transform velocities to spectral space
-    rfft!(dom, fields.u, fields.tmpc)
-    ke_u = 0.5 * parsevalsum2(fields.tmpc, dom)
+    rfft!(domain, fields.u, fields.tmpc)
+    ke_u = 0.5 * parsevalsum2(fields.tmpc, domain)
     
-    rfft!(dom, fields.v, fields.tmpc)
-    ke_v = 0.5 * parsevalsum2(fields.tmpc, dom)
+    rfft!(domain, fields.v, fields.tmpc)
+    ke_v = 0.5 * parsevalsum2(fields.tmpc, domain)
     
     return ke_u + ke_v
 end
