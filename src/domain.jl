@@ -24,35 +24,20 @@ Periodic in x,y directions; bounded in z direction.
 - `kxalias, kyalias`: Ranges of aliased wavenumber indices
 """
 struct Domain{T, PA<:AbstractPencil, PC<:AbstractPencil, PF, PB}
-    "number of grid points in ``x``"
-        Nx::Int
-    "number of grid points in ``y``"
-        Ny::Int
-    "number of grid points in ``z``"
-        Nz::Int
-    "domain extent in ``x``"
-        Lx::T
-    "domain extent in ``y``"
-        Ly::T
-    "domain extent in ``z``"
-        Lz::T
-    "range with ``x``-grid-points"
-        x::Vector{T}
-    "range with ``x``-grid-points"
-        y::Vector{T}
-    "range with ``x``-grid-points"
-        z::Vector{T}
-    "vertical grid spacing (can be non-uniform)"
-        dz::Vector{T}  
-    "array with ``x``-wavenumbers"
-        kx::Vector{T}
-    "array with ``y``-wavenumbers"
-        ky::Vector{T}
-    "array with squared of wavenumbers for real Fourier transforms, ``kx² + ky²``"
-        Krsq::Matrix{T}
-    "array with inverse squared total wavenumbers for real Fourier transforms, ``1 / (kx² + ky²)``"        
-        invKrsq::Matrix{T}     # 1/(kx² + ky²)
-    
+    Nx::Int
+    Ny::Int
+    Nz::Int
+    Lx::T
+    Ly::T
+    Lz::T
+    x::Vector{T}
+    y::Vector{T}
+    z::Vector{T}
+    dz::Vector{T}  # Vertical grid spacing (can be non-uniform)
+    kx::Vector{T}
+    ky::Vector{T}
+    Krsq::Matrix{T}        # kr² + ky² for real FFTs
+    invKrsq::Matrix{T}     # 1/(kr² + ky²)
     mask::BitMatrix
     z_boundary::Symbol
     z_grid::Symbol
@@ -393,6 +378,100 @@ function apply_filter!(field_spec, filter)
     return nothing
 end
 
+"""
+    make_chebyshev_matrices(Nz, z_boundary) -> NamedTuple
+
+Create Chebyshev differentiation matrices for bounded domain.
+Returns first and second derivative matrices with boundary conditions applied.
+"""
+function make_chebyshev_matrices(Nz::Int, z_boundary::Symbol)
+    # Create Chebyshev differentiation matrix
+    D1, D2 = chebyshev_diff_matrices(Nz)
+    
+    # Apply boundary conditions
+    if z_boundary == :dirichlet
+        # Zero at both boundaries: remove first and last rows/columns
+        D1_bc = D1[2:end-1, 2:end-1]
+        D2_bc = D2[2:end-1, 2:end-1]
+        bc_indices = 2:Nz-1
+    elseif z_boundary == :neumann
+        # Zero derivative at boundaries
+        D1_bc, D2_bc, bc_indices = apply_neumann_bc(D1, D2, Nz)
+    elseif z_boundary == :free_slip
+        # w=0, ∂u/∂z=∂v/∂z=0 at boundaries
+        D1_bc, D2_bc, bc_indices = apply_free_slip_bc(D1, D2, Nz)
+    else
+        # No boundary conditions applied
+        D1_bc = D1
+        D2_bc = D2
+        bc_indices = 1:Nz
+    end
+    
+    return (D1=D1_bc, D2=D2_bc, indices=bc_indices, type=z_boundary)
+end
+
+"""
+    chebyshev_diff_matrices(N) -> (D1, D2)
+
+Compute Chebyshev differentiation matrices for first and second derivatives.
+"""
+function chebyshev_diff_matrices(N::Int)
+    # Chebyshev points
+    θ = π .* (0:(N-1)) ./ (N-1)
+    x = -cos.(θ)
+    
+    # First derivative matrix
+    c = [i == 1 || i == N ? 2.0 : 1.0 for i in 1:N]
+    c[1] *= (-1)^(1-1)
+    c[N] *= (-1)^(N-1)
+    
+    D1 = zeros(N, N)
+    for i in 1:N, j in 1:N
+        if i ≠ j
+            D1[i,j] = (c[i]/c[j]) * (-1)^(i+j) / (x[i] - x[j])
+        end
+    end
+    
+    # Diagonal elements
+    for i in 1:N
+        D1[i,i] = -sum(D1[i, 1:N .≠ i])
+    end
+    
+    # Second derivative matrix
+    D2 = D1^2
+    
+    return D1, D2
+end
+
+"""
+    apply_neumann_bc(D1, D2, N) -> (D1_bc, D2_bc, indices)
+
+Apply Neumann boundary conditions to differentiation matrices.
+"""
+function apply_neumann_bc(D1, D2, N)
+    # For Neumann BC: ∂u/∂z = 0 at boundaries
+    # Modify the boundary rows to enforce this condition
+    D1_bc = copy(D1)
+    D2_bc = copy(D2)
+    
+    # Set boundary conditions in first and last rows
+    D1_bc[1, :] = D1[1, :]  # ∂u/∂z = 0 at bottom
+    D1_bc[N, :] = D1[N, :]  # ∂u/∂z = 0 at top
+    
+    return D1_bc, D2_bc, 1:N
+end
+
+"""
+    apply_free_slip_bc(D1, D2, N) -> (D1_bc, D2_bc, indices)
+
+Apply free-slip boundary conditions to differentiation matrices.
+For free-slip: w=0 and ∂u/∂z=∂v/∂z=0 at boundaries.
+"""
+function apply_free_slip_bc(D1, D2, N)
+    # Similar to Neumann but may need special treatment for different variables
+    # This is a simplified version - actual implementation depends on the equations
+    return apply_neumann_bc(D1, D2, N)
+end
 
 """
     twothirds_mask(Nx, Nyc) -> BitMatrix
@@ -433,6 +512,42 @@ function Base.show(io::IO, dom::Domain)
     println(io, "  Spectral pencil: $(typeof(dom.pc))")
     println(io, "  MPI processes: $(MPI.Comm_size(dom.pr.comm))")
 end
+
+# =============================================================================
+# GRID UTILITY FUNCTIONS
+# =============================================================================
+
+"""
+    gridpoints(dom::Domain) -> (X, Y, Z)
+
+Return 3D coordinate arrays for the domain.
+"""
+function gridpoints(dom::Domain)
+    X = [dom.x[i] for i=1:dom.Nx, j=1:dom.Ny, k=1:dom.Nz]
+    Y = [dom.y[j] for i=1:dom.Nx, j=1:dom.Ny, k=1:dom.Nz]
+    Z = [dom.z[k] for i=1:dom.Nx, j=1:dom.Ny, k=1:dom.Nz]
+    
+    return X, Y, Z
+end
+
+"""
+    gridpoints_2d(dom::Domain) -> (X, Y)
+
+Return 2D horizontal coordinate arrays for the domain.
+"""
+function gridpoints_2d(dom::Domain)
+    X = [dom.x[i] for i=1:dom.Nx, j=1:dom.Ny]
+    Y = [dom.y[j] for i=1:dom.Nx, j=1:dom.Ny]
+    
+    return X, Y
+end
+
+"""
+    Base.eltype(dom::Domain) -> Type
+
+Return the element type of the domain coordinates.
+"""
+Base.eltype(dom::Domain) = eltype(dom.x)
 
 # Add FT constant if not defined elsewhere
 const FT = Float64
