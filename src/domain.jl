@@ -12,29 +12,46 @@ Periodic in x,y directions; bounded in z direction.
 - `x, y, z`: Coordinate vectors
 - `kx, ky`: Horizontal wavenumber vectors (periodic directions)
 - `dz`: Vertical grid spacing (non-uniform if z_grid != :uniform)
+- `Krsq`: Array with squared total wavenumbers for real FFTs: kr² + ky²
+- `invKrsq`: Array with inverse squared total wavenumbers: 1/(kr² + ky²)
 - `mask`: Dealiasing mask for horizontal directions
 - `z_boundary`: Boundary condition type (:dirichlet, :neumann, :free_slip, etc.)
 - `z_grid`: Vertical grid type (:uniform, :stretched, :custom)
 - `pr`: Real-space pencil descriptor
 - `pc`: Spectral-space pencil descriptor (for horizontal FFTs)
 - `fplan, iplan`: Forward and inverse FFT plans (horizontal only)
+- `aliased_fraction`: Fraction of wavenumbers that are aliased (e.g., 1/3)
+- `kxalias, kyalias`: Ranges of aliased wavenumber indices
 """
 struct Domain{T, PA<:AbstractPencil, PC<:AbstractPencil, PF, PB}
-    Nx::Int
-    Ny::Int
-    Nz::Int
-
-    Lx::T
-    Ly::T
-    Lz::T
-
-    x::Vector{T}
-    y::Vector{T}
-    z::Vector{T}
-    dz::Vector{T}  # Vertical grid spacing (can be non-uniform)
-
-    kx::Vector{T}
-    ky::Vector{T}
+    "number of grid points in ``x``"
+        Nx::Int
+    "number of grid points in ``y``"
+        Ny::Int
+    "number of grid points in ``z``"
+        Nz::Int
+    "domain extent in ``x``"
+        Lx::T
+    "domain extent in ``y``"
+        Ly::T
+    "domain extent in ``z``"
+        Lz::T
+    "range with ``x``-grid-points"
+        x::Vector{T}
+    "range with ``x``-grid-points"
+        y::Vector{T}
+    "range with ``x``-grid-points"
+        z::Vector{T}
+    "vertical grid spacing (can be non-uniform)"
+        dz::Vector{T}  
+    "array with ``x``-wavenumbers"
+        kx::Vector{T}
+    "array with ``y``-wavenumbers"
+        ky::Vector{T}
+    "array with squared of wavenumbers for real Fourier transforms, ``kx² + ky²``"
+        Krsq::Matrix{T}
+    "array with inverse squared total wavenumbers for real Fourier transforms, ``1 / (kx² + ky²)``"        
+        invKrsq::Matrix{T}     # 1/(kx² + ky²)
     
     mask::BitMatrix
     z_boundary::Symbol
@@ -47,6 +64,11 @@ struct Domain{T, PA<:AbstractPencil, PC<:AbstractPencil, PF, PB}
     # FFT plans (horizontal only)
     fplan::PF
     iplan::PB
+    
+    # Dealiasing parameters
+    aliased_fraction::T
+    kxalias::UnitRange{Int}
+    kyalias::UnitRange{Int}
 end
 
 """
@@ -177,154 +199,200 @@ function make_vertical_grid(Nz::Int, Lz, z_grid::Symbol, z_boundary::Symbol, str
 end
 
 """
-    create_stretched_grid(Nz, Lz, stretch_params) -> (z, dz)
+    make_wavenumber_arrays(kx, ky, Nx, Nyc) -> (Krsq, invKrsq)
 
-Create various types of stretched grids for clustering points near boundaries.
+Create wavenumber magnitude arrays for real FFTs.
 """
-function create_stretched_grid(Nz::Int, Lz, stretch_params)
-    stretch_type = stretch_params.type
+function make_wavenumber_arrays(kx, ky, Nx, Nyc)
+    # Create 2D arrays for wavenumber magnitudes
+    Krsq = zeros(FT, Nx, Nyc)
+    invKrsq = zeros(FT, Nx, Nyc)
     
-    # Create normalized coordinate η ∈ [-1, 1] or [0, 1]
-    if stretch_type in [:tanh, :sinh]
-        η = range(-1, 1, length=Nz)
-        β = stretch_params.β
-        
-        if stretch_type == :tanh
-            # Hyperbolic tangent stretching - clusters at boundaries
-            ξ = tanh.(β .* η) ./ tanh(β)
-        elseif stretch_type == :sinh
-            # Hyperbolic sine stretching - clusters at center
-            ξ = sinh.(β .* η) ./ sinh(β)
+    for i in 1:Nx, j in 1:Nyc
+        Krsq[i, j] = kx[i]^2 + ky[j]^2
+        if Krsq[i, j] > 0
+            invKrsq[i, j] = 1.0 / Krsq[i, j]
+        else
+            invKrsq[i, j] = 0.0  # Avoid division by zero at k=0
         end
-        
-        # Map from [-1,1] to [0,Lz]
-        z = 0.5 * Lz .* (ξ .+ 1)
-        
-    elseif stretch_type == :power
-        η = range(0, 1, length=Nz)
-        α = stretch_params.α
-        
-        # Power law stretching
-        ξ = η.^α
-        z = Lz .* ξ
-        
-    elseif stretch_type == :exponential
-        η = range(0, 1, length=Nz)
-        β = stretch_params.β
-        
-        # Exponential clustering toward bottom boundary
-        ξ = (exp.(β .* η) .- 1) ./ (exp(β) - 1)
-        z = Lz .* ξ
-        
-    else
-        error("Unknown stretch type: $stretch_type. Use :tanh, :sinh, :power, or :exponential")
     end
     
-    # Compute grid spacing
-    dz = zeros(Nz)
-    for i in 2:Nz-1
-        dz[i] = 0.5 * (z[i+1] - z[i-1])
-    end
-    dz[1] = z[2] - z[1]
-    dz[Nz] = z[Nz] - z[Nz-1]
-    
-    return collect(z), dz
+    return Krsq, invKrsq
 end
 
-# """
-#     make_chebyshev_matrices(Nz, z_boundary) -> NamedTuple
+"""
+    get_aliased_wavenumbers(Nx, Nyc, aliased_fraction) -> (kxalias, kyalias)
 
-# Create Chebyshev differentiation matrices for bounded domain.
-# Returns first and second derivative matrices with boundary conditions applied.
-# """
-# function make_chebyshev_matrices(Nz::Int, z_boundary::Symbol)
-#     # Create Chebyshev differentiation matrix
-#     D1, D2 = chebyshev_diff_matrices(Nz)
+Get the ranges of wavenumber indices that should be aliased (set to zero).
+"""
+function get_aliased_wavenumbers(Nx, Nyc, aliased_fraction)
+    # x-direction aliasing (for full FFT range)
+    kxalias = get_alias_range(Nx, aliased_fraction)
     
-#     # Apply boundary conditions
-#     if z_boundary == :dirichlet
-#         # Zero at both boundaries: remove first and last rows/columns
-#         D1_bc = D1[2:end-1, 2:end-1]
-#         D2_bc = D2[2:end-1, 2:end-1]
-#         bc_indices = 2:Nz-1
-#     elseif z_boundary == :neumann
-#         # Zero derivative at boundaries
-#         D1_bc, D2_bc, bc_indices = apply_neumann_bc(D1, D2, Nz)
-#     elseif z_boundary == :free_slip
-#         # w=0, ∂u/∂z=∂v/∂z=0 at boundaries
-#         D1_bc, D2_bc, bc_indices = apply_free_slip_bc(D1, D2, Nz)
-#     else
-#         # No boundary conditions applied
-#         D1_bc = D1
-#         D2_bc = D2
-#         bc_indices = 1:Nz
-#     end
+    # y-direction aliasing (for real FFT range)  
+    kyalias = get_alias_range_rfft(Nyc, aliased_fraction)
     
-#     return (D1=D1_bc, D2=D2_bc, indices=bc_indices, type=z_boundary)
-# end
+    return kxalias, kyalias
+end
 
-# """
-#     chebyshev_diff_matrices(N) -> (D1, D2)
+"""
+    get_alias_range(N, aliased_fraction) -> UnitRange{Int}
 
-# Compute Chebyshev differentiation matrices for first and second derivatives.
-# """
-# function chebyshev_diff_matrices(N::Int)
-#     # Chebyshev points
-#     θ = π .* (0:(N-1)) ./ (N-1)
-#     x = -cos.(θ)
+Get aliasing range for full FFT (both positive and negative wavenumbers).
+"""
+function get_alias_range(N, aliased_fraction)
+    if aliased_fraction <= 0
+        return 1:0  # Empty range
+    end
     
-#     # First derivative matrix
-#     c = [i == 1 || i == N ? 2.0 : 1.0 for i in 1:N]
-#     c[1] *= (-1)^(1-1)
-#     c[N] *= (-1)^(N-1)
+    L = (1 - aliased_fraction) / 2
+    R = (1 + aliased_fraction) / 2
     
-#     D1 = zeros(N, N)
-#     for i in 1:N, j in 1:N
-#         if i ≠ j
-#             D1[i,j] = (c[i]/c[j]) * (-1)^(i+j) / (x[i] - x[j])
-#         end
-#     end
+    iL = floor(Int, L * N) + 1
+    iR = ceil(Int, R * N)
     
-#     # Diagonal elements
-#     for i in 1:N
-#         D1[i,i] = -sum(D1[i, 1:N .≠ i])
-#     end
-    
-#     # Second derivative matrix
-#     D2 = D1^2
-    
-#     return D1, D2
-# end
+    return iL:iR
+end
 
-# """
-#     apply_neumann_bc(D1, D2, N) -> (D1_bc, D2_bc, indices)
+"""
+    get_alias_range_rfft(Nyc, aliased_fraction) -> UnitRange{Int}
 
-# Apply Neumann boundary conditions to differentiation matrices.
-# """
-# function apply_neumann_bc(D1, D2, N)
-#     # For Neumann BC: ∂u/∂z = 0 at boundaries
-#     # Modify the boundary rows to enforce this condition
-#     D1_bc = copy(D1)
-#     D2_bc = copy(D2)
+Get aliasing range for real FFT (only positive wavenumbers).
+"""
+function get_alias_range_rfft(Nyc, aliased_fraction)
+    if aliased_fraction <= 0
+        return 1:0  # Empty range
+    end
     
-#     # Set boundary conditions in first and last rows
-#     D1_bc[1, :] = D1[1, :]  # ∂u/∂z = 0 at bottom
-#     D1_bc[N, :] = D1[N, :]  # ∂u/∂z = 0 at top
+    # For real FFT, we only need to dealias the high positive wavenumbers
+    cutoff = ceil(Int, (1 - aliased_fraction) * Nyc)
     
-#     return D1_bc, D2_bc, 1:N
-# end
+    return (cutoff+1):Nyc
+end
 
-# """
-#     apply_free_slip_bc(D1, D2, N) -> (D1_bc, D2_bc, indices)
+# =============================================================================
+# DEALIASING FUNCTIONS
+# =============================================================================
 
-# Apply free-slip boundary conditions to differentiation matrices.
-# For free-slip: w=0 and ∂u/∂z=∂v/∂z=0 at boundaries.
-# """
-# function apply_free_slip_bc(D1, D2, N)
-#     # Similar to Neumann but may need special treatment for different variables
-#     # This is a simplified version - actual implementation depends on the equations
-#     return apply_neumann_bc(D1, D2, N)
-# end
+"""
+    dealias!(dom::Domain, field_spec)
+
+Apply dealiasing to a spectral field by zeroing out aliased wavenumbers.
+"""
+function dealias!(dom::Domain, field_spec)
+    _dealias!(field_spec, dom)
+    return nothing
+end
+
+"""
+    _dealias!(field_spec, dom::Domain)
+
+Internal dealiasing function that zeros out aliased wavenumbers.
+"""
+function _dealias!(field_spec, dom::Domain)
+    # Get local array from PencilArray
+    field_local = field_spec.data
+    
+    # Get local ranges for this MPI process
+    local_ranges = local_range(dom.pc)
+    
+    # Map global alias ranges to local ranges
+    kx_local_alias = intersect_ranges(dom.kxalias, local_ranges[1])
+    ky_local_alias = intersect_ranges(dom.kyalias, local_ranges[2])
+    
+    # Zero out aliased wavenumbers
+    if !isempty(kx_local_alias)
+        kx_local_indices = [i for (i, ig) in enumerate(local_ranges[1]) if ig in kx_local_alias]
+        @views @. field_local[kx_local_indices, :, :] = 0
+    end
+    
+    if !isempty(ky_local_alias)
+        ky_local_indices = [j for (j, jg) in enumerate(local_ranges[2]) if jg in ky_local_alias]
+        @views @. field_local[:, ky_local_indices, :] = 0
+    end
+    
+    return nothing
+end
+
+"""
+    intersect_ranges(global_range, local_range) -> Vector{Int}
+
+Find intersection between global aliasing range and local MPI range.
+"""
+function intersect_ranges(global_range, local_range)
+    return [i for i in global_range if i in local_range]
+end
+
+# =============================================================================
+# FILTERING FUNCTIONS
+# =============================================================================
+
+"""
+    makefilter(dom::Domain; order=4, innerK=2/3, outerK=1, tol=1e-15) -> Array
+
+Create a spectral filter for the domain.
+
+# Arguments
+- `dom`: Domain structure
+- `order`: Filter order (higher = sharper transition)
+- `innerK`: Inner wavenumber (filter inactive below this)
+- `outerK`: Outer wavenumber (filter approaches tol at this value)
+- `tol`: Filter tolerance at outer wavenumber
+
+# Returns
+- Filter array matching spectral space dimensions
+"""
+function makefilter(dom::Domain; order=4, innerK=2/3, outerK=1, tol=1e-15)
+    # Create normalized wavenumber magnitude
+    dx = dom.Lx / dom.Nx
+    dy = dom.Ly / dom.Ny
+    
+    Nx, Nyc = length(dom.kx), length(dom.ky)
+    K = zeros(FT, Nx, Nyc)
+    
+    for i in 1:Nx, j in 1:Nyc
+        kx_norm = abs(dom.kx[i] * dx / π)
+        ky_norm = abs(dom.ky[j] * dy / π)
+        K[i, j] = sqrt(kx_norm^2 + ky_norm^2)
+    end
+    
+    # Create filter
+    decay = -log(tol) / (outerK - innerK)^order
+    filter = exp.(-decay .* max.(K .- innerK, 0).^order)
+    filter[K .< innerK] .= 1
+    
+    return filter
+end
+
+"""
+    makefilter(equation; kwargs...)
+
+Create a filter for an equation structure (assuming it has a domain field).
+"""
+function makefilter(equation; kwargs...)
+    return makefilter(equation.domain; kwargs...)
+end
+
+"""
+    apply_filter!(field_spec, filter)
+
+Apply a spectral filter to a field in spectral space.
+"""
+function apply_filter!(field_spec, filter)
+    field_local = field_spec.data
+    local_ranges = local_range(field_spec.pencil)
+    
+    # Get local portion of filter
+    filter_local = view(filter, local_ranges[1], local_ranges[2])
+    
+    # Apply filter to all z levels
+    for k in axes(field_local, 3)
+        @views @. field_local[:, :, k] *= filter_local
+    end
+    
+    return nothing
+end
+
 
 """
     twothirds_mask(Nx, Nyc) -> BitMatrix
