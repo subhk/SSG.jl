@@ -36,14 +36,17 @@ include("monge_ampere.jl")
 include("timestep.jl")
 include("filter.jl")
 include("hyperdiffusion.jl")
-include("io.jl")
-include("run.jl")
+include("output.jl")
+
 
 # Export main functions
 export Domain, Fields, Params
 export make_domain, allocate_fields
 export run_ssg
 export save_snapshot, create_output_file
+
+
+
 
 end # module SSG
 
@@ -64,7 +67,7 @@ src/
 ├── timestep.jl           # Time stepping schemes
 ├── filter.jl              # Spectral filtering
 ├── hyperdiffusion.jl     # Hyperdiffusion operators
-├── io.jl                 # Input/output operations
+├── output.jl             # Input/output operations
 ├── run.jl                # Main simulation driver
 
 examples/
