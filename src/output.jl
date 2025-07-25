@@ -251,8 +251,12 @@ function save_simulation_state_full(filename::String, prob::SemiGeostrophicProbl
         # Grid information
         file["grid/Nx"] = prob.domain.Nx
         file["grid/Ny"] = prob.domain.Ny
+        file["grid/Nz"] = prob.domain.Nz
+
         file["grid/Lx"] = prob.domain.Lx
         file["grid/Ly"] = prob.domain.Ly
+        file["grid/Lz"] = prob.domain.Lz
+
         file["grid/x"] = collect(range(0, prob.domain.Lx, length=prob.domain.Nx+1)[1:end-1])
         file["grid/y"] = collect(range(0, prob.domain.Ly, length=prob.domain.Ny+1)[1:end-1])
         
@@ -361,8 +365,10 @@ function save_spectral_snapshot(filename::String, prob::SemiGeostrophicProblem{T
         # Grid info
         file["Nx"] = prob.domain.Nx
         file["Ny"] = prob.domain.Ny
+        file["Nz"] = prob.domain.Nz
         file["Lx"] = prob.domain.Lx
         file["Ly"] = prob.domain.Ly
+        file["Lz"] = prob.domain.Lz
         
         # Wavenumbers
         file["kx"] = collect(prob.domain.kx)
