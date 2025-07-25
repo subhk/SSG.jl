@@ -29,17 +29,14 @@
 #
 ###############################################################################
 
-using FFTW
-using Statistics: mean
-using LinearAlgebra
-using Base.Threads
-using JLD2
-using Printf
-using Trapz
+# using FFTW
+# using Statistics: mean
+# using LinearAlgebra
+# using Base.Threads
+# using JLD2
+# using Printf
+# using Trapz
 
-# ============================================================================
-# UTILITY FUNCTIONS AND TYPES
-# ============================================================================
 
 """Optimized utility functions with @inbounds for better performance"""
 @inline dropmean(A; dims=:) = dropdims(mean(A; dims=dims); dims=dims)
@@ -640,7 +637,7 @@ end
 """
 Example grid initialization showing proper FFT plan setup
 """
-function create_optimized_grid(nx, ny, nz, Lx, Ly, Lz, dev, T; 
+function create_grid(nx, ny, nz, Lx, Ly, Lz, dev, T; 
                               nthreads=Threads.nthreads(), 
                               effort=FFTW.MEASURE)
     
@@ -649,7 +646,7 @@ function create_optimized_grid(nx, ny, nz, Lx, Ly, Lz, dev, T;
     # Create coordinate arrays
     x = range(0, Lx, length=nx+1)[1:end-1]  # Periodic, exclude endpoint
     y = range(0, Ly, length=ny+1)[1:end-1]
-    z = range(-1, 0, length=nz)  # Vertical coordinate
+    z = range(-Lz, 0, length=nz)  # Vertical coordinate
     
     # Wavenumber arrays
     kx = fftfreq(nx, 2π*nx/Lx)
@@ -660,7 +657,7 @@ function create_optimized_grid(nx, ny, nz, Lx, Ly, Lz, dev, T;
     Kx = reshape(kx, (nx, 1))
     Ky = reshape(ky, (1, ny))
     Kr = reshape(kr, (length(kr), 1))
-    L = reshape(ky, (1, ny))
+    L  = reshape(ky, (1, ny))
     
     # Squared wavenumbers
     Krsq = Kr.^2 .+ L.^2
@@ -705,7 +702,7 @@ function demo_vertical_velocity(;
     println("ε = $epsilon, snapshot = $snapshot")
     
     # Setup optimized grid with proper FFT plans
-    grid = create_optimized_grid(nx, ny, nz, Lx, Ly, Lz, dev, precision)
+    grid = create_grid(nx, ny, nz, Lx, Ly, Lz, dev, precision)
     
     # Setup variables (this would be your variable initialization)
     vars = (u=zeros(precision, nx, ny), v=zeros(precision, nx, ny))

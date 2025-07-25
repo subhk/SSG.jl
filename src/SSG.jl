@@ -70,7 +70,8 @@ module SSG
 
     # omega_eq.jl
     export 
-        
+        create_grid,
+        compute_vertical_velocity
 
 
     # Include all submodules
