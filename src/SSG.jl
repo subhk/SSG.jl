@@ -40,7 +40,7 @@ module SSG
     # fields.jl
     allocate_fields,
     zero_fields!,
-    
+
 
     # output.jl
     export 
@@ -68,7 +68,7 @@ module SSG
     include("transforms.jl")
     include("params.jl")
     include("physics.jl")
-    include("monge_ampere.jl")
+    include("poisson.jl")
     include("timestep.jl")
     include("filter.jl")
     include("hyperdiffusion.jl")
@@ -94,7 +94,7 @@ src/
 ├── transforms.jl         # FFT operations and spectral derivatives
 ├── params.jl             # Parameter structures
 ├── physics.jl            # Physical computations (velocities, Jacobian)
-├── monge_ampere.jl       # Monge-Ampère equation solver
+├── poisson.jl            # 3D Poisson solver
 ├── timestep.jl           # Time stepping schemes
 ├── filter.jl              # Spectral filtering
 ├── hyperdiffusion.jl     # Hyperdiffusion operators
