@@ -520,7 +520,17 @@ function compute_integral_3(divQ_h::Array{Complex{T}, 3},
 end
 
 """
-Main function for vertical velocity calculation with comprehensive optimization
+Vertical velocity calculation with multi-threading
+    vertical velocity w⋆ 
+    (∂ˣˣ + ∂ʸʸ + ∂ᶻᶻ)w⋆ = -2ε ∇⋅Q
+    →  ∂ᶻᶻw⋆ - k²w⋆ = -2ε divQ_h
+    →  w⋆ = eᵏᶻ ∫₀ᶻ I₃(k, z') dz' - e⁻ᵏᶻ ∫₀ᶻ I₄(k, z') dz' + 2 I₂(k)/I₁(k) sinh(kz)
+            --------------------     ---------------------   ----------------------
+                 Integral_1                Integral_2              Integral_3
+    ⊕  I₁(k)   = -2sinh(k)
+    ⊕  I₂(k)   = -eᵏ∫₋₁⁰ I₄(k, z') dz' + e⁻ᵏ∫₋₁⁰ I₃(k, z') dz'
+    ⊕  I₃(k,z') = e⁻ᵏᶻ divQ_h(k,z')/2k
+    ⊕  I₄(k,z') = eᵏᶻ  divQ_h(k,z')/2k
 """
 function compute_vertical_velocity(vars, grid; 
                                   data_file::String="ep_0.2/SurfaceSG_nx_512.jld2",
