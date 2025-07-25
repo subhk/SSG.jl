@@ -1,7 +1,6 @@
 ###############################################################################
-# optimized_geophysical.jl
+# omega_eq.jl
 #
-# High-performance implementation for solving the Monge-Ampère equation and 
 # computing vertical velocities in geostrophic coordinates for geophysical flows.
 #
 # ==============================================================================
