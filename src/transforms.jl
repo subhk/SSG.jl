@@ -356,10 +356,10 @@ function advection_term!(result, u, v, field, domain::Domain, tmp_spec1, tmp_spe
     
     # tmp_real1 = ∂field/∂x, tmp_real2 = ∂field/∂y
     result_local = result.data
-    u_local = u.data
-    v_local = v.data
-    fx_local = tmp_real1.data
-    fy_local = tmp_real2.data
+    u_local      = u.data
+    v_local      = v.data
+    fx_local     = tmp_real1.data
+    fy_local     = tmp_real2.data
     
     # Compute advection: -(u∂field/∂x + v∂field/∂y)
     @. result_local = -(u_local * fx_local + v_local * fy_local)
@@ -367,15 +367,15 @@ function advection_term!(result, u, v, field, domain::Domain, tmp_spec1, tmp_spe
     return result
 end
 
-"""
-    vorticity_advection!(result, u, v, ω, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
+# """
+#     vorticity_advection!(result, u, v, ω, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
 
-Compute the vorticity advection term for 2D flows: -u·∇ω.
-This is used in vorticity-based formulations of the surface equations.
-"""
-function vorticity_advection!(result, u, v, ω, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
-    return advection_term!(result, u, v, ω, domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
-end
+# Compute the vorticity advection term for 2D flows: -u·∇ω.
+# This is used in vorticity-based formulations of the surface equations.
+# """
+# function vorticity_advection!(result, u, v, ω, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
+#     return advection_term!(result, u, v, ω, domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
+# end
 
 """
     compute_enstrophy(ω, domain::Domain) -> Float64

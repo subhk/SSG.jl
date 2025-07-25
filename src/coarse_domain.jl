@@ -204,9 +204,9 @@ function integrate_with_your_domain()
     # Example usage in multigrid hierarchy creation
     println("Example multigrid hierarchy creation:")
     println("""
-    function create_mg_hierarchy(base_domain::Domain, n_levels::Int=4)
+    function create_mg_hierarchy(domain::Domain, n_levels::Int=4)
         levels = SSGLevel{Float64}[]
-        current_domain = base_domain
+        current_domain = domain
         
         for level = 1:n_levels
             push!(levels, SSGLevel{Float64}(current_domain, level))
