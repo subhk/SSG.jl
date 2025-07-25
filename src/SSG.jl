@@ -12,10 +12,9 @@ module SSG
     using LinearAlgebra
     using Statistics
     using Printf
-    using KrylovKit
     using Random
     using Dates
-    using NetCDF
+    using JLD2
 
     using LoopVectorization  # For SIMD optimization
     using StaticArrays
@@ -49,7 +48,7 @@ module SSG
         d2dz2!,
         laplacian_h!,
         gradient_h!,
-        
+
 
 
 
