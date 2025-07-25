@@ -52,14 +52,9 @@ module SSG
 
 
     # transforms.jl
-    export 
-        ddx!,
-        ddy!,
-        ddz!,
-        d2dxdy!,
-        d2dz2!,
-        laplacian_h!,
-        gradient_h!
+    export rfft!, irfft!, dealias!, ddx!, ddy!, ddz!, d2dxdy!, d2dz2!,
+       laplacian_h!, laplacian_3d!, divergence_3d!, gradient_h!,
+       compute_vorticity_z!, parsevalsum, parsevalsum2
 
 
 
