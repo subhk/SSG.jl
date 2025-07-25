@@ -175,55 +175,55 @@ end
 # ============================================================================
 
 """
-    apply_spectral_filter!(fld::Fields, dom::Domain, filter::AbstractSpectralFilter; dt=nothing)
+    apply_spectral_filter!(fld::Fields, domain::Domain, filter::AbstractSpectralFilter; dt=nothing)
 
 Apply spectral filter to all prognostic fields in Fields structure.
 """
-function apply_spectral_filter!(fld::Fields{T}, dom::Domain, 
+function apply_spectral_filter!(fld::Fields{T}, domain::Domain, 
                                filter::AbstractSpectralFilter{T}; 
                                dt::Union{T, Nothing}=nothing) where T
     
     # Apply filter to buoyancy field
-    apply_filter_to_field!(fld.b, fld.bhat, dom, filter; dt=dt)
+    apply_filter_to_field!(fld.b, fld.bhat, domain, filter; dt=dt)
     
     # Apply filter to streamfunction if needed
     if hasfield(typeof(fld), :φ)
-        apply_filter_to_field!(fld.φ, fld.φhat, dom, filter; dt=dt)
+        apply_filter_to_field!(fld.φ, fld.φhat, domain, filter; dt=dt)
     end
     
     return nothing
 end
 
 """
-    apply_filter_to_field!(field_real, field_spec, dom::Domain, filter::AbstractSpectralFilter; dt=nothing)
+    apply_filter_to_field!(field_real, field_spec, domain::Domain, filter::AbstractSpectralFilter; dt=nothing)
 
 Apply spectral filter to a single field.
 """
 function apply_filter_to_field!(field_real::PencilArray{T, N}, 
                                field_spec::PencilArray{Complex{T}, N},
-                               dom::Domain, 
+                               domain::Domain, 
                                filter::AbstractSpectralFilter{T};
                                dt::Union{T, Nothing}=nothing) where {T, N}
     
     # Transform to spectral space
-    rfft!(dom, field_real, field_spec)
+    rfft!(domain, field_real, field_spec)
     
     # Apply filter in spectral space
-    apply_filter_spectral!(field_spec, dom, filter; dt=dt)
+    apply_filter_spectral!(field_spec, domain, filter; dt=dt)
     
     # Transform back to physical space
-    irfft!(dom, field_spec, field_real)
+    irfft!(domain, field_spec, field_real)
     
     return nothing
 end
 
 """
-    apply_filter_spectral!(field_spec, dom::Domain, filter::AbstractSpectralFilter; dt=nothing)
+    apply_filter_spectral!(field_spec, domain::Domain, filter::AbstractSpectralFilter; dt=nothing)
 
 Apply filter directly to field in spectral space (most efficient).
 """
 function apply_filter_spectral!(field_spec::PencilArray{Complex{T}, N}, 
-                               dom::Domain,
+                               domain::Domain,
                                filter::AbstractSpectralFilter{T};
                                dt::Union{T, Nothing}=nothing) where {T, N}
     
@@ -233,20 +233,20 @@ function apply_filter_spectral!(field_spec::PencilArray{Complex{T}, N},
     
     # Apply filter based on type
     if filter isa ExponentialFilter
-        apply_exponential_filter!(field_local, local_ranges, dom, filter)
+        apply_exponential_filter!(field_local, local_ranges, domain, filter)
 
     elseif filter isa HyperviscosityFilter
         @assert dt !== nothing "Hyperviscosity filter requires time step dt"
-        apply_hyperviscosity_filter!(field_local, local_ranges, dom, filter, dt)
+        apply_hyperviscosity_filter!(field_local, local_ranges, domain, filter, dt)
 
     elseif filter isa CutoffFilter
-        apply_cutoff_filter!(field_local, local_ranges, dom, filter)
+        apply_cutoff_filter!(field_local, local_ranges, domain, filter)
 
     elseif filter isa CesaroFilter
-        apply_cesaro_filter!(field_local, local_ranges, dom, filter)
+        apply_cesaro_filter!(field_local, local_ranges, domain, filter)
 
     elseif filter isa CustomFilter
-        apply_custom_filter!(field_local, local_ranges, dom, filter)
+        apply_custom_filter!(field_local, local_ranges, domain, filter)
 
     else
         error("Unknown filter type: $(typeof(filter))")
@@ -260,26 +260,26 @@ end
 # ============================================================================
 
 """
-    apply_exponential_filter!(field_local, local_ranges, dom, filter)
+    apply_exponential_filter!(field_local, local_ranges, domain, filter)
 
 Apply exponential filter with MPI domain decomposition.
 """
 function apply_exponential_filter!(field_local::AbstractArray{Complex{T}, N},
-                                  local_ranges, dom::Domain,
+                                  local_ranges, domain::Domain,
                                   filter::ExponentialFilter{T}) where {T, N}
     
     # Precompute normalization factors
-    dx = dom.Lx / dom.Nx
-    dy = dom.Ly / dom.Ny
+    dx = domain.Lx / domain.Nx
+    dy = domain.Ly / domain.Ny
     k_max_x = π / dx
     k_max_y = π / dy
     k_max = sqrt(k_max_x^2 + k_max_y^2)
     
     @inbounds for k in axes(field_local, 3)
         for (j_local, j_global) in enumerate(local_ranges[2])
-            ky = j_global <= length(dom.ky) ? dom.ky[j_global] : zero(T)
+            ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
             for (i_local, i_global) in enumerate(local_ranges[1])
-                kx = i_global <= length(dom.kx) ? dom.kx[i_global] : zero(T)
+                kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
                 
                 # Compute normalized wavenumber magnitude
                 k_mag = sqrt(kx^2 + ky^2)
@@ -294,20 +294,20 @@ function apply_exponential_filter!(field_local::AbstractArray{Complex{T}, N},
 end
 
 """
-    apply_hyperviscosity_filter!(field_local, local_ranges, dom, filter, dt)
+    apply_hyperviscosity_filter!(field_local, local_ranges, domain, filter, dt)
 
 Apply hyperviscosity filter: exp(-ν_p k^{2p} dt)
 """
 function apply_hyperviscosity_filter!(field_local::AbstractArray{Complex{T}, N},
-                                     local_ranges, dom::Domain,
+                                     local_ranges, domain::Domain,
                                      filter::HyperviscosityFilter{T},
                                      dt::T) where {T, N}
     
     @inbounds for k in axes(field_local, 3)
         for (j_local, j_global) in enumerate(local_ranges[2])
-            ky = j_global <= length(dom.ky) ? dom.ky[j_global] : zero(T)
+            ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
             for (i_local, i_global) in enumerate(local_ranges[1])
-                kx = i_global <= length(dom.kx) ? dom.kx[i_global] : zero(T)
+                kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
                 
                 # Compute wavenumber magnitude
                 k_mag = sqrt(kx^2 + ky^2)
@@ -321,26 +321,26 @@ function apply_hyperviscosity_filter!(field_local::AbstractArray{Complex{T}, N},
 end
 
 """
-    apply_cutoff_filter!(field_local, local_ranges, dom, filter)
+    apply_cutoff_filter!(field_local, local_ranges, domain, filter)
 
 Apply sharp cutoff filter (2/3 rule or custom cutoff).
 """
 function apply_cutoff_filter!(field_local::AbstractArray{Complex{T}, N},
-                             local_ranges, dom::Domain,
+                             local_ranges, domain::Domain,
                              filter::CutoffFilter{T}) where {T, N}
     
     # Precompute normalization
-    dx = dom.Lx / dom.Nx
-    dy = dom.Ly / dom.Ny
+    dx = domain.Lx / domain.Nx
+    dy = domain.Ly / domain.Ny
     k_max_x = π / dx
     k_max_y = π / dy
     k_max = sqrt(k_max_x^2 + k_max_y^2)
     
     @inbounds for k in axes(field_local, 3)
         for (j_local, j_global) in enumerate(local_ranges[2])
-            ky = j_global <= length(dom.ky) ? dom.ky[j_global] : zero(T)
+            ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
             for (i_local, i_global) in enumerate(local_ranges[1])
-                kx = i_global <= length(dom.kx) ? dom.kx[i_global] : zero(T)
+                kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
                 
                 # Compute normalized wavenumber
                 k_mag = sqrt(kx^2 + ky^2)
@@ -355,17 +355,17 @@ function apply_cutoff_filter!(field_local::AbstractArray{Complex{T}, N},
 end
 
 """
-    apply_cesaro_filter!(field_local, local_ranges, dom, filter)
+    apply_cesaro_filter!(field_local, local_ranges, domain, filter)
 
 Apply Cesàro filter with polynomial rolloff.
 """
 function apply_cesaro_filter!(field_local::AbstractArray{Complex{T}, N},
-                             local_ranges, dom::Domain,
+                             local_ranges, domain::Domain,
                              filter::CesaroFilter{T}) where {T, N}
     
     # Precompute normalization
-    dx = dom.Lx / dom.Nx
-    dy = dom.Ly / dom.Ny
+    dx = domain.Lx / domain.Nx
+    dy = domain.Ly / domain.Ny
 
     k_max_x = π / dx
     k_max_y = π / dy
@@ -373,9 +373,9 @@ function apply_cesaro_filter!(field_local::AbstractArray{Complex{T}, N},
     
     @inbounds for k in axes(field_local, 3)
         for (j_local, j_global) in enumerate(local_ranges[2])
-            ky = j_global <= length(dom.ky) ? dom.ky[j_global] : zero(T)
+            ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
             for (i_local, i_global) in enumerate(local_ranges[1])
-                kx = i_global <= length(dom.kx) ? dom.kx[i_global] : zero(T)
+                kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
                 
                 # Compute normalized wavenumber
                 k_mag = sqrt(kx^2 + ky^2)
@@ -390,17 +390,17 @@ function apply_cesaro_filter!(field_local::AbstractArray{Complex{T}, N},
 end
 
 """
-    apply_custom_filter!(field_local, local_ranges, dom, filter)
+    apply_custom_filter!(field_local, local_ranges, domain, filter)
 
 Apply user-defined custom filter.
 """
 function apply_custom_filter!(field_local::AbstractArray{Complex{T}, N},
-                             local_ranges, dom::Domain,
+                             local_ranges, domain::Domain,
                              filter::CustomFilter{T}) where {T, N}
     
     # Precompute normalization if needed
-    dx = dom.Lx / dom.Nx
-    dy = dom.Ly / dom.Ny
+    dx = domain.Lx / domain.Nx
+    dy = domain.Ly / domain.Ny
 
     k_max_x = π / dx
     k_max_y = π / dy
@@ -408,9 +408,9 @@ function apply_custom_filter!(field_local::AbstractArray{Complex{T}, N},
     
     @inbounds for k in axes(field_local, 3)
         for (j_local, j_global) in enumerate(local_ranges[2])
-            ky = j_global <= length(dom.ky) ? dom.ky[j_global] : zero(T)
+            ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
             for (i_local, i_global) in enumerate(local_ranges[1])
-                kx = i_global <= length(dom.kx) ? dom.kx[i_global] : zero(T)
+                kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
                 
                 # Compute normalized wavenumber
                 k_mag = sqrt(kx^2 + ky^2)
@@ -429,32 +429,32 @@ end
 # # ============================================================================
 
 # """
-#     apply_spectral_filter!(fld::Fields, dom::Domain, filter_strength::Real)
+#     apply_spectral_filter!(fld::Fields, domain::Domain, filter_strength::Real)
 
 # Legacy interface matching timestep.jl - applies exponential filter.
 # """
-# function apply_spectral_filter!(fld::Fields{T}, dom::Domain, 
+# function apply_spectral_filter!(fld::Fields{T}, domain::Domain, 
 #                                filter_strength::Real) where T
     
 #     # Create exponential filter with legacy parameters
 #     filter = ExponentialFilter{T}(T(filter_strength), 4, T(0.65))
     
 #     # Apply to buoyancy field
-#     apply_spectral_filter!(fld, dom, filter)
+#     apply_spectral_filter!(fld, domain, filter)
     
 #     return nothing
 # end
 
 # """
-#     apply_exponential_filter!(bhat, dom::Domain, strength::Real)
+#     apply_exponential_filter!(bhat, domain::Domain, strength::Real)
 
 # Direct exponential filter application (from timestep.jl).
 # """
 # function apply_exponential_filter!(bhat::PencilArray{Complex{T}, N}, 
-#                                   dom::Domain, strength::T) where {T, N}
+#                                   domain::Domain, strength::T) where {T, N}
     
 #     filter = ExponentialFilter{T}(strength, 4, T(0.65))
-#     apply_filter_spectral!(bhat, dom, filter)
+#     apply_filter_spectral!(bhat, domain, filter)
     
 #     return nothing
 # end
@@ -483,41 +483,41 @@ function create_filter(filter_type::Symbol, T::Type=Float64; kwargs...)
 end
 
 """
-    filter_energy_removal(field_before, field_after, dom::Domain)
+    filter_energy_removal(field_before, field_after, domain::Domain)
 
 Compute energy removed by filtering operation.
 """
 function filter_energy_removal(field_before::PencilArray{T, N}, 
                               field_after::PencilArray{T, N}, 
-                              dom::Domain) where {T, N}
+                              domain::Domain) where {T, N}
     
     # Create temporary spectral arrays
     spec_before = similar(field_before, Complex{T})
     spec_after = similar(field_after, Complex{T})
     
     # Transform to spectral space
-    rfft!(dom, field_before, spec_before)
-    rfft!(dom, field_after, spec_after)
+    rfft!(domain, field_before, spec_before)
+    rfft!(domain, field_after, spec_after)
     
     # Compute energy using Parseval's theorem
-    energy_before = 0.5 * parsevalsum2(spec_before, dom)
-    energy_after = 0.5 * parsevalsum2(spec_after, dom)
+    energy_before = 0.5 * parsevalsum2(spec_before, domain)
+    energy_after = 0.5 * parsevalsum2(spec_after, domain)
     
     return energy_before - energy_after
 end
 
 """
-    plot_filter_response(filter::AbstractSpectralFilter, dom::Domain)
+    plot_filter_response(filter::AbstractSpectralFilter, domain::Domain)
 
 Generate filter response function for visualization.
 """
 function plot_filter_response(filter::AbstractSpectralFilter{T}, 
-                             dom::Domain; npoints::Int=1000) where T
+                             domain::Domain; npoints::Int=1000) where T
     
     # Create wavenumber range
-    dx = dom.Lx / dom.Nx
-    dy = dom.Ly / dom.Ny
-    
+    dx = domain.Lx / domain.Nx
+    dy = domain.Ly / domain.Ny
+
     k_max = π / min(dx, dy)
     k_range = range(zero(T), k_max, length=npoints)
     
@@ -566,29 +566,29 @@ end
 # ============================================================================
 
 """
-    dealiasing_filter(dom::Domain)
+    dealiasing_filter(domain::Domain)
 
 Create standard 2/3 dealiasing filter.
 """
-function dealiasing_filter(dom::Domain, T::Type=Float64)
+function dealiasing_filter(domain::Domain, T::Type=Float64)
     return CutoffFilter{T}(T(2/3))
 end
 
 """
-    stabilizing_filter(dom::Domain; strength=0.1)
+    stabilizing_filter(domain::Domain; strength=0.1)
 
 Create moderate exponential filter for numerical stability.
 """
-function stabilizing_filter(dom::Domain, T::Type=Float64; strength::Real=0.1)
+function stabilizing_filter(domain::Domain, T::Type=Float64; strength::Real=0.1)
     return ExponentialFilter{T}(T(strength), 4, T(0.8))
 end
 
 """
-    subgrid_filter(dom::Domain; coefficient=1e-4, order=2)
+    subgrid_filter(domain::Domain; coefficient=1e-4, order=2)
 
 Create hyperviscosity filter for subgrid-scale modeling.
 """
-function subgrid_filter(dom::Domain, T::Type=Float64; coefficient::Real=1e-4, order::Int=2)
+function subgrid_filter(domain::Domain, T::Type=Float64; coefficient::Real=1e-4, order::Int=2)
     return HyperviscosityFilter{T}(T(coefficient), order)
 end
 
