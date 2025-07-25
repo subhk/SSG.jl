@@ -45,12 +45,20 @@
 """
 Setup FFT plans with proper threading and device support
 """
-function setup_fft_plans(dev, T, nx, ny, nthreads; effort=FFTW.MEASURE)
+# function setup_fft_plans(dev, T, nx, ny, nthreads; effort=FFTW.MEASURE)
+#     # FFT plans
+#     FFTW.set_num_threads(nthreads)
+#     fftplan = plan_flows_fft(device_array(dev){Complex{T}, 2}(undef, nx, ny), flags=effort)
+#     rfftplan = plan_flows_rfft(device_array(dev){T, 2}(undef, nx, ny), flags=effort)
+    
+#     return fftplan, rfftplan
+# end
+
+function setup_fft_plans(T, nx, ny, nthreads; effort=FFTW.MEASURE)
     # FFT plans
     FFTW.set_num_threads(nthreads)
-    fftplan = plan_flows_fft(device_array(dev){Complex{T}, 2}(undef, nx, ny), flags=effort)
-    rfftplan = plan_flows_rfft(device_array(dev){T, 2}(undef, nx, ny), flags=effort)
-    
+    fftplan = plan_flows_fft(Array{Complex{T}, 2}(undef, nx, ny), flags=effort)
+    rfftplan = plan_flows_rfft(Array{T, 2}(undef, nx, ny), flags=effort)
     return fftplan, rfftplan
 end
 
