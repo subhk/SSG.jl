@@ -40,9 +40,11 @@ module SSG
     # coarse_domain.jl
     export 
 
+
     # fields.jl
-    allocate_fields,
-    zero_fields!,
+    export 
+        allocate_fields,
+        zero_fields!
 
 
     # output.jl
@@ -57,15 +59,18 @@ module SSG
         d2dxdy!,
         d2dz2!,
         laplacian_h!,
-        gradient_h!,
+        gradient_h!
 
 
 
     # mapping.jl
     export 
         create_geostrophic_mapping,
-        map_geostrophic,
+        map_geostrophic
 
+    # omega_eq.jl
+    export 
+        
 
 
     # Include all submodules
@@ -79,10 +84,7 @@ module SSG
     include("filter.jl")
     include("output.jl")
     include("coarse_domain.jl")
-
-
-
-
+    include("omega_eq.jl")
 
 
 end # module SSG
