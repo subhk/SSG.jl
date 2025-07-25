@@ -637,7 +637,7 @@ end
 # Example: Set up time-based output every 0.5 simulation time units
 # """
 # function demo_time_based_output()
-#     println("⏰ Time-Based Output Demo")
+#     println(" Time-Based Output Demo")
 #     println("=" ^ 30)
     
 #     # Example domain setup
