@@ -37,25 +37,30 @@ module SSG
             save_snapshot, 
             create_output_file
 
-    # coarse_domain.jl
+    # coarse_domain.jl export
     export 
 
 
-    # fields.jl
+    # fields.jl export
     export 
         allocate_fields,
         zero_fields!
 
 
-    # output.jl
-    export 
-
-
-    # transforms.jl
+    # transforms.jl export
     export rfft!, irfft!, dealias!, ddx!, ddy!, ddz!, d2dxdy!, d2dz2!,
        laplacian_h!, laplacian_3d!, divergence_3d!, gradient_h!,
        compute_vorticity_z!, parsevalsum, parsevalsum2
 
+    # utils.jl exports
+    export jacobian, jacobianh, advection_term!, compute_energy, compute_enstrophy,
+       compute_total_buoyancy, compute_buoyancy_variance, compute_cfl_number,
+       norm_field, inner_product, create_real_field, create_spectral_field
+
+    # timestep.jl exports
+    export TimeScheme, TimeParams, TimeState, SemiGeostrophicProblem,
+       timestep!, integrate!, step_until!, stepforward!, run!,
+       AB2_LowStorage, RK3, RK3_LowStorage
 
 
     # mapping.jl
