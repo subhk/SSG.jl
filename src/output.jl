@@ -283,9 +283,9 @@ function save_simulation_state_full(filename::String, prob::SemiGeostrophicProbl
             file["fields/spectral/streamfunction_real"] = real(φhat_global)
             file["fields/spectral/streamfunction_imag"] = imag(φhat_global)
             
-            # Also store as complex for direct loading
-            file["fields/spectral/buoyancy_complex"] = bhat_global
-            file["fields/spectral/streamfunction_complex"] = φhat_global
+            # # Also store as complex for direct loading
+            # file["fields/spectral/buoyancy_complex"] = bhat_global
+            # file["fields/spectral/streamfunction_complex"] = φhat_global
         end
         
         # Time integration parameters
