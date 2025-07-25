@@ -366,6 +366,7 @@ function apply_cesaro_filter!(field_local::AbstractArray{Complex{T}, N},
     # Precompute normalization
     dx = dom.Lx / dom.Nx
     dy = dom.Ly / dom.Ny
+
     k_max_x = π / dx
     k_max_y = π / dy
     k_max = sqrt(k_max_x^2 + k_max_y^2)
@@ -400,6 +401,7 @@ function apply_custom_filter!(field_local::AbstractArray{Complex{T}, N},
     # Precompute normalization if needed
     dx = dom.Lx / dom.Nx
     dy = dom.Ly / dom.Ny
+
     k_max_x = π / dx
     k_max_y = π / dy
     k_max = sqrt(k_max_x^2 + k_max_y^2)
@@ -515,6 +517,7 @@ function plot_filter_response(filter::AbstractSpectralFilter{T},
     # Create wavenumber range
     dx = dom.Lx / dom.Nx
     dy = dom.Ly / dom.Ny
+    
     k_max = π / min(dx, dy)
     k_range = range(zero(T), k_max, length=npoints)
     
