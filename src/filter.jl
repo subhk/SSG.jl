@@ -234,15 +234,20 @@ function apply_filter_spectral!(field_spec::PencilArray{Complex{T}, N},
     # Apply filter based on type
     if filter isa ExponentialFilter
         apply_exponential_filter!(field_local, local_ranges, dom, filter)
+
     elseif filter isa HyperviscosityFilter
         @assert dt !== nothing "Hyperviscosity filter requires time step dt"
         apply_hyperviscosity_filter!(field_local, local_ranges, dom, filter, dt)
+
     elseif filter isa CutoffFilter
         apply_cutoff_filter!(field_local, local_ranges, dom, filter)
+
     elseif filter isa CesaroFilter
         apply_cesaro_filter!(field_local, local_ranges, dom, filter)
+
     elseif filter isa CustomFilter
         apply_custom_filter!(field_local, local_ranges, dom, filter)
+
     else
         error("Unknown filter type: $(typeof(filter))")
     end
