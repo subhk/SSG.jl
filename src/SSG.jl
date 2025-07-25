@@ -40,6 +40,14 @@ module SSG
     export 
 
 
+    # transforms.jl
+    export 
+        ddx!,
+        ddy!,
+        ddz!,
+
+
+
 
     # Include all submodules
     include("utils.jl")

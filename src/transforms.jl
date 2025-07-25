@@ -543,7 +543,7 @@ function ddz_o2!(dom::Domain, A, out, bc)
     end
     
     # Boundary conditions
-    apply_vertical_bc_ddz!(dom, A, out, bc, 1)
+    # apply_vertical_bc_ddz!(dom, A, out, bc, 1)
 end
 
 """
@@ -570,7 +570,7 @@ function ddz_o4!(dom::Domain, A, out, bc)
     ddz_o2_single!(dom, A, out, Nz-1)
     
     # Boundary conditions
-    apply_vertical_bc_ddz!(dom, A, out, bc, 2)
+    # apply_vertical_bc_ddz!(dom, A, out, bc, 2)
 end
 
 """
@@ -600,7 +600,7 @@ function ddz_o6!(dom::Domain, A, out, bc)
     ddz_o2_single!(dom, A, out, Nz-1)
     
     # Boundary conditions
-    apply_vertical_bc_ddz!(dom, A, out, bc, 3)
+    # apply_vertical_bc_ddz!(dom, A, out, bc, 3)
 end
 
 """
@@ -724,29 +724,29 @@ function d2dz2!(dom::Domain, A, out; order=2, bc=:default)
         error("Higher order second derivatives not implemented yet")
     end
     
-    # Boundary conditions
-    if bc == :periodic
-        # Handle periodic boundaries
-        k = 1
-        dzm = dz[Nz]
-        dzp = dz[1]
-        α = 2 / (dzm * (dzm + dzp))
-        β = -2 / (dzm * dzp)
-        γ = 2 / (dzp * (dzm + dzp))
-        @views out_local[:, :, 1] = α .* A_local[:, :, Nz] + β .* A_local[:, :, 1] + γ .* A_local[:, :, 2]
+    # # Boundary conditions
+    # if bc == :periodic
+    #     # Handle periodic boundaries
+    #     k = 1
+    #     dzm = dz[Nz]
+    #     dzp = dz[1]
+    #     α = 2 / (dzm * (dzm + dzp))
+    #     β = -2 / (dzm * dzp)
+    #     γ = 2 / (dzp * (dzm + dzp))
+    #     @views out_local[:, :, 1] = α .* A_local[:, :, Nz] + β .* A_local[:, :, 1] + γ .* A_local[:, :, 2]
         
-        k = Nz
-        dzm = dz[Nz-1]
-        dzp = dz[1]  # wrap around
-        α = 2 / (dzm * (dzm + dzp))
-        β = -2 / (dzm * dzp)
-        γ = 2 / (dzp * (dzm + dzp))
-        @views out_local[:, :, Nz] = α .* A_local[:, :, Nz-1] + β .* A_local[:, :, Nz] + γ .* A_local[:, :, 1]
-    else
-        # Dirichlet or other BC: zero second derivative at boundaries
-        @views out_local[:, :, 1] .= 0
-        @views out_local[:, :, Nz] .= 0
-    end
+    #     k = Nz
+    #     dzm = dz[Nz-1]
+    #     dzp = dz[1]  # wrap around
+    #     α = 2 / (dzm * (dzm + dzp))
+    #     β = -2 / (dzm * dzp)
+    #     γ = 2 / (dzp * (dzm + dzp))
+    #     @views out_local[:, :, Nz] = α .* A_local[:, :, Nz-1] + β .* A_local[:, :, Nz] + γ .* A_local[:, :, 1]
+    # else
+    #     # Dirichlet or other BC: zero second derivative at boundaries
+    #     @views out_local[:, :, 1] .= 0
+    #     @views out_local[:, :, Nz] .= 0
+    # end
     
     return out
 end
