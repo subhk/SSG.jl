@@ -713,15 +713,12 @@ function zero_field!(φ::PencilArray{T, 3}) where T
 end
 
 
-function create_coarse_domain(fine_domain, factor::Int)
-    # Replace with your actual domain coarsening function
-    @debug "create_coarse_domain placeholder called - replace with transforms.jl function"
-    return fine_domain  # Placeholder return
-end
+# function create_coarse_domain(fine_domain, factor::Int)
+#     # Replace with your actual domain coarsening function
+#     @debug "create_coarse_domain placeholder called - replace with transforms.jl function"
+#     return fine_domain  # Placeholder return
+# end
 
-# ============================================================================
-# SSG EQUATION DEMO AND TESTING
-# ============================================================================
 
 """
 Demo function for SSG equation solver
@@ -750,10 +747,10 @@ function demo_ssg_solver()
     ε = 0.1  # External parameter
     
     if rank == 0
-        println("📊 Problem size: $(nx_global)×$(ny_global)×$(nz_global)")
-        println("🌐 Domain: [0,$(Lx)] × [0,$(Ly)] × [-1,0]")
-        println("🎯 ε parameter: $(ε)")
-        println("🎯 Target tolerance: 1e-8")
+        println("Problem size: $(nx_global)×$(ny_global)×$(nz_global)")
+        println("Domain: [0,$(Lx)] × [0,$(Ly)] × [-1,0]")
+        println(" ε parameter: $(ε)")
+        println(" Target tolerance: 1e-8")
         println("")
     end
     
@@ -803,7 +800,7 @@ function demo_ssg_solver()
     end
     
     if rank == 0
-        println("🔄 Testing: SSG equation solver with spectral methods")
+        println(" Testing: SSG equation solver with spectral methods")
     end
     
     start_time = time()
@@ -815,26 +812,26 @@ function demo_ssg_solver()
     
     if rank == 0
         println("   ✓ Converged: $(diag.converged)")
-        println("   📈 Iterations: $(diag.iterations)")
-        println("   📉 Final residual: $(diag.final_residual)")
-        println("   🎯 ε parameter: $(diag.ε_parameter)")
-        println("   ⏱️  Total time: $(solve_time:.3f)s")
+        println("    Iterations: $(diag.iterations)")
+        println("    Final residual: $(diag.final_residual)")
+        println("    ε parameter: $(diag.ε_parameter)")
+        println("    Total time: $(solve_time:.3f)s")
         println("")
         
         if diag.converged
-            println("🏆 SSG equation solver working correctly!")
-            println("   ✅ 3D Laplacian computed with spectral accuracy")
-            println("   ✅ Nonlinear operator DΦ implemented")
-            println("   ✅ Boundary conditions (A4) applied")
-            println("   ✅ Compatible with transforms.jl framework")
+            println(" SSG equation solver working correctly!")
+            println("    3D Laplacian computed with spectral accuracy")
+            println("    Nonlinear operator DΦ implemented")
+            println("    Boundary conditions (A4) applied")
+            println("    Compatible with transforms.jl framework")
         else
-            println("⚠️  Solver did not converge - may need parameter tuning")
+            println("  Solver did not converge - may need parameter tuning")
         end
         
         # Convergence analysis
         if length(diag.convergence_history) > 1
             conv_rate = diag.convergence_history[end] / diag.convergence_history[1]
-            println("   📊 Overall convergence rate: $(conv_rate:.2e)")
+            println("    Overall convergence rate: $(conv_rate:.2e)")
         end
     end
     
@@ -935,14 +932,14 @@ demo_ssg_solver()
 ```
 
 ## FEATURES IMPLEMENTED:
-✅ Equation (A1): ∇²Φ = εDΦ
-✅ Boundary conditions (A4): ∂Φ/∂Z = b̃s at Z=0, ∂Φ/∂Z = 0 at Z=-1  
-✅ 3D Laplacian with spectral accuracy in X,Y directions
-✅ Nonlinear operator DΦ = ∂²Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²
-✅ Multigrid acceleration for fast convergence
-✅ Spectral and SOR smoothers
-✅ MPI parallel support via PencilArrays
-✅ Compatible with transforms.jl framework
+ Equation: ∇²Φ = εDΦ
+ Boundary conditions: ∂Φ/∂Z = b̃s at Z=0, ∂Φ/∂Z = 0 at Z=-H  
+ 3D Laplacian with spectral accuracy in X,Y directions
+ Nonlinear operator DΦ = ∂²Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²
+ Multigrid acceleration for fast convergence
+ Spectral and SOR smoothers
+ MPI parallel support via PencilArrays
+ Compatible with transforms.jl framework
 
 ## TECHNICAL NOTES:
 - Spectral derivatives in X,Y for maximum accuracy
@@ -952,7 +949,3 @@ demo_ssg_solver()
 - Multigrid coarsening preserves boundary structure
 """
 
-# Run demo if this file is executed directly
-if abspath(PROGRAM_FILE) == @__FILE__
-    demo_ssg_solver()
-end
