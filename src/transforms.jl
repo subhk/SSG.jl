@@ -458,33 +458,33 @@ function compute_buoyancy_variance(b, dom::Domain)
     return variance
 end
 
-"""
-    compute_cfl_number(u, v, dom::Domain, dt::Real) -> Float64
+# """
+#     compute_cfl_number(u, v, dom::Domain, dt::Real) -> Float64
 
-Compute the maximum CFL number for the current velocity field.
-"""
-function compute_cfl_number(u, v, dom::Domain, dt::Real)
-    u_local = u.data
-    v_local = v.data
+# Compute the maximum CFL number for the current velocity field.
+# """
+# function compute_cfl_number(u, v, dom::Domain, dt::Real)
+#     u_local = u.data
+#     v_local = v.data
     
-    # Local maximum velocity
-    u_max_local = maximum(abs.(u_local))
-    v_max_local = maximum(abs.(v_local))
-    vel_max_local = max(u_max_local, v_max_local)
+#     # Local maximum velocity
+#     u_max_local = maximum(abs.(u_local))
+#     v_max_local = maximum(abs.(v_local))
+#     vel_max_local = max(u_max_local, v_max_local)
     
-    # Global maximum across all processes
-    vel_max_global = MPI.Allreduce(vel_max_local, MPI.MAX, u.pencil.comm)
+#     # Global maximum across all processes
+#     vel_max_global = MPI.Allreduce(vel_max_local, MPI.MAX, u.pencil.comm)
     
-    # Grid spacing
-    dx = dom.Lx / dom.Nx
-    dy = dom.Ly / dom.Ny
-    h_min = min(dx, dy)
+#     # Grid spacing
+#     dx = dom.Lx / dom.Nx
+#     dy = dom.Ly / dom.Ny
+#     h_min = min(dx, dy)
     
-    # CFL number
-    cfl = vel_max_global * dt / h_min
+#     # CFL number
+#     cfl = vel_max_global * dt / h_min
     
-    return cfl
-end
+#     return cfl
+# end
 
 # =============================================================================
 # VERTICAL FINITE DIFFERENCE DERIVATIVES
