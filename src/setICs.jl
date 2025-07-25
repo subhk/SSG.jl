@@ -210,37 +210,37 @@ function compute_kinetic_energy(fields::Fields{T}, dom::Domain) where T
     return ke_u + ke_v
 end
 
-# Alternative version with more explicit type annotations and error checking
-function set_b!(prob::Problem, sol_b::AbstractArray{T,N}, grid::Grid) where {T<:Number, N}
-    # Input validation
-    @assert size(sol_b) == size(prob.sol_b) "Buoyancy field size mismatch"
+# # Alternative version with more explicit type annotations and error checking
+# function set_b!(prob::Problem, sol_b::AbstractArray{T,N}, grid::Grid) where {T<:Number, N}
+#     # Input validation
+#     @assert size(sol_b) == size(prob.sol_b) "Buoyancy field size mismatch"
     
-    # Zero mean constraint for spectral methods
-    if ndims(sol_b) >= 2
-        sol_b[1,1] = zero(T)
-    end
+#     # Zero mean constraint for spectral methods
+#     if ndims(sol_b) >= 2
+#         sol_b[1,1] = zero(T)
+#     end
     
-    # Update problem state
-    prob.sol_b .= sol_b
-    dealias!(prob.sol_b, grid)
+#     # Update problem state
+#     prob.sol_b .= sol_b
+#     dealias!(prob.sol_b, grid)
     
-    # Streamfunction calculation
-    calcΦ!(prob.sol_Φ3d, prob.sol_b, prob.vars, grid)
+#     # Streamfunction calculation
+#     calcΦ!(prob.sol_Φ3d, prob.sol_b, prob.vars, grid)
     
-    # Extract surface streamfunction
-    if ndims(prob.sol_Φ3d) == 3
-        prob.sol_Φ .= view(prob.sol_Φ3d, :, :, grid.nz)
-    end
+#     # Extract surface streamfunction
+#     if ndims(prob.sol_Φ3d) == 3
+#         prob.sol_Φ .= view(prob.sol_Φ3d, :, :, grid.nz)
+#     end
     
-    # Update derived quantities
-    updatevars!(prob)
+#     # Update derived quantities
+#     updatevars!(prob)
     
-    # Energy diagnostics with proper normalization
-    domain_area = grid.Lx * grid.Ly  # or appropriate grid area calculation
-    ke_total = 0.5 * (parsevalsum2(prob.vars.uh, grid) + 
-                      parsevalsum2(prob.vars.vh, grid)) / domain_area
+#     # Energy diagnostics with proper normalization
+#     domain_area = grid.Lx * grid.Ly  # or appropriate grid area calculation
+#     ke_total = 0.5 * (parsevalsum2(prob.vars.uh, grid) + 
+#                       parsevalsum2(prob.vars.vh, grid)) / domain_area
     
-    @info "Initial surface kinetic energy density: $(ke_total)"
+#     @info "Initial surface kinetic energy density: $(ke_total)"
     
-    return ke_total  # Return for potential use in diagnostics
-end
+#     return ke_total  # Return for potential use in diagnostics
+# end
