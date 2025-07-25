@@ -676,7 +676,7 @@ end
 Example: Mixed time and step-based frequencies
 """
 function demo_mixed_frequencies()
-    println("🔄 Mixed Frequency Output Demo")
+    println(" Mixed Frequency Output Demo")
     println("=" ^ 35)
     
     # Example: Fast diagnostics, slower full states
