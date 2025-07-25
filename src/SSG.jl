@@ -26,6 +26,8 @@ module SSG
 
 
     # Export main functions
+
+    # domain.jl
     export Domain, 
             Fields, 
             Params,
@@ -34,6 +36,11 @@ module SSG
             run_ssg
             save_snapshot, 
             create_output_file
+
+    # fields.jl
+    allocate_fields,
+    zero_fields!,
+    
 
     # output.jl
     export 
