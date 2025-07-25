@@ -694,35 +694,35 @@ function create_grid(nx, ny, nz, Lx, Ly, Lz, dev, T;
     return grid
 end
 
-"""
-Example driver function showing proper usage with grid setup
-"""
-function demo_vertical_velocity(; 
-                               nx=512, ny=512, nz=64,
-                               Lx=2π, Ly=2π, Lz=1.0,
-                               data_file="ep_0.2/SurfaceSG_nx_512.jld2",
-                               snapshot=2401,
-                               epsilon=0.2,
-                               dev=CPU(),
-                               precision=Float64)
+# """
+# Example driver function showing proper usage with grid setup
+# """
+# function demo_vertical_velocity(; 
+#                                nx=512, ny=512, nz=64,
+#                                Lx=2π, Ly=2π, Lz=1.0,
+#                                data_file="ep_0.2/SurfaceSG_nx_512.jld2",
+#                                snapshot=2401,
+#                                epsilon=0.2,
+#                                dev=CPU(),
+#                                precision=Float64)
     
-    println("Demo: Computing vertical velocity in geostrophic coordinates")
-    println("ε = $epsilon, snapshot = $snapshot")
+#     println("Demo: Computing vertical velocity in geostrophic coordinates")
+#     println("ε = $epsilon, snapshot = $snapshot")
     
-    # Setup optimized grid with proper FFT plans
-    grid = create_grid(nx, ny, nz, Lx, Ly, Lz, dev, precision)
+#     # Setup optimized grid with proper FFT plans
+#     grid = create_grid(nx, ny, nz, Lx, Ly, Lz, dev, precision)
     
-    # Setup variables (this would be your variable initialization)
-    vars = (u=zeros(precision, nx, ny), v=zeros(precision, nx, ny))
+#     # Setup variables (this would be your variable initialization)
+#     vars = (u=zeros(precision, nx, ny), v=zeros(precision, nx, ny))
     
-    # Run computation
-    @time "Total computation" w = compute_vertical_velocity(vars, grid; 
-                                                           data_file=data_file,
-                                                           snapshot=snapshot)
+#     # Run computation
+#     @time "Total computation" w = compute_vertical_velocity(vars, grid; 
+#                                                            data_file=data_file,
+#                                                            snapshot=snapshot)
     
-    println("Computation complete. Results ready for analysis.")
-    println("Vertical velocity field size: $(size(w))")
-    println("Min/Max w: $(extrema(w))")
+#     println("Computation complete. Results ready for analysis.")
+#     println("Vertical velocity field size: $(size(w))")
+#     println("Min/Max w: $(extrema(w))")
     
-    return w, grid
-end
+#     return w, grid
+# end
