@@ -953,8 +953,10 @@ end
 """
 Solve Monge-Ampère equation for fields structure (compatibility interface)
 """
-function solve_monge_ampere_fields!(fields::Fields{T}, domain::Domain; 
-                                   tol::T=T(1e-10), verbose::Bool=false,
+function solve_monge_ampere_fields!(fields::Fields{T}, 
+                                   domain::Domain; 
+                                   tol::T=T(1e-10), 
+                                   verbose::Bool=false,
                                    method::Symbol=:poisson) where T
     
     if method == :poisson
