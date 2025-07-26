@@ -98,6 +98,9 @@ mutable struct SSGLevel{T<:AbstractFloat}
     end
 end
 
+# =============================================================================
+# SSG MULTIGRID SOLVER STRUCTURE
+# =============================================================================
 
 """
 SSG multigrid solver structure
@@ -277,6 +280,9 @@ function apply_ssg_boundary_conditions!(level::SSGLevel{T}) where T
     return nothing
 end
 
+# =============================================================================
+# SSG SMOOTHERS
+# =============================================================================
 
 """
 Spectral smoother for SSG equation (using spectral accuracy in X,Y)
@@ -338,7 +344,8 @@ function ssg_spectral_smoother!(level::SSGLevel{T},
 end
 
 """
-SOR smoother for SSG equation (simplified linearization)
+SOR smoother for SSG equation with non-uniform z-grid support
+Handles variable vertical spacing using the domain.dz array
 """
 function ssg_sor_smoother!(level::SSGLevel{T}, iters::Int, ω::T, ε::T) where T
     Φ_local = level.Φ.data
@@ -346,16 +353,15 @@ function ssg_sor_smoother!(level::SSGLevel{T}, iters::Int, ω::T, ε::T) where T
     domain = level.domain
     dx = domain.Lx / domain.Nx
     dy = domain.Ly / domain.Ny
-    dz = domain.Lz / domain.Nz
+    dz = domain.dz  # Non-uniform vertical spacing array
 
     inv_dx2 = 1/(dx^2) 
     inv_dy2 = 1/(dy^2)
-    inv_dz2 = 1/(dz^2)
     
     nx_local, ny_local, nz_local = size(Φ_local)
     
     for iter = 1:iters
-        # Red-black Gauss-Seidel with simplified linearization
+        # Red-black Gauss-Seidel with non-uniform z-grid
         for color = 0:1
             @inbounds for k = 2:nz_local-1  # Skip boundary points in Z
                 for j = 2:ny_local-1
@@ -367,23 +373,41 @@ function ssg_sor_smoother!(level::SSGLevel{T}, iters::Int, ω::T, ε::T) where T
                         # Current value
                         Φ_c = Φ_local[i,j,k]
                         
-                        # Neighbors for Laplacian
+                        # Horizontal neighbors (uniform spacing)
                         Φ_e = Φ_local[i+1,j,k]
                         Φ_w = Φ_local[i-1,j,k]
                         Φ_n = Φ_local[i,j+1,k]
                         Φ_s = Φ_local[i,j-1,k]
-                        Φ_u = Φ_local[i,j,k+1]
-                        Φ_d = Φ_local[i,j,k-1]
                         
-                        # Diagonal coefficient (simplified)
-                        diag_coeff = -2 * (inv_dx2 + inv_dy2 + inv_dz2)
+                        # Vertical neighbors with non-uniform spacing
+                        Φ_u = Φ_local[i,j,k+1]  # Upper level
+                        Φ_d = Φ_local[i,j,k-1]  # Lower level
                         
-                        # Off-diagonal sum
-                        off_diag_sum = (Φ_e + Φ_w) * inv_dx2 + (Φ_n + Φ_s) * inv_dy2 + (Φ_u + Φ_d) * inv_dz2
+                        # Non-uniform vertical spacing
+                        h_below = dz[k-1]     # Spacing to level below
+                        h_above = dz[k]       # Spacing to level above
+                        h_total = h_below + h_above
                         
-                        # SOR update (linearized version)
-                        Φ_new = -off_diag_sum / diag_coeff
-                        Φ_local[i,j,k] = Φ_c + ω * (Φ_new - Φ_c)
+                        # Finite difference coefficients for non-uniform grid
+                        # Second derivative: d²Φ/dz² ≈ α*Φ_{k-1} + β*Φ_k + γ*Φ_{k+1}
+                        α = 2.0 / (h_below * h_total)      # Coefficient for Φ_{k-1}
+                        β = -2.0 / (h_below * h_above)     # Coefficient for Φ_k  
+                        γ = 2.0 / (h_above * h_total)      # Coefficient for Φ_{k+1}
+                        
+                        # Diagonal coefficient for linearized SSG operator
+                        # ∇²Φ ≈ (∂²/∂x² + ∂²/∂y² + ∂²/∂z²)Φ = source
+                        diag_coeff = -2 * inv_dx2 - 2 * inv_dy2 + β
+                        
+                        # Off-diagonal contributions
+                        off_diag_sum = (Φ_e + Φ_w) * inv_dx2 + 
+                                      (Φ_n + Φ_s) * inv_dy2 + 
+                                      α * Φ_d + γ * Φ_u
+                        
+                        # SOR update (simplified linearization of SSG equation)
+                        if abs(diag_coeff) > 1e-14
+                            Φ_new = -off_diag_sum / diag_coeff
+                            Φ_local[i,j,k] = Φ_c + ω * (Φ_new - Φ_c)
+                        end
                     end
                 end
             end
@@ -391,6 +415,151 @@ function ssg_sor_smoother!(level::SSGLevel{T}, iters::Int, ω::T, ε::T) where T
         
         # Apply boundary conditions after each iteration
         apply_ssg_boundary_conditions!(level)
+    end
+    
+    return nothing
+end
+
+"""
+Enhanced SOR smoother with metric terms for highly stretched grids
+For very non-uniform grids, includes additional metric corrections
+"""
+function ssg_sor_smoother_enhanced!(level::SSGLevel{T}, iters::Int, ω::T, ε::T;
+                                   use_metrics::Bool=true) where T
+    Φ_local = level.Φ.data
+    
+    domain = level.domain
+    dx = domain.Lx / domain.Nx
+    dy = domain.Ly / domain.Ny
+    dz = domain.dz
+
+    inv_dx2 = 1/(dx^2) 
+    inv_dy2 = 1/(dy^2)
+    
+    nx_local, ny_local, nz_local = size(Φ_local)
+    
+    # Precompute grid metrics for efficiency
+    α_coeff = zeros(T, nz_local)
+    β_coeff = zeros(T, nz_local) 
+    γ_coeff = zeros(T, nz_local)
+    
+    @inbounds for k = 2:nz_local-1
+        h_below = dz[k-1]
+        h_above = dz[k]
+        h_total = h_below + h_above
+        
+        α_coeff[k] = 2.0 / (h_below * h_total)
+        β_coeff[k] = -2.0 / (h_below * h_above)
+        γ_coeff[k] = 2.0 / (h_above * h_total)
+        
+        # Optional: Add metric correction for highly stretched grids
+        if use_metrics && k > 2 && k < nz_local-1
+            # Grid stretch ratio
+            stretch_ratio = max(dz[k], dz[k-1]) / min(dz[k], dz[k-1])
+            
+            if stretch_ratio > 5.0  # Highly stretched
+                # Apply smoothing to coefficients
+                smooth_factor = min(0.9, 5.0 / stretch_ratio)
+                α_coeff[k] *= smooth_factor
+                β_coeff[k] *= smooth_factor  
+                γ_coeff[k] *= smooth_factor
+            end
+        end
+    end
+    
+    for iter = 1:iters
+        # Red-black Gauss-Seidel with precomputed coefficients
+        for color = 0:1
+            @inbounds for k = 2:nz_local-1
+                for j = 2:ny_local-1
+                    for i = 2:nx_local-1
+                        if (i + j + k) % 2 != color
+                            continue
+                        end
+                        
+                        # Current and neighbor values
+                        Φ_c = Φ_local[i,j,k]
+                        Φ_e = Φ_local[i+1,j,k]
+                        Φ_w = Φ_local[i-1,j,k]
+                        Φ_n = Φ_local[i,j+1,k]
+                        Φ_s = Φ_local[i,j-1,k]
+                        Φ_u = Φ_local[i,j,k+1]
+                        Φ_d = Φ_local[i,j,k-1]
+                        
+                        # Use precomputed coefficients
+                        α = α_coeff[k]
+                        β = β_coeff[k] 
+                        γ = γ_coeff[k]
+                        
+                        # Diagonal coefficient
+                        diag_coeff = -2 * inv_dx2 - 2 * inv_dy2 + β
+                        
+                        # Off-diagonal sum
+                        off_diag_sum = (Φ_e + Φ_w) * inv_dx2 + 
+                                      (Φ_n + Φ_s) * inv_dy2 + 
+                                      α * Φ_d + γ * Φ_u
+                        
+                        # SOR update with under-relaxation for stability
+                        if abs(diag_coeff) > 1e-14
+                            Φ_new = -off_diag_sum / diag_coeff
+                            relax_factor = ω
+                            
+                            # Adaptive relaxation for stretched grids
+                            if use_metrics && k > 1 && k < nz_local
+                                stretch_ratio = max(dz[k], dz[k-1]) / min(dz[k], dz[k-1])
+                                if stretch_ratio > 3.0
+                                    relax_factor *= min(1.0, 3.0 / stretch_ratio)
+                                end
+                            end
+                            
+                            Φ_local[i,j,k] = Φ_c + relax_factor * (Φ_new - Φ_c)
+                        end
+                    end
+                end
+            end
+        end
+        
+        # Apply boundary conditions
+        apply_ssg_boundary_conditions!(level)
+    end
+    
+    return nothing
+end
+
+"""
+Adaptive SOR smoother that automatically detects grid stretching
+and adjusts parameters accordingly
+"""
+function ssg_sor_smoother_adaptive!(level::SSGLevel{T}, iters::Int, ω::T, ε::T) where T
+    domain = level.domain
+    dz = domain.dz
+    nz = length(dz)
+    
+    # Analyze grid stretching
+    max_stretch = 1.0
+    avg_stretch = 0.0
+    
+    if nz > 2
+        stretch_ratios = zeros(T, nz-1)
+        for k = 1:nz-1
+            if k < nz-1
+                stretch_ratios[k] = max(dz[k+1], dz[k]) / min(dz[k+1], dz[k])
+            end
+        end
+        max_stretch = maximum(stretch_ratios)
+        avg_stretch = mean(stretch_ratios)
+    end
+    
+    # Choose smoother based on grid characteristics
+    if max_stretch < 2.0
+        # Mildly stretched or uniform grid - use standard smoother
+        ssg_sor_smoother!(level, iters, ω, ε)
+    elseif max_stretch < 5.0
+        # Moderately stretched - use enhanced smoother
+        ssg_sor_smoother_enhanced!(level, iters, ω * 0.9, ε; use_metrics=false)
+    else
+        # Highly stretched - use enhanced smoother with metrics
+        ssg_sor_smoother_enhanced!(level, iters, ω * 0.8, ε; use_metrics=true)
     end
     
     return nothing
@@ -497,13 +666,15 @@ end
 # =============================================================================
 
 """
-SSG multigrid V-cycle
+SSG multigrid V-cycle with adaptive smoothing
 """
 function ssg_v_cycle!(mg::SSGMultigridSolver{T}, level::Int=1) where T
     if level == mg.n_levels
         # Coarsest level - solve with many iterations
         if mg.smoother_type == :spectral
             ssg_spectral_smoother!(mg.levels[level], 50, mg.ω, mg.ε)
+        elseif mg.smoother_type == :adaptive
+            ssg_sor_smoother_adaptive!(mg.levels[level], 50, mg.ω, mg.ε)
         else
             ssg_sor_smoother!(mg.levels[level], 50, mg.ω, mg.ε)
         end
@@ -513,10 +684,14 @@ function ssg_v_cycle!(mg::SSGMultigridSolver{T}, level::Int=1) where T
     current = mg.levels[level]
     coarser = mg.levels[level + 1]
     
-    # Pre-smoothing
+    # Pre-smoothing with adaptive method selection
     n_pre = 3
     if mg.smoother_type == :spectral
         ssg_spectral_smoother!(current, n_pre, mg.ω, mg.ε)
+    elseif mg.smoother_type == :adaptive
+        ssg_sor_smoother_adaptive!(current, n_pre, mg.ω, mg.ε)
+    elseif mg.smoother_type == :enhanced
+        ssg_sor_smoother_enhanced!(current, n_pre, mg.ω, mg.ε)
     else
         ssg_sor_smoother!(current, n_pre, mg.ω, mg.ε)
     end
@@ -538,10 +713,14 @@ function ssg_v_cycle!(mg::SSGMultigridSolver{T}, level::Int=1) where T
     # Prolongation and correction
     prolongate_ssg_3d!(current, coarser)
     
-    # Post-smoothing
+    # Post-smoothing with same adaptive method
     n_post = 3
     if mg.smoother_type == :spectral
         ssg_spectral_smoother!(current, n_post, mg.ω, mg.ε)
+    elseif mg.smoother_type == :adaptive
+        ssg_sor_smoother_adaptive!(current, n_post, mg.ω, mg.ε)
+    elseif mg.smoother_type == :enhanced
+        ssg_sor_smoother_enhanced!(current, n_post, mg.ω, mg.ε)
     else
         ssg_sor_smoother!(current, n_post, mg.ω, mg.ε)
     end
@@ -836,9 +1015,7 @@ function compute_ma_residual_fields!(fields::Fields{T}, domain::Domain) where T
     return fields.R
 end
 
-# =============================================================================
-# DEMO AND TESTING FUNCTIONS
-# =============================================================================
+
 
 """
 Demo function for SSG equation solver
@@ -921,7 +1098,7 @@ function demo_ssg_solver()
             println()
             
             if diag.converged
-                println("✅ SSG equation solver working correctly!")
+                println(" SSG equation solver working correctly!")
                 println("  • 3D Laplacian computed with spectral accuracy")
                 println("  • Nonlinear operator DΦ implemented")
                 println("  • Boundary conditions applied")
@@ -952,7 +1129,7 @@ function test_poisson_solver()
     rank = MPI.Comm_rank(comm)
     
     if rank == 0
-        println("🧪 Testing Simple Poisson Solver")
+        println(" Testing Simple Poisson Solver")
         println("=" ^ 35)
     end
     
@@ -1002,6 +1179,8 @@ end
 export solve_ssg_equation, solve_monge_ampere_fields!, compute_ma_residual_fields!
 export SSGLevel, SSGMultigridSolver, solve_poisson_simple
 export demo_ssg_solver, test_poisson_solver
+
+
 
 """
 ## FEATURES IMPLEMENTED:
