@@ -53,12 +53,12 @@ Time integration parameters
 struct TimeParams{T<:AbstractFloat}
     dt::T                    # time step
     scheme::TimeScheme       # integration scheme
-    filter_freq::Int         # frequency of spectral filtering (every N steps)
-    filter_strength::T       # spectral filter strength (0 = no filter, 1 = strong)
-    cfl_safety::T           # CFL safety factor
-    max_dt::T               # maximum allowed time step
-    min_dt::T               # minimum allowed time step
-    adaptive_dt::Bool       # adaptive time stepping
+    filter_freq::Int          # frequency of spectral filtering (every N steps)
+    filter_strength::T        # spectral filter strength (0 = no filter, 1 = strong)
+    cfl_safety::T             # CFL safety factor
+    max_dt::T                # maximum allowed time step
+    min_dt::T                # minimum allowed time step
+    adaptive_dt::Bool        # adaptive time stepping
     
     function TimeParams{T}(dt::T; 
                           scheme::TimeScheme=AB2_LowStorage,
@@ -125,34 +125,37 @@ end
 """
 Compute Jacobian J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x spectrally
 """
-function compute_jacobian!(db_dt::PencilArray{T, 2}, ψ::PencilArray{T, 2}, b::PencilArray{T, 2}, 
-                          fld::Fields{T}, dom::Domain) where T
+function compute_jacobian!(db_dt::PencilArray{T, 2}, 
+                          ψ::PencilArray{T, 2}, 
+                          b::PencilArray{T, 2}, 
+                          fields::Fields{T}, 
+                          domain::Domain) where T
     
     # Compute ∂ψ/∂x
-    rfft!(dom, ψ, fld.φhat)
-    ddx!(dom, fld.φhat, fld.tmpc)
-    irfft!(dom, fld.tmpc, fld.tmp)  # tmp = ∂ψ/∂x
+    rfft!(domain, ψ, fields.φhat)
+    ddx!(domain, fields.φhat, fields.tmpc)
+    irfft!(domain, fields.tmpc, fields.tmp)  # tmp = ∂ψ/∂x
     
     # Compute ∂ψ/∂y
-    rfft!(dom, ψ, fld.φhat)
-    ddy!(dom, fld.φhat, fld.tmpc)
-    irfft!(dom, fld.tmpc, fld.tmp2)  # tmp2 = ∂ψ/∂y
+    rfft!(domain, ψ, fields.φhat)
+    ddy!(domain, fields.φhat, fields.tmpc)
+    irfft!(domain, fields.tmpc, fields.tmp2)  # tmp2 = ∂ψ/∂y
     
     # Compute ∂b/∂x
-    rfft!(dom, b, fld.bhat)
-    ddx!(dom, fld.bhat, fld.tmpc)
-    irfft!(dom, fld.tmpc, fld.tmp3)  # tmp3 = ∂b/∂x
+    rfft!(domain, b, fields.bhat)
+    ddx!(domain, fields.bhat, fields.tmpc)
+    irfft!(domain, fields.tmpc, fields.tmp3)  # tmp3 = ∂b/∂x
     
     # Compute ∂b/∂y
-    rfft!(dom, b, fld.bhat)
-    ddy!(dom, fld.bhat, fld.tmpc)
-    irfft!(dom, fld.tmpc, fld.u)  # u = ∂b/∂y (reuse velocity array)
+    rfft!(domain, b, fields.bhat)
+    ddy!(domain, fields.bhat, fields.tmpc)
+    irfft!(domain, fields.tmpc, fields.u)  # u = ∂b/∂y (reuse velocity array)
     
     # Compute Jacobian: J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x
-    tmp_data = fld.tmp.data    # ∂ψ/∂x
-    tmp2_data = fld.tmp2.data  # ∂ψ/∂y
-    tmp3_data = fld.tmp3.data  # ∂b/∂x
-    u_data = fld.u.data        # ∂b/∂y
+    tmp_data = fields.tmp.data    # ∂ψ/∂x
+    tmp2_data = fields.tmp2.data  # ∂ψ/∂y
+    tmp3_data = fields.tmp3.data  # ∂b/∂x
+    u_data = fields.u.data        # ∂b/∂y
     db_dt_data = db_dt.data
     
     @inbounds @simd for i in eachindex(db_dt_data)
@@ -168,20 +171,20 @@ end
 """
 Compute tendency for surface semi-geostrophic equations
 """
-function compute_tendency!(db_dt::PencilArray{T, 2}, fld::Fields{T}, 
-                          dom::Domain, params::TimeParams{T}) where T
+function compute_tendency!(db_dt::PencilArray{T, 2}, fields::Fields{T}, 
+                          domain::Domain, params::TimeParams{T}) where T
     
     # Solve Monge-Ampère equation: det(D²ψ) = b
-    # This updates fld.φ given current fld.b
-    solve_monge_ampere_fields!(fld; tol=1e-10, verbose=false)
+    # This updates fields.φ given current fields.b
+    solve_monge_ampere_fields!(fields; tol=1e-10, verbose=false)
     
     # Compute Jacobian J(ψ,b) for advection
-    compute_jacobian!(db_dt, fld.φ, fld.b, fld, dom)
+    compute_jacobian!(db_dt, fields.φ, fields.b, fields, domain)
     
     # Apply spectral dealiasing to tendency
-    rfft!(dom, db_dt, fld.tmpc)
-    dealias!(dom, fld.tmpc)
-    irfft!(dom, fld.tmpc, db_dt)
+    rfft!(domain, db_dt, fields.tmpc)
+    dealias!(domain, fields.tmpc)
+    irfft!(domain, fields.tmpc, db_dt)
     
     return db_dt
 end
@@ -193,25 +196,25 @@ end
 """
 Compute CFL number for current state
 """
-function compute_cfl_number(fld::Fields{T}, dom::Domain, dt::T) where T
+function compute_cfl_number(fields::Fields{T}, domain::Domain, dt::T) where T
     # Compute geostrophic velocities
-    compute_geostrophic_velocities!(fld)
+    compute_geostrophic_velocities!(fields)
     
     # Get velocity magnitudes
-    u_data = fld.u.data
-    v_data = fld.v.data
+    u_data = fields.u.data
+    v_data = fields.v.data
     
     # Compute maximum velocity
     u_max_local = maximum(abs, u_data)
     v_max_local = maximum(abs, v_data)
     
     # MPI reduction to get global maximum
-    u_max = MPI.Allreduce(u_max_local, MPI.MAX, fld.domain.pc.comm)
-    v_max = MPI.Allreduce(v_max_local, MPI.MAX, fld.domain.pc.comm)
+    u_max = MPI.Allreduce(u_max_local, MPI.MAX, fields.domain.pc.comm)
+    v_max = MPI.Allreduce(v_max_local, MPI.MAX, fields.domain.pc.comm)
     
     # Grid spacing
-    dx = dom.Lx / dom.Nx
-    dy = dom.Ly / dom.Ny
+    dx = domain.Lx / domain.Nx
+    dy = domain.Ly / domain.Ny
     
     # CFL number
     cfl_x = u_max * dt / dx
@@ -224,7 +227,7 @@ end
 """
 Adaptive time step calculation
 """
-function adaptive_timestep(fld::Fields{T}, dom::Domain, 
+function adaptive_timestep(fields::Fields{T}, domain::Domain, 
                           params::TimeParams{T}, state::TimeState{T}) where T
     
     if !params.adaptive_dt
@@ -232,7 +235,7 @@ function adaptive_timestep(fld::Fields{T}, dom::Domain,
     end
     
     # Compute current CFL number
-    cfl = compute_cfl_number(fld, dom, params.dt)
+    cfl = compute_cfl_number(fields, domain, params.dt)
     state.cfl_max = cfl
     
     # Adjust time step based on CFL condition
@@ -258,29 +261,29 @@ end
 """
 Low-storage 2nd order Adams-Bashforth time step
 """
-function timestep_ab2_ls!(fld::Fields{T}, dom::Domain, 
+function timestep_ab2_ls!(fields::Fields{T}, domain::Domain, 
                          params::TimeParams{T}, state::TimeState{T}) where T
     
-    dt = adaptive_timestep(fld, dom, params, state)
+    dt = adaptive_timestep(fields, domain, params, state)
     state.dt_actual = dt
     
     # Compute current tendency
-    compute_tendency!(fld.tmp, fld, dom, params)  # tmp = db/dt at current time
+    compute_tendency!(fields.tmp, fields, domain, params)  # tmp = db/dt at current time
     
     if state.step == 0
         # First step: Forward Euler
-        b_data = fld.b.data
-        tmp_data = fld.tmp.data
+        b_data = fields.b.data
+        tmp_data = fields.tmp.data
         @inbounds @simd for i in eachindex(b_data)
             b_data[i] += dt * tmp_data[i]
         end
         
         # Store tendency for next step
-        copy_field!(state.db_dt_old, fld.tmp)
+        copy_field!(state.db_dt_old, fields.tmp)
     else
         # Adams-Bashforth step: b^{n+1} = b^n + dt(3/2 * f^n - 1/2 * f^{n-1})
-        b_data = fld.b.data
-        tmp_data = fld.tmp.data           # current tendency
+        b_data = fields.b.data
+        tmp_data = fields.tmp.data           # current tendency
         old_data = state.db_dt_old.data   # previous tendency
         
         @inbounds @simd for i in eachindex(b_data)
@@ -288,7 +291,7 @@ function timestep_ab2_ls!(fld::Fields{T}, dom::Domain,
         end
         
         # Update stored tendency (low-storage: reuse arrays)
-        copy_field!(state.db_dt_old, fld.tmp)
+        copy_field!(state.db_dt_old, fields.tmp)
     end
     
     # Update time and step
@@ -301,21 +304,21 @@ end
 """
 3rd order Runge-Kutta time step
 """
-function timestep_rk3!(fld::Fields{T}, dom::Domain, 
+function timestep_rk3!(fields::Fields{T}, domain::Domain, 
                       params::TimeParams{T}, state::TimeState{T}) where T
     
-    dt = adaptive_timestep(fld, dom, params, state)
+    dt = adaptive_timestep(fields, domain, params, state)
     state.dt_actual = dt
     
     # Store initial state
-    copy_field!(state.b_stage, fld.b)
+    copy_field!(state.b_stage, fields.b)
     
     # RK3 coefficients (classical 3rd order)
     # Stage 1: k1 = f(t_n, y_n)
-    compute_tendency!(state.k1, fld, dom, params)
+    compute_tendency!(state.k1, fields, domain, params)
     
     # Update to intermediate state: y1 = y_n + dt/2 * k1
-    b_data = fld.b.data
+    b_data = fields.b.data
     b_stage_data = state.b_stage.data
     k1_data = state.k1.data
     
@@ -324,7 +327,7 @@ function timestep_rk3!(fld::Fields{T}, dom::Domain,
     end
     
     # Stage 2: k2 = f(t_n + dt/2, y1)
-    compute_tendency!(state.k2, fld, dom, params)
+    compute_tendency!(state.k2, fields, domain, params)
     
     # Update to second intermediate state: y2 = y_n - dt * k1 + 2 * dt * k2
     k2_data = state.k2.data
@@ -333,7 +336,7 @@ function timestep_rk3!(fld::Fields{T}, dom::Domain,
     end
     
     # Stage 3: k3 = f(t_n + dt, y2)
-    compute_tendency!(state.k3, fld, dom, params)
+    compute_tendency!(state.k3, fields, domain, params)
     
     # Final update: y_{n+1} = y_n + dt/6 * (k1 + 4*k2 + k3)
     k3_data = state.k3.data
@@ -351,10 +354,10 @@ end
 """
 Low-storage 3rd order Runge-Kutta (Williamson variant)
 """
-function timestep_rk3_ls!(fld::Fields{T}, dom::Domain, 
+function timestep_rk3_ls!(fields::Fields{T}, domain::Domain, 
                          params::TimeParams{T}, state::TimeState{T}) where T
     
-    dt = adaptive_timestep(fld, dom, params, state)
+    dt = adaptive_timestep(fields, domain, params, state)
     state.dt_actual = dt
     
     # Low-storage RK3 coefficients (Williamson)
@@ -363,22 +366,22 @@ function timestep_rk3_ls!(fld::Fields{T}, dom::Domain,
     
     # Initialize: S = 0, U = b^n
     zero_field!(state.k1)  # Use k1 as S (accumulator)
-    copy_field!(state.b_stage, fld.b)  # Use b_stage as U
+    copy_field!(state.b_stage, fields.b)  # Use b_stage as U
     
     for stage = 1:3
         # Compute tendency: k = f(U)
-        compute_tendency!(fld.tmp, fld, dom, params)
+        compute_tendency!(fields.tmp, fields, domain, params)
         
         # Update accumulator: S = α[stage] * S + k
         k1_data = state.k1.data      # S
-        tmp_data = fld.tmp.data      # k
+        tmp_data = fields.tmp.data      # k
         @inbounds @simd for i in eachindex(k1_data)
             k1_data[i] = α[stage] * k1_data[i] + tmp_data[i]
         end
         
         # Update state: U = U + β[stage] * dt * S
         b_stage_data = state.b_stage.data  # U
-        b_data = fld.b.data
+        b_data = fields.b.data
         @inbounds @simd for i in eachindex(b_data)
             u_new = b_stage_data[i] + β[stage] * dt * k1_data[i]
             b_stage_data[i] = u_new
@@ -400,17 +403,17 @@ end
 """
 Apply spectral filter to remove high-frequency noise
 """
-function apply_spectral_filter!(fld::Fields{T}, dom::Domain, 
+function apply_spectral_filter!(fields::Fields{T}, domain::Domain, 
                                filter_strength::T) where T
     
     # Transform buoyancy to spectral space
-    rfft!(dom, fld.b, fld.bhat)
+    rfft!(domain, fields.b, fields.bhat)
     
     # Apply exponential filter
-    apply_exponential_filter!(fld.bhat, dom, filter_strength)
+    apply_exponential_filter!(fields.bhat, domain, filter_strength)
     
     # Transform back to physical space
-    irfft!(dom, fld.bhat, fld.b)
+    irfft!(domain, fields.bhat, fields.b)
     
     return nothing
 end
@@ -419,7 +422,7 @@ end
 Exponential spectral filter
 """
 function apply_exponential_filter!(bhat::PencilArray{Complex{T}, 2}, 
-                                  dom::Domain, strength::T) where T
+                                  domain::Domain, strength::T) where T
     
     bhat_data = bhat.data
     
@@ -427,15 +430,15 @@ function apply_exponential_filter!(bhat::PencilArray{Complex{T}, 2},
     local_ranges = local_range(bhat.pencil)
     
     # Filter parameters
-    kx_max = π * dom.Nx / dom.Lx
-    ky_max = π * dom.Ny / dom.Ly
+    kx_max = π * domain.Nx / domain.Lx
+    ky_max = π * domain.Ny / domain.Ly
     k_cutoff = 0.65 * min(kx_max, ky_max)  # Filter starts at 65% of Nyquist
     
     @inbounds for (j_local, j_global) in enumerate(local_ranges[2])
-        ky = dom.ky[j_global]
+        ky = domain.ky[j_global]
         for (i_local, i_global) in enumerate(local_ranges[1])
-            kx = dom.kx[i_global] 
-            if i_global <= length(dom.kx) else 0
+            kx = domain.kx[i_global] 
+            if i_global <= length(domain.kx) else 0
             
             k_mag = sqrt(kx^2 + ky^2)
             
@@ -457,23 +460,23 @@ end
 """
 Take one time step using specified scheme
 """
-function timestep!(fld::Fields{T}, dom::Domain, 
+function timestep!(fields::Fields{T}, domain::Domain, 
                   params::TimeParams{T}, state::TimeState{T}) where T
     
     # Choose time integration scheme
     if params.scheme == AB2_LowStorage
-        dt = timestep_ab2_ls!(fld, dom, params, state)
+        dt = timestep_ab2_ls!(fields, domain, params, state)
     elseif params.scheme == RK3
-        dt = timestep_rk3!(fld, dom, params, state)
+        dt = timestep_rk3!(fields, domain, params, state)
     elseif params.scheme == RK3_LowStorage
-        dt = timestep_rk3_ls!(fld, dom, params, state)
+        dt = timestep_rk3_ls!(fields, domain, params, state)
     else
         error("Unknown time integration scheme: $(params.scheme)")
     end
     
     # Apply spectral filter periodically
     if params.filter_freq > 0 && state.step % params.filter_freq == 0
-        apply_spectral_filter!(fld, dom, params.filter_strength)
+        apply_spectral_filter!(fields, domain, params.filter_strength)
     end
     
     return dt
@@ -482,7 +485,7 @@ end
 """
 Time integration loop with diagnostics
 """
-function integrate!(fld::Fields{T}, dom::Domain, 
+function integrate!(fields::Fields{T}, domain::Domain, 
                    params::TimeParams{T}, state::TimeState{T};
                    t_final::T, output_freq::Int=100,
                    verbose::Bool=true) where T
@@ -491,7 +494,7 @@ function integrate!(fld::Fields{T}, dom::Domain,
     
     while state.t < t_final
         # Take time step
-        dt_actual = timestep!(fld, dom, params, state)
+        dt_actual = timestep!(fields, domain, params, state)
         n_steps += 1
         
         # Ensure we don't overshoot final time
@@ -503,14 +506,14 @@ function integrate!(fld::Fields{T}, dom::Domain,
                                  filter_freq=params.filter_freq,
                                  filter_strength=params.filter_strength,
                                  adaptive_dt=false)
-            timestep!(fld, dom, params, state)
+            timestep!(fields, domain, params, state)
             break
         end
         
         # Output diagnostics
         if verbose && n_steps % output_freq == 0
-            cfl = compute_cfl_number(fld, dom, dt_actual)
-            b_stats = enhanced_field_stats(fld)[:b]
+            cfl = compute_cfl_number(fields, domain, dt_actual)
+            b_stats = enhanced_field_stats(fields)[:b]
             
             @printf("Step %6d: t = %8.4f, dt = %8.6f, CFL = %6.3f, |b|_max = %8.4e\n",
                    state.step, state.t, dt_actual, cfl, b_stats.max)
@@ -531,13 +534,13 @@ end
 """
 Compute kinetic energy: KE = 0.5 * ∫(u² + v²) dA
 """
-function compute_kinetic_energy(fld::Fields{T}, dom::Domain) where T
+function compute_kinetic_energy(fields::Fields{T}, domain::Domain) where T
     # Ensure velocities are up to date
-    compute_geostrophic_velocities!(fld)
+    compute_geostrophic_velocities!(fields)
     
     # Compute local kinetic energy
-    u_data = fld.u.data
-    v_data = fld.v.data
+    u_data = fields.u.data
+    v_data = fields.v.data
     
     ke_local = zero(T)
     @inbounds @simd for i in eachindex(u_data)
@@ -545,10 +548,10 @@ function compute_kinetic_energy(fld::Fields{T}, dom::Domain) where T
     end
     
     # Global sum via MPI
-    ke_global = MPI.Allreduce(ke_local, MPI.SUM, fld.domain.pc.comm)
+    ke_global = MPI.Allreduce(ke_local, MPI.SUM, fields.domain.pc.comm)
     
     # Normalize by domain area
-    total_points = dom.Nx * dom.Ny
+    total_points = domain.Nx * domain.Ny
     ke_mean = ke_global / total_points
     
     return ke_mean
@@ -557,22 +560,22 @@ end
 """
 Compute enstrophy: ENS = 0.5 * ∫ω² dA where ω = ∇²ψ
 """
-function compute_enstrophy(fld::Fields{T}, dom::Domain) where T
+function compute_enstrophy(fields::Fields{T}, domain::Domain) where T
     # Compute vorticity ω = ∇²ψ using spectral method
-    rfft!(dom, fld.φ, fld.φhat)
-    laplacian_h!(dom, fld.φhat, fld.tmpc)  # ∇²ψ in spectral space
-    irfft!(dom, fld.tmpc, fld.tmp)         # ω in physical space
+    rfft!(domain, fields.φ, fields.φhat)
+    laplacian_h!(domain, fields.φhat, fields.tmpc)  # ∇²ψ in spectral space
+    irfft!(domain, fields.tmpc, fields.tmp)         # ω in physical space
     
     # Compute local enstrophy
-    ω_data = fld.tmp.data
+    ω_data = fields.tmp.data
     ens_local = zero(T)
     @inbounds @simd for i in eachindex(ω_data)
         ens_local += 0.5 * ω_data[i]^2
     end
     
     # Global sum and normalize
-    ens_global = MPI.Allreduce(ens_local, MPI.SUM, fld.domain.pc.comm)
-    ens_mean = ens_global / (dom.Nx * dom.Ny)
+    ens_global = MPI.Allreduce(ens_local, MPI.SUM, fields.domain.pc.comm)
+    ens_mean = ens_global / (domain.Nx * domain.Ny)
     
     return ens_mean
 end
@@ -580,14 +583,14 @@ end
 """
 Compute total buoyancy (should be conserved)
 """
-function compute_total_buoyancy(fld::Fields{T}, dom::Domain) where T
-    b_data = fld.b.data
+function compute_total_buoyancy(fields::Fields{T}, domain::Domain) where T
+    b_data = fields.b.data
     b_sum_local = sum(b_data)
-    b_sum_global = MPI.Allreduce(b_sum_local, MPI.SUM, fld.domain.pc.comm)
+    b_sum_global = MPI.Allreduce(b_sum_local, MPI.SUM, fields.domain.pc.comm)
     
     # Normalize by domain area
-    dx = dom.Lx / dom.Nx
-    dy = dom.Ly / dom.Ny
+    dx = domain.Lx / domain.Nx
+    dy = domain.Ly / domain.Ny
     total_buoyancy = b_sum_global * dx * dy
     
     return total_buoyancy
@@ -596,22 +599,22 @@ end
 """
 Compute maximum divergence (should be small for geostrophic flow)
 """
-function compute_max_divergence(fld::Fields{T}, dom::Domain) where T
+function compute_max_divergence(fields::Fields{T}, domain::Domain) where T
     # Ensure velocities are current
-    compute_geostrophic_velocities!(fld)
+    compute_geostrophic_velocities!(fields)
     
     # Compute divergence: ∇·u = ∂u/∂x + ∂v/∂y
-    rfft!(dom, fld.u, fld.tmpc)
-    ddx!(dom, fld.tmpc, fld.tmpc)          # ∂u/∂x in spectral
-    irfft!(dom, fld.tmpc, fld.tmp)         # ∂u/∂x in physical
+    rfft!(domain, fields.u, fields.tmpc)
+    ddx!(domain, fields.tmpc, fields.tmpc)          # ∂u/∂x in spectral
+    irfft!(domain, fields.tmpc, fields.tmp)         # ∂u/∂x in physical
     
-    rfft!(dom, fld.v, fld.tmpc2)
-    ddy!(dom, fld.tmpc2, fld.tmpc2)        # ∂v/∂y in spectral  
-    irfft!(dom, fld.tmpc2, fld.tmp2)       # ∂v/∂y in physical
+    rfft!(domain, fields.v, fields.tmpc2)
+    ddy!(domain, fields.tmpc2, fields.tmpc2)        # ∂v/∂y in spectral  
+    irfft!(domain, fields.tmpc2, fields.tmp2)       # ∂v/∂y in physical
     
     # Total divergence
-    div_data = fld.tmp.data     # ∂u/∂x
-    dv_dy_data = fld.tmp2.data  # ∂v/∂y
+    div_data = fields.tmp.data     # ∂u/∂x
+    dv_dy_data = fields.tmp2.data  # ∂v/∂y
     
     max_div_local = zero(T)
     @inbounds for i in eachindex(div_data)
@@ -620,7 +623,7 @@ function compute_max_divergence(fld::Fields{T}, dom::Domain) where T
     end
     
     # Global maximum
-    max_div_global = MPI.Allreduce(max_div_local, MPI.MAX, fld.domain.pc.comm)
+    max_div_global = MPI.Allreduce(max_div_local, MPI.MAX, fields.domain.pc.comm)
     
     return max_div_global
 end
@@ -628,29 +631,29 @@ end
 """
 Initialize Gaussian vortex for testing
 """
-function initialize_gaussian_vortex!(fld::Fields{T}, dom::Domain;
+function initialize_gaussian_vortex!(fields::Fields{T}, domain::Domain;
                                     amplitude::T=T(1.0),
-                                    center_x::T=T(0.5)*dom.Lx,
-                                    center_y::T=T(0.5)*dom.Ly,
-                                    width::T=T(0.1)*min(dom.Lx, dom.Ly)) where T
+                                    center_x::T=T(0.5)*domain.Lx,
+                                    center_y::T=T(0.5)*domain.Ly,
+                                    width::T=T(0.1)*min(domain.Lx, domain.Ly)) where T
     
     # Get local grid points
-    local_ranges = local_range(fld.b.pencil)
-    b_data = fld.b.data
+    local_ranges = local_range(fields.b.pencil)
+    b_data = fields.b.data
     
     # Create Gaussian buoyancy anomaly
     @inbounds for (j_local, j_global) in enumerate(local_ranges[2])
-        y = (j_global - 1) * dom.Ly / dom.Ny
+        y = (j_global - 1) * domain.Ly / domain.Ny
         for (i_local, i_global) in enumerate(local_ranges[1])
-            x = (i_global - 1) * dom.Lx / dom.Nx
+            x = (i_global - 1) * domain.Lx / domain.Nx
             
             # Distance from center
             dx = x - center_x
             dy = y - center_y
             
             # Apply periodic boundary conditions for distance
-            dx = dx - dom.Lx * round(dx / dom.Lx)
-            dy = dy - dom.Ly * round(dy / dom.Ly)
+            dx = dx - domain.Lx * round(dx / domain.Lx)
+            dy = dy - domain.Ly * round(dy / domain.Ly)
             
             r2 = dx^2 + dy^2
             b_data[i_local, j_local] = amplitude * exp(-r2 / (2 * width^2))
@@ -658,41 +661,41 @@ function initialize_gaussian_vortex!(fld::Fields{T}, dom::Domain;
     end
     
     # Ensure zero mean for periodic domain
-    b_mean = compute_total_buoyancy(fld, dom) / (dom.Lx * dom.Ly)
-    fld.b.data .-= b_mean
+    b_mean = compute_total_buoyancy(fields, domain) / (domain.Lx * domain.Ly)
+    fields.b.data .-= b_mean
     
-    return fld
+    return fields
 end
 
 """
 Initialize Taylor-Green vortex
 """
-function initialize_taylor_green!(fld::Fields{T}, dom::Domain;
+function initialize_taylor_green!(fields::Fields{T}, domain::Domain;
                                  amplitude::T=T(1.0)) where T
     
-    local_ranges = local_range(fld.b.pencil)
-    b_data = fld.b.data
+    local_ranges = local_range(fields.b.pencil)
+    b_data = fields.b.data
     
     @inbounds for (j_local, j_global) in enumerate(local_ranges[2])
-        y = (j_global - 1) * 2π / dom.Ny
+        y = (j_global - 1) * 2π / domain.Ny
         for (i_local, i_global) in enumerate(local_ranges[1])
-            x = (i_global - 1) * 2π / dom.Nx
+            x = (i_global - 1) * 2π / domain.Nx
             
             # Taylor-Green pattern
             b_data[i_local, j_local] = amplitude * sin(x) * cos(y)
         end
     end
     
-    return fld
+    return fields
 end
 
 """
 Apply random perturbations for turbulence studies
 """
-function add_random_noise!(fld::Fields{T}, dom::Domain;
+function add_random_noise!(fields::Fields{T}, domain::Domain;
                           noise_amplitude::T=T(0.01)) where T
     
-    b_data = fld.b.data
+    b_data = fields.b.data
     
     # Add random noise (different on each process)
     @inbounds for i in eachindex(b_data)
@@ -700,10 +703,10 @@ function add_random_noise!(fld::Fields{T}, dom::Domain;
     end
     
     # Remove mean to maintain conservation
-    b_mean = compute_total_buoyancy(fld, dom) / (dom.Lx * dom.Ly)
-    fld.b.data .-= b_mean
+    b_mean = compute_total_buoyancy(fields, domain) / (domain.Lx * domain.Ly)
+    fields.b.data .-= b_mean
     
-    return fld
+    return fields
 end
 
 # ============================================================================
@@ -713,14 +716,14 @@ end
 """
 Save fields to HDF5 file (placeholder - would need HDF5.jl)
 """
-function save_fields(filename::String, fld::Fields{T}, time::T) where T
+function save_fields(filename::String, fields::Fields{T}, time::T) where T
     # This would save to HDF5 format
     # h5open(filename, "w") do file
     #     file["time"] = time
-    #     file["buoyancy"] = Array(fld.b)
-    #     file["streamfunction"] = Array(fld.φ)
-    #     file["u_velocity"] = Array(fld.u)
-    #     file["v_velocity"] = Array(fld.v)
+    #     file["buoyancy"] = Array(fields.b)
+    #     file["streamfunction"] = Array(fields.φ)
+    #     file["u_velocity"] = Array(fields.u)
+    #     file["v_velocity"] = Array(fields.v)
     # end
     
     println("Would save fields to $filename at time $time")
@@ -745,14 +748,14 @@ end
 Update diagnostic time series
 """
 function update_diagnostics!(diag::DiagnosticTimeSeries{T}, 
-                            fld::Fields{T}, dom::Domain, 
+                            fields::Fields{T}, domain::Domain, 
                             state::TimeState{T}) where T
     
     push!(diag.times, state.t)
-    push!(diag.kinetic_energy, compute_kinetic_energy(fld, dom))
-    push!(diag.enstrophy, compute_enstrophy(fld, dom))
-    push!(diag.total_buoyancy, compute_total_buoyancy(fld, dom))
-    push!(diag.max_divergence, compute_max_divergence(fld, dom))
+    push!(diag.kinetic_energy, compute_kinetic_energy(fields, domain))
+    push!(diag.enstrophy, compute_enstrophy(fields, domain))
+    push!(diag.total_buoyancy, compute_total_buoyancy(fields, domain))
+    push!(diag.max_divergence, compute_max_divergence(fields, domain))
     push!(diag.max_cfl, state.cfl_max)
     
     return diag
@@ -779,7 +782,7 @@ end
 """
 Advanced integration with comprehensive diagnostics and output
 """
-function integrate_with_diagnostics!(fld::Fields{T}, dom::Domain, 
+function integrate_with_diagnostics!(fields::Fields{T}, domain::Domain, 
                                     params::TimeParams{T}, state::TimeState{T};
                                     t_final::T, 
                                     output_freq::Int=100,
@@ -792,7 +795,7 @@ function integrate_with_diagnostics!(fld::Fields{T}, dom::Domain,
     diag = DiagnosticTimeSeries{T}()
     
     # Create output directory
-    if MPI.Comm_rank(fld.domain.pc.comm) == 0
+    if MPI.Comm_rank(fields.domain.pc.comm) == 0
         mkpath(output_dir)
     end
     
@@ -800,9 +803,9 @@ function integrate_with_diagnostics!(fld::Fields{T}, dom::Domain,
     save_counter = 0
     
     # Initial diagnostics
-    update_diagnostics!(diag, fld, dom, state)
+    update_diagnostics!(diag, fields, domain, state)
     
-    if verbose && MPI.Comm_rank(fld.domain.pc.comm) == 0
+    if verbose && MPI.Comm_rank(fields.domain.pc.comm) == 0
         println("Starting semi-geostrophic integration...")
         println("Scheme: $(params.scheme), dt: $(params.dt), t_final: $t_final")
         print_diagnostics(diag, 0)
@@ -810,16 +813,16 @@ function integrate_with_diagnostics!(fld::Fields{T}, dom::Domain,
     
     while state.t < t_final
         # Take time step
-        dt_actual = timestep!(fld, dom, params, state)
+        dt_actual = timestep!(fields, domain, params, state)
         n_steps += 1
         
         # Update diagnostics
         if n_steps % diag_freq == 0
-            update_diagnostics!(diag, fld, dom, state)
+            update_diagnostics!(diag, fields, domain, state)
         end
         
         # Print progress
-        if verbose && n_steps % output_freq == 0 && MPI.Comm_rank(fld.domain.pc.comm) == 0
+        if verbose && n_steps % output_freq == 0 && MPI.Comm_rank(fields.domain.pc.comm) == 0
             print_diagnostics(diag, n_steps)
         end
         
@@ -827,7 +830,7 @@ function integrate_with_diagnostics!(fld::Fields{T}, dom::Domain,
         if n_steps % save_freq == 0
             save_counter += 1
             filename = joinpath(output_dir, "fields_$(save_counter).h5")
-            save_fields(filename, fld, state.t)
+            save_fields(filename, fields, state.t)
         end
         
         # Check for final time
@@ -837,8 +840,8 @@ function integrate_with_diagnostics!(fld::Fields{T}, dom::Domain,
     end
     
     # Final diagnostics and summary
-    if verbose && MPI.Comm_rank(fld.domain.pc.comm) == 0
-        update_diagnostics!(diag, fld, dom, state)
+    if verbose && MPI.Comm_rank(fields.domain.pc.comm) == 0
+        update_diagnostics!(diag, fields, domain, state)
         println("\nIntegration completed!")
         @printf("Final time: %.6f, Total steps: %d\n", state.t, n_steps)
         @printf("Average dt: %.6f, Final CFL: %.4f\n", 
@@ -1167,8 +1170,8 @@ end
  ========
 
 # Initialize
-dom = Domain(512, 512, 2π, 2π, MPI.COMM_WORLD)
-prob = SemiGeostrophicProblem(dom; scheme=RK3, dt=0.005, adaptive_dt=true)
+domain = Domain(512, 512, 2π, 2π, MPI.COMM_WORLD)
+prob = SemiGeostrophicProblem(domain; scheme=RK3, dt=0.005, adaptive_dt=true)
 
 # Initial conditions
 set_initial_conditions!(prob, initialize_taylor_green!; amplitude=2.0)
