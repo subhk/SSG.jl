@@ -27,17 +27,21 @@ struct Domain{T, PA<:AbstractPencil, PC<:AbstractPencil, PF, PB}
     Nx::Int
     Ny::Int
     Nz::Int
+
     Lx::T
     Ly::T
     Lz::T
+
     x::Vector{T}
     y::Vector{T}
     z::Vector{T}
     dz::Vector{T}  # Vertical grid spacing (can be non-uniform)
+
     kx::Vector{T}
     ky::Vector{T}
     Krsq::Matrix{T}        # kr² + ky² for real FFTs
     invKrsq::Matrix{T}     # 1/(kr² + ky²)
+    
     mask::BitMatrix
     z_boundary::Symbol
     z_grid::Symbol

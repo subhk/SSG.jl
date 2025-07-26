@@ -1,8 +1,8 @@
 # src/poisson.jl
-# Implements equation: ∇²Φ = εDΦ,
+# Implements equation: ∇²Φ = εDΦ,    (1) 
 # with boundary conditions:
-#   ∂Φ/∂Z = b̃s  at Z = 0
-#   ∂Φ/∂Z = 0   at Z = -1
+#   ∂Φ/∂Z = b̃s  at Z = 0             (2a)
+#   ∂Φ/∂Z = 0   at Z = -1            (2b)
 # Supports non-uniform vertical grids
 #
 # Where:
@@ -106,7 +106,7 @@ mutable struct SSGMultigridSolver{T<:AbstractFloat}
     comm::MPI.Comm
     
     # SSG-specific parameters
-    ε::T                           # External parameter (Rossby number measure)
+    ε::T                          # External parameter (Rossby number measure)
     smoother_type::Symbol
     ω::T                          # Relaxation parameter
     
@@ -226,7 +226,8 @@ function compute_ssg_residual!(level::SSGLevel{T}, ε::T) where T
     @inbounds for k in axes(r_local, 3)
         for j in axes(r_local, 2)
             @simd for i in axes(r_local, 1)
-                r_local[i,j,k] = laplacian_local[i,j,k] - ε * r_local[i,j,k] - b_local[i,j,k]
+                r_local[i,j,k] = laplacian_local[i,j,k] - ε * r_local[i,j,k] #- b_local[i,j,k]
+                # Note: No additional RHS term for surface SSG (homogeneous equation)
             end
         end
     end
@@ -265,6 +266,32 @@ function apply_ssg_boundary_conditions!(level::SSGLevel{T}) where T
             k = 1
             if nz_local >= 2
                 r_local[i,j,k] = 0  # Residual is zero at boundary
+            end
+        end
+    end
+    
+    return nothing
+end
+
+
+"""
+Set surface boundary condition b̃s from buoyancy field
+Compatible with existing Fields structure
+"""
+function set_surface_bc_from_buoyancy!(level::SSGLevel{T}, buoyancy_field::PencilArray{T, 3}) where T
+    # Extract surface buoyancy (top z level) for boundary condition (A4)
+    b_local = buoyancy_field.data
+    bs_local = parent(level.bs_surface)
+    
+    nx_local, ny_local, nz_local = size(b_local)
+    
+    # Copy surface buoyancy to boundary condition
+    if size(bs_local, 1) >= nx_local && size(bs_local, 2) >= ny_local
+        @inbounds for j = 1:ny_local
+            for i = 1:nx_local
+                # Surface boundary condition: ∂Φ/∂Z = b̃s at Z=0
+                # Use surface buoyancy as boundary condition
+                bs_local[i,j] = b_local[i,j,nz_local]  # Surface level
             end
         end
     end
