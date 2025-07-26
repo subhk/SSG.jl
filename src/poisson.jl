@@ -575,7 +575,12 @@ end
 # ============================================================================
 
 """
-Solve SSG equation: ∇²Φ = εDΦ with boundary conditions (A4)
+Solve SSG equation: ∇²Φ = εDΦ with boundary conditions of buoyancy 
+at the top and bottom of the domain:
+
+```math
+    ∂zΦ = bₛ at top
+    ∂zΦ = 0 at bottom
 """
 function solve_ssg_equation(Φ_initial::PencilArray{T, 3},
                            bs_surface::PencilArray{T, 2}, 
