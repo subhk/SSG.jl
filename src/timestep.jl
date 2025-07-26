@@ -164,6 +164,26 @@ function compute_tendency!(db_dt::PencilArray{T, 2}, fields::Fields{T},
     return db_dt
 end
 
+
+"""
+Compute geostrophic velocities from streamfunction
+"""
+function compute_geostrophic_velocities!(fields::Fields{T}, domain::Domain) where T
+    # Transform streamfunction to spectral space
+    rfft!(domain, fields.φ, fields.φhat)
+    
+    # Compute u = -∂φ/∂y
+    ddy!(domain, fields.φhat, fields.tmpc)
+    irfft!(domain, fields.tmpc, fields.u)
+    fields.u.data .*= -1
+    
+    # Compute v = ∂φ/∂x  
+    ddx!(domain, fields.φhat, fields.tmpc)
+    irfft!(domain, fields.tmpc, fields.v)
+    
+    return nothing
+end
+
 # ============================================================================
 # CFL CONDITION AND ADAPTIVE TIME STEPPING
 # ============================================================================
