@@ -161,6 +161,8 @@ function solve_monge_ampere_fields!(fields::Fields{T}, domain::Domain;
         method=:adaptive,
         smoother=:sor
     )
+
+    solve_ssg_equation
     
     # Copy solution back to fields
     copy_field!(fields.φ, solution)

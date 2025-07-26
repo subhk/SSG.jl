@@ -930,7 +930,7 @@ function demo_ssg_solver()
         println("")
         
         if diag.converged
-            println("🏆 SSG equation solver working correctly!")
+            println("  SSG equation solver working correctly!")
             println("    3D Laplacian computed with spectral accuracy")
             println("    Nonlinear operator DΦ implemented")
             println("    Boundary conditions (A4) applied")
