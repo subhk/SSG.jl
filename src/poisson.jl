@@ -98,9 +98,6 @@ mutable struct SSGLevel{T<:AbstractFloat}
     end
 end
 
-# =============================================================================
-# SSG MULTIGRID SOLVER STRUCTURE
-# =============================================================================
 
 """
 SSG multigrid solver structure
@@ -280,9 +277,6 @@ function apply_ssg_boundary_conditions!(level::SSGLevel{T}) where T
     return nothing
 end
 
-# =============================================================================
-# SSG SMOOTHERS
-# =============================================================================
 
 """
 Spectral smoother for SSG equation (using spectral accuracy in X,Y)
