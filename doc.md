@@ -117,5 +117,3 @@ SSG.jl (main)
 ├── output.jl (depends on: fields, domain, transforms)
 └── setICs.jl (depends on: timestep)
 ```
-
-The files are now fully compatible and should work together without circular dependencies or missing function errors.
