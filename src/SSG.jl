@@ -55,6 +55,9 @@ module SSG
         timestep!, integrate!, step_until!, stepforward!, run!,
         AB2_LowStorage, RK3, RK3_LowStorage
 
+    # nonlinear.jl exports
+    export compute_tendency!, compute_geostrophic_velocities!
+
     # output.jl exports
     export OutputFrequency, OutputManager, save_simulation_state_full,
         save_snapshot, save_spectral_snapshot, process_all_outputs!,
@@ -88,6 +91,7 @@ module SSG
     include("output.jl")
     include("coarse_domain.jl")
     include("omega_eq.jl")
+    include("nonlinear.jl")
 
 
 end # module SSG
