@@ -150,9 +150,48 @@ end
     field_stats(field) -> (mean, std, min, max)
 Compute basic statistics for a field.
 """
+"""
+    field_stats(field) -> (mean, std, min, max)
+
+Compute basic statistics for a field.
+"""
 function field_stats(field)
-    vals = Array(field)  # Convert to regular array
-    return (mean(vals), std(vals), minimum(vals), maximum(vals))
+    stats = Dict{Symbol, NamedTuple}()
+    for field_name in fieldnames(typeof(fields))
+        field = getfield(fields, field_name)
+        if isa(field, PencilArray) && eltype(field) <: Real
+            field_data = field.data
+            
+            # Local statistics
+            local_mean = mean(field_data)
+            local_min   = minimum(field_data)
+            local_max   = maximum(field_data)
+            local_count = length(field_data)
+            
+            # Global statistics via MPI
+            global_sum   = MPI.Allreduce(local_mean * local_count, MPI.SUM, field.pencil.comm)
+            global_count = MPI.Allreduce(local_count, MPI.SUM, field.pencil.comm)
+            global_mean  = global_sum / global_count
+            
+            global_min = MPI.Allreduce(local_min, MPI.MIN, field.pencil.comm)
+            global_max = MPI.Allreduce(local_max, MPI.MAX, field.pencil.comm)
+            
+            # Global variance
+            local_var_contrib = sum((field_data .- global_mean).^2)
+            global_var = MPI.Allreduce(local_var_contrib, MPI.SUM, field.pencil.comm) / global_count
+            global_std = sqrt(global_var)
+            
+            stats[field_name] = (
+                mean = global_mean,
+                std = global_std,
+                min = global_min,
+                max = global_max,
+                count = global_count
+            )
+        end
+    end
+    
+    return stats
 end
 
 """
