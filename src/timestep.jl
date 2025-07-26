@@ -709,26 +709,6 @@ function add_random_noise!(fields::Fields{T}, domain::Domain;
     return fields
 end
 
-# ============================================================================
-# OUTPUT AND VISUALIZATION UTILITIES
-# ============================================================================
-
-"""
-Save fields to HDF5 file (placeholder - would need HDF5.jl)
-"""
-function save_fields(filename::String, fields::Fields{T}, time::T) where T
-    # This would save to HDF5 format
-    # h5open(filename, "w") do file
-    #     file["time"] = time
-    #     file["buoyancy"] = Array(fields.b)
-    #     file["streamfunction"] = Array(fields.φ)
-    #     file["u_velocity"] = Array(fields.u)
-    #     file["v_velocity"] = Array(fields.v)
-    # end
-    
-    println("Would save fields to $filename at time $time")
-    return filename
-end
 
 """
 Time series diagnostics structure
