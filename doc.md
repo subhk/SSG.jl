@@ -90,13 +90,11 @@ The provided `example_usage.jl` file contains comprehensive tests:
 
 1. **SSG Solver**: Currently uses Poisson approximation (`Δφ = b`) instead of full Monge-Ampère equation (`det(D²φ) = b`)
 2. **Vertical discretization**: Basic finite differences (could be enhanced with spectral methods)
-3. **Comprehensive I/O system** with NetCDF support
 4. **Filter system**: Basic exponential filter (could add more sophisticated options)
 
 ## Future Enhancements
 
 1. **Full Monge-Ampère solver** with multigrid methods
-2. **Advanced vertical discretization** (Chebyshev, stretched grids)
 3. **Performance optimizations** with LoopVectorization.jl
 4. **Adaptive mesh refinement** for high-resolution features
 
