@@ -125,45 +125,17 @@ end
 """
 Compute Jacobian J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x spectrally
 """
-function compute_jacobian!(db_dt::PencilArray{T, 2}, 
-                          ψ::PencilArray{T, 2}, 
-                          b::PencilArray{T, 2}, 
+"""
+Compute Jacobian J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x
+"""
+function compute_jacobian!(db_dt::PencilArray{T, 3}, 
+                          ψ::PencilArray{T, 3}, 
+                          b::PencilArray{T, 3}, 
                           fields::Fields{T}, 
                           domain::Domain) where T
-
-    # Use the jacobian function from transforms.jl
-    jacobian(ψ, b, domain, fields.tmpc, fields.tmpc2, fields.tmp2, fields.tmp3, db_dt)
     
-    # Compute ∂ψ/∂x
-    rfft!(domain, ψ, fields.φhat)
-    ddx!(domain, fields.φhat, fields.tmpc)
-    irfft!(domain, fields.tmpc, fields.tmp)  # tmp = ∂ψ/∂x
-    
-    # Compute ∂ψ/∂y
-    rfft!(domain, ψ, fields.φhat)
-    ddy!(domain, fields.φhat, fields.tmpc)
-    irfft!(domain, fields.tmpc, fields.tmp2)  # tmp2 = ∂ψ/∂y
-    
-    # Compute ∂b/∂x
-    rfft!(domain, b, fields.bhat)
-    ddx!(domain, fields.bhat, fields.tmpc)
-    irfft!(domain, fields.tmpc, fields.tmp3)  # tmp3 = ∂b/∂x
-    
-    # Compute ∂b/∂y
-    rfft!(domain, b, fields.bhat)
-    ddy!(domain, fields.bhat, fields.tmpc)
-    irfft!(domain, fields.tmpc, fields.u)  # u = ∂b/∂y (reuse velocity array)
-    
-    # Compute Jacobian: J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x
-    tmp_data = fields.tmp.data    # ∂ψ/∂x
-    tmp2_data = fields.tmp2.data  # ∂ψ/∂y
-    tmp3_data = fields.tmp3.data  # ∂b/∂x
-    u_data = fields.u.data        # ∂b/∂y
-    db_dt_data = db_dt.data
-    
-    @inbounds @simd for i in eachindex(db_dt_data)
-        db_dt_data[i] = tmp_data[i] * u_data[i] - tmp2_data[i] * tmp3_data[i]
-    end
+    # Use the mutating jacobian! function from transforms.jl
+    jacobian!(db_dt, ψ, b, domain, fields.tmpc, fields.tmpc2, fields.tmp2, fields.tmp3, fields.tmpc)
     
     # Apply negative sign for advection: ∂b/∂t = -J(ψ,b)
     db_dt.data .*= -1
