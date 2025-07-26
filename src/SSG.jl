@@ -58,6 +58,12 @@ module SSG
     # nonlinear.jl exports
     export compute_tendency!, compute_geostrophic_velocities!
 
+    # poisson.jl exports
+    export solve_ssg_equation, solve_monge_ampere_fields!, compute_ma_residual_fields!,
+        SSGLevel, SSGMultigridSolver, solve_poisson_simple,
+        ssg_sor_smoother_enhanced!, ssg_sor_smoother_adaptive!,
+        demo_ssg_solver, demo_nonuniform_grid_ssg, test_poisson_solver
+
     # output.jl exports
     export OutputFrequency, OutputManager, save_simulation_state_full,
         save_snapshot, save_spectral_snapshot, process_all_outputs!,
