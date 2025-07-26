@@ -319,10 +319,13 @@ function ssg_sor_smoother!(level::SSGLevel{T}, iters::Int, ω::T, ε::T) where T
     Φ_local = level.Φ.data
     
     domain = level.domain
-    dx = domain.Lx / domain.Nx
-    dy = domain.Ly / domain.Ny
+    dx = domain.x[2] - domain.x[1]
+    dy = domain.y[2] - domain.y[1]
     dz = domain.Lz / domain.Nz
-    inv_dx2, inv_dy2, inv_dz2 = 1/(dx^2), 1/(dy^2), 1/(dz^2)
+
+    inv_dx2 = 1/(dx^2) 
+    inv_dy2 = 1/(dy^2)
+    inv_dz2 = 1/(dz^2)
     
     nx_local, ny_local, nz_local = size(Φ_local)
     
@@ -372,7 +375,8 @@ end
 """
 Spectral smoother for SSG equation (using spectral accuracy in X,Y)
 """
-function ssg_spectral_smoother!(level::SSGLevel{T}, iters::Int, ω::T, ε::T) where T
+function ssg_spectral_smoother!(level::SSGLevel{T}, 
+                                iters::Int, ω::T, ε::T) where T
     domain = level.domain
     
     for iter = 1:iters
@@ -764,38 +768,41 @@ function create_surface_field(domain::Domain, ::Type{T}) where T
     return PencilArray(pencil_2d, zeros(T, local_size(pencil_2d)))
 end
 
-"""
-Placeholder transforms.jl functions (replace with actual implementations)
-"""
-function rfft!(domain, real_field, spec_field)
-    # Replace with your actual rfft! implementation
-    @debug "rfft! placeholder called - replace with transforms.jl function"
-end
 
-function irfft!(domain, spec_field, real_field)
-    # Replace with your actual irfft! implementation
-    @debug "irfft! placeholder called - replace with transforms.jl function"
-end
+# """
+# Placeholder transforms.jl functions (replace with actual implementations)
+# """
+# function rfft!(domain, real_field, spec_field)
+#     # Replace with your actual rfft! implementation
+#     @debug "rfft! placeholder called - replace with transforms.jl function"
+# end
 
-function ddx!(domain, spec_field, result_spec_field)
-    # Replace with your actual ddx! implementation
-    @debug "ddx! placeholder called - replace with transforms.jl function"
-end
+# function irfft!(domain, spec_field, real_field)
+#     # Replace with your actual irfft! implementation
+#     @debug "irfft! placeholder called - replace with transforms.jl function"
+# end
 
-function ddy!(domain, spec_field, result_spec_field)
-    # Replace with your actual ddy! implementation
-    @debug "ddy! placeholder called - replace with transforms.jl function"
-end
+# function ddx!(domain, spec_field, result_spec_field)
+#     # Replace with your actual ddx! implementation
+#     @debug "ddx! placeholder called - replace with transforms.jl function"
+# end
 
-function d2dxdy!(domain, spec_field, result_spec_field)
-    # Replace with your actual mixed derivative implementation
-    @debug "d2dxdy! placeholder called - replace with transforms.jl function"
-end
+# function ddy!(domain, spec_field, result_spec_field)
+#     # Replace with your actual ddy! implementation
+#     @debug "ddy! placeholder called - replace with transforms.jl function"
+# end
 
-function dealias!(domain, spec_field)
-    # Replace with your actual dealiasing implementation
-    @debug "dealias! placeholder called - replace with transforms.jl function"
-end
+# function d2dxdy!(domain, spec_field, result_spec_field)
+#     # Replace with your actual mixed derivative implementation
+#     @debug "d2dxdy! placeholder called - replace with transforms.jl function"
+# end
+
+# function dealias!(domain, spec_field)
+#     # Replace with your actual dealiasing implementation
+#     @debug "dealias! placeholder called - replace with transforms.jl function"
+# end
+
+
 
 """
 Create coarser domain for multigrid hierarchy

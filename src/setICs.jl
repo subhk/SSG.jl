@@ -145,7 +145,8 @@ end
 Solve Monge-Ampère equation using SSG.jl's multigrid solver.
 Wrapper to integrate with the fields structure.
 """
-function solve_monge_ampere_fields!(fields::Fields{T}, domain::Domain;
+function solve_monge_ampere_fields!(fields::Fields{T}, 
+                                   domain::Domain;
                                    tol::T=T(1e-10),
                                    maxiter::Int=20,
                                    verbose::Bool=false) where T
