@@ -38,11 +38,13 @@ struct Fields{T, PA, PC}
     R::PA           # residual for MA equation
     tmp::PA         # general scratch
     tmp2::PA        # additional scratch
+    tmp3::PA        # additional scratch
     
     # Spectral arrays
     bhat::PC        # spectral buoyancy
     φhat::PC        # spectral streamfunction
     tmpc::PC        # spectral scratch
+    tmpc2::PC       # spectral scratch
 end
 
 """
@@ -61,9 +63,11 @@ function allocate_fields(domain::Domain{T}) where T
     φ    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     u    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     v    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    ω_z  = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     R    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     tmp  = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     tmp2 = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    tmp3 = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     
     φ_mg = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     b_mg = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
@@ -72,9 +76,10 @@ function allocate_fields(domain::Domain{T}) where T
     bhat = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
     φhat = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
     tmpc = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+    tmpc2 = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
     
     return Fields{T, typeof(b), typeof(bhat)}(
-        b, φ, u, v, R, tmp, tmp2, bhat, φhat, tmpc
+        b, φ, u, v, ω_z, φ_mg, b_mg, R, tmp, tmp2, tmp3, bhat, φhat, tmpc, tmpc2
     )
 end
 
