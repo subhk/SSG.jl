@@ -1097,18 +1097,18 @@ function simulation_summary(prob::SemiGeostrophicProblem{T}) where T
     
     # Basic state
     summary["current_time"] = prob.clock.t
-    summary["total_steps"] = prob.clock.step
-    summary["time_scheme"] = prob.timestepper.scheme
-    summary["current_dt"] = prob.clock.dt_actual > 0 ? prob.clock.dt_actual : prob.timestepper.dt
+    summary["total_steps"]  = prob.clock.step
+    summary["time_scheme"]  = prob.timestepper.scheme
+    summary["current_dt"]   = prob.clock.dt_actual > 0 ? prob.clock.dt_actual : prob.timestepper.dt
     
     # Physics
     if prob.diagnostics !== nothing && length(prob.diagnostics.times) > 0
         idx = length(prob.diagnostics.times)
         summary["kinetic_energy"] = prob.diagnostics.kinetic_energy[idx]
-        summary["enstrophy"] = prob.diagnostics.enstrophy[idx]
+        summary["enstrophy"]      = prob.diagnostics.enstrophy[idx]
         summary["total_buoyancy"] = prob.diagnostics.total_buoyancy[idx]
         summary["max_divergence"] = prob.diagnostics.max_divergence[idx]
-        summary["max_cfl"] = prob.diagnostics.max_cfl[idx]
+        summary["max_cfl"]         = prob.diagnostics.max_cfl[idx]
         
         # Conservation checks
         if length(prob.diagnostics.kinetic_energy) > 1
