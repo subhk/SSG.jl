@@ -144,19 +144,20 @@ function compute_jacobian!(db_dt::PencilArray{T, 3},
 end
 
 """
-Compute tendency for surface semi-geostrophic equations
+Compute buoynacy tendency for surface semi-geostrophic equations
 """
-function compute_tendency!(db_dt::PencilArray{T, 2}, fields::Fields{T}, 
-                          domain::Domain, params::TimeParams{T}) where T
+function compute_tendency!(db_dt::PencilArray{T, 3}, 
+                          fields::Fields{T}, 
+                          domain::Domain, 
+                          params::TimeParams{T}) where T
     
-    # Solve Monge-Ampère equation: det(D²ψ) = b
-    # This updates fields.φ given current fields.b
-    solve_monge_ampere_fields!(fields; tol=1e-10, verbose=false)
+    # Solve Monge-Ampère equation
+    solve_monge_ampere_fields!(fields, domain)
     
-    # Compute Jacobian J(ψ,b) for advection
+    # Compute Jacobian
     compute_jacobian!(db_dt, fields.φ, fields.b, fields, domain)
     
-    # Apply spectral dealiasing to tendency
+    # Apply dealiasing
     rfft!(domain, db_dt, fields.tmpc)
     dealias!(domain, fields.tmpc)
     irfft!(domain, fields.tmpc, db_dt)
