@@ -79,7 +79,11 @@ function allocate_fields(domain::Domain{T}) where T
     tmpc2 = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
     
     return Fields{T, typeof(b), typeof(bhat)}(
-        b, φ, u, v, ω_z, φ_mg, b_mg, R, tmp, tmp2, tmp3, bhat, φhat, tmpc, tmpc2
+        b, φ, u, v, ω_z, 
+        φ_mg, b_mg, R, 
+        tmp, tmp2, tmp3, 
+        bhat, φhat, 
+        tmpc, tmpc2
     )
 end
 
@@ -106,6 +110,7 @@ function zero_fields!(domain::Fields)
     
     fields.tmpc  .= 0
     fields.tmpc2 .= 0
+
     return fields
 end
 
