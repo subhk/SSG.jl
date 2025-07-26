@@ -3,10 +3,10 @@
 # Supports low-storage 2nd order Adams-Bashforth and 3rd order Runge-Kutta
 # with spectral filtering and Monge-Ampère inversion
 
-using PencilArrays
-using PencilFFTs
-using LinearAlgebra
-using Printf
+# using PencilArrays
+# using PencilFFTs
+# using LinearAlgebra
+# using Printf
 
 # # Import required modules
 # include("transforms.jl")
@@ -130,6 +130,9 @@ function compute_jacobian!(db_dt::PencilArray{T, 2},
                           b::PencilArray{T, 2}, 
                           fields::Fields{T}, 
                           domain::Domain) where T
+
+    # Use the jacobian function from transforms.jl
+    jacobian(ψ, b, domain, fields.tmpc, fields.tmpc2, fields.tmp2, fields.tmp3, db_dt)
     
     # Compute ∂ψ/∂x
     rfft!(domain, ψ, fields.φhat)
