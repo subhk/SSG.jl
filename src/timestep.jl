@@ -101,30 +101,23 @@ mutable struct TimeState{T, PA}
     end
 end
 
-# ============================================================================
-# ADVECTION OPERATORS
-# ============================================================================
-
-"""
-Compute Jacobian J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x spectrally
-"""
-"""
-Compute Jacobian J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x
-"""
-function compute_jacobian!(db_dt::PencilArray{T, 3}, 
-                          ψ::PencilArray{T, 3}, 
-                          b::PencilArray{T, 3}, 
-                          fields::Fields{T}, 
-                          domain::Domain) where T
+# """
+# Compute Jacobian J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x
+# """
+# function compute_jacobian!(db_dt::PencilArray{T, 3}, 
+#                           ψ::PencilArray{T, 3}, 
+#                           b::PencilArray{T, 3}, 
+#                           fields::Fields{T}, 
+#                           domain::Domain) where T
     
-    # Use the mutating jacobian! function from transforms.jl
-    jacobian!(db_dt, ψ, b, domain, fields.tmpc, fields.tmpc2, fields.tmp2, fields.tmp3, fields.tmpc)
+#     # Use the mutating jacobian! function from transforms.jl
+#     jacobian!(db_dt, ψ, b, domain, fields.tmpc, fields.tmpc2, fields.tmp2, fields.tmp3, fields.tmpc)
     
-    # Apply negative sign for advection: ∂b/∂t = -J(ψ,b)
-    db_dt.data .*= -1
+#     # Apply negative sign for advection: ∂b/∂t = -J(ψ,b)
+#     db_dt.data .*= -1
     
-    return db_dt
-end
+#     return db_dt
+# end
 
 # """
 # Compute buoynacy tendency for surface semi-geostrophic equations
