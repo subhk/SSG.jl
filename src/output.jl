@@ -344,8 +344,8 @@ function save_spectral_snapshot(filename::String, prob::SemiGeostrophicProblem{T
     mkpath(dirname(filename))
     
     # Ensure spectral fields are up to date
-    rfft!(prob.domain, prob.fields.b, prob.fields.bhat)
-    rfft!(prob.domain, prob.fields.φ, prob.fields.φhat)
+    rfft!(prob.domain, prob.fields.bₛ, prob.fields.bhat)
+    rfft!(prob.domain, prob.fields.φ,  prob.fields.φhat)
     
     # Gather spectral data
     bhat_global = gather_spectral_to_root(prob.fields.bhat)
@@ -403,7 +403,7 @@ function compute_energy_spectrum(φhat::Array{Complex{T}, 2}, domain::Domain) wh
     
     # Create wavenumber arrays
     kx = rfftfreq(domain.Nx, 2π*domain.Nx/domain.Lx)
-    ky = fftfreq(domain.Ny, 2π*domain.Ny/domain.Ly)
+    ky = fftfreq(domain.Ny,  2π*domain.Ny/domain.Ly)
     
     # Maximum wavenumber for binning
     k_max = min(length(kx)-1, domain.Ny÷2)
@@ -435,7 +435,7 @@ function compute_enstrophy_spectrum(φhat::Array{Complex{T}, 2}, domain::Domain)
     
     # Create wavenumber arrays
     kx = rfftfreq(domain.Nx, 2π*domain.Nx/domain.Lx)
-    ky = fftfreq(domain.Ny, 2π*domain.Ny/domain.Ly)
+    ky = fftfreq(domain.Ny,  2π*domain.Ny/domain.Ly)
     
     # Maximum wavenumber for binning
     k_max = min(length(kx)-1, domain.Ny÷2)
@@ -878,8 +878,10 @@ function load_simulation_state_full(filename::String, domain::Domain{T};
         
         # Grid validation
         if validate_grid
-            file_Nx, file_Ny = file["grid/Nx"], file["grid/Ny"]
-            file_Lx, file_Ly = file["grid/Lx"], file["grid/Ly"]
+            file_Nx = file["grid/Nx"] 
+            file_Ny = file["grid/Ny"]
+            file_Lx = file["grid/Lx"]
+            file_Ly = file["grid/Ly"]
             
             grid_compatible = (file_Nx == domain.Nx && file_Ny == domain.Ny &&
                              isapprox(file_Lx, domain.Lx, rtol=1e-10) &&
@@ -915,8 +917,8 @@ function load_simulation_state_full(filename::String, domain::Domain{T};
         b_global = file["fields/physical/buoyancy"]
         φ_global = file["fields/physical/streamfunction"]
         
-        distribute_from_root_improved!(prob.fields.b, b_global)
-        distribute_from_root_improved!(prob.fields.φ, φ_global)
+        distribute_from_root_improved!(prob.fields.bₛ, b_global)
+        distribute_from_root_improved!(prob.fields.φ,  φ_global)
         
         # Load spectral fields if available and requested
         if load_spectral && haskey(file, "fields/spectral/buoyancy_complex")
