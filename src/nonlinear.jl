@@ -22,13 +22,16 @@
 Compute Jacobian J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x
 """
 function compute_jacobian!(db_dt::PencilArray{T, 2}, 
-                          ψ::PencilArray{T, 2}, 
+                          Φ::PencilArray{T, 3}, 
                           b::PencilArray{T, 2}, 
                           fields::Fields{T}, 
                           domain::Domain) where T
     
+    # getting streamfunction at the surface
+    extract_surface_to_2d!(fields.φₛ, Φ, domain)    
+
     # Use the mutating jacobian! function from transforms.jl
-    jacobian!(db_dt, ψ, b, domain, 
+    jacobian!(db_dt, fields.φₛ, b, domain, 
             fields.tmpc, fields.tmpc2, 
             fields.tmp2, fields.tmp3, 
             fields.tmpc)
