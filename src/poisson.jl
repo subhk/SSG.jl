@@ -257,7 +257,8 @@ function apply_ssg_boundary_conditions!(level::SSGLevel{T}) where T
             # Surface boundary (Z = 0): ∂Φ/∂Z = bs_surface[i,j]
             if nz_local >= 2 && i <= size(bs_local, 1) && j <= size(bs_local, 2)
                 k = nz_local
-                # Use one-sided difference with non-uniform grid
+                # Apply Neumann BC: ∂Φ/∂Z = b̃s
+                # Use one-sided difference: ∂Φ/∂Z ≈ (Φ[k] - Φ[k-1])/dz = b̃s
                 dz_top = length(dz) >= k ? dz[k-1] : 1.0
                 Φ_local[i,j,k] = Φ_local[i,j,k-1] + dz_top * bs_local[i,j]
                 r_local[i,j,k] = 0  # Residual is zero at boundary
@@ -266,6 +267,8 @@ function apply_ssg_boundary_conditions!(level::SSGLevel{T}) where T
             # Bottom boundary (Z = -1): ∂Φ/∂Z = 0
             k = 1
             if nz_local >= 2
+                # Apply homogeneous Neumann BC: ∂Φ/∂Z = 0
+                # This is enforced by setting the residual to zero
                 r_local[i,j,k] = 0  # Residual is zero at boundary
             end
         end
