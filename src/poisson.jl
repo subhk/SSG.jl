@@ -308,10 +308,13 @@ end
 # =============================================================================
 
 """
-SOR smoother for SSG equation with non-uniform z-grid support
-Handles variable vertical spacing using the domain.dz array
+SOR smoother for SSG equation (A1) with proper linearization
+Linearizes the nonlinear term εDΦ around current iterate
 """
-function ssg_sor_smoother!(level::SSGLevel{T}, iters::Int, ω::T, ε::T) where T
+function ssg_sor_smoother!(level::SSGLevel{T}, 
+                            iters::Int, 
+                            ω::T, ε::T) where T
+                            
     Φ_local = level.Φ.data
     
     domain = level.domain
@@ -984,7 +987,9 @@ end
 """
 Extend 2D surface field to 3D for SSG solver
 """
-function extend_2d_to_3d(field_2d::PencilArray{T, 2}, domain::Domain) where T
+function extend_2d_to_3d(field_2d::PencilArray{T, 2}, 
+                        domain::Domain) where T
+
     # Create 3D field
     field_3d = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     
@@ -1001,6 +1006,24 @@ function extend_2d_to_3d(field_2d::PencilArray{T, 2}, domain::Domain) where T
     return field_3d
 end
 
+
+"""
+Extract surface (top level) from 3D field to 2D
+"""
+function extract_surface_to_2d!(field_2d::PencilArray{T, 2}, 
+                                field_3d::PencilArray{T, 3}, 
+                                domain::Domain) where T
+
+    field_2d_local = field_2d.data
+    field_3d_local = field_3d.data
+    
+    nz = size(field_3d_local, 3)
+    
+    # Copy surface level (Z=0, top of domain)
+    @views field_2d_local[:,:] .= field_3d_local[:,:,nz]
+    
+    return field_2d
+end
 
 """
 Compute Monge-Ampère residual in fields structure
@@ -1022,6 +1045,7 @@ function compute_ma_residual_fields!(fields::Fields{T}, domain::Domain) where T
     
     return fields.R
 end
+
 
 # =============================================================================
 # DEMO AND TESTING FUNCTIONS
