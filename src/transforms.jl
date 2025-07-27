@@ -312,14 +312,14 @@ J(a, b) = \\frac{∂a}{∂x} \\frac{∂b}{∂y} - \\frac{∂a}{∂y} \\frac{∂b
 
 The result is stored in `output`. Compatible with PencilArrays.
 """
-function jacobian(a, b, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2, output)
+function jacobian!(output, a, b, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
     # Compute Jacobian in spectral space
     jac_spec = jacobianh(a, b, domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
     
     # Transform back to physical space using PencilFFTs
     irfft!(domain, jac_spec, output)
     
-    return output
+    #return output
 end
 
 """
