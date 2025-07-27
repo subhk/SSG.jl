@@ -8,7 +8,7 @@ where:
 - DΦ = ∂²Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²            (2, nonlinear operator)
 - ε: external parameter (Rossby number measure)
 
-### Boundary Conditions (A4):
+### Boundary Conditions:
 - ∂Φ/∂Z = b̃s  at Z = 0 (surface)
 - ∂Φ/∂Z = 0   at Z = -1 (bottom)
 
@@ -35,6 +35,6 @@ where:
 ### Technical Implementation:
 - **Equation (1)**: Implemented in `compute_ssg_residual!()`
 - **Operator DΦ (2)**: Implemented in `compute_d_operator!()`
-- **Boundary conditions (A4)**: Implemented in `apply_ssg_boundary_conditions!()`
+- **Boundary conditions**: Implemented in `apply_ssg_boundary_conditions!()`
 - **Multigrid**: V-cycles with spectral and SOR smoothers
 - **Compatibility**: 2D ↔ 3D field conversion for existing codebase
