@@ -573,8 +573,16 @@ function ssg_spectral_smoother!(level::SSGLevel{T},
                             k_mag_sq = kx^2 + ky^2
                             
                             if k_mag_sq > 1e-14
-                                # Simple preconditioning for SSG equation
-                                correction = r_hat_local[i_local, j_local, k] / (1 + k_mag_sq)
+                                # # Simple preconditioning for SSG equation
+                                # correction = r_hat_local[i_local, j_local, k] / (1 + k_mag_sq)
+                                # Φ_hat_local[i_local, j_local, k] += ω * correction
+
+                                # Preconditioning for linearized SSG: ∇²Φ - ε·(approx DΦ) = r
+                                # Use approximate inverse: 1/(k² + ε·k⁴) for high frequencies
+                                ε_factor = ε * k_mag_sq  # Approximate DΦ scaling
+                                preconditioner = 1.0 / (k_mag_sq + ε_factor + 1e-12)
+                                
+                                correction = r_hat_local[i_local, j_local, k] * preconditioner
                                 Φ_hat_local[i_local, j_local, k] += ω * correction
                             end
                         else
