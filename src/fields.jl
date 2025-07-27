@@ -23,12 +23,14 @@ Container for all simulation fields (prognostic, diagnostic, and scratch).
 """
 struct Fields{T, PA, PC}
     # Prognostic fields
-    b::PA           # surface buoyancy anomaly
+    bₛ::PA           # surface buoyancy anomaly
+    φₛ::PA           # 3D streamfunction at the surface
     
+
     # Diagnostic fields
-    φ::PA           # streamfunction
-    u::PA           # x-velocity
-    v::PA           # y-velocity
+    φ::PA           # 3D streamfunction
+    u::PA           # geostrophic x-velocity (3D)
+    v::PA           # geostrophic y-velocity (3D)
 
     # Multigrid workspace
     φ_mg::PA           # Multigrid solution workspace
@@ -59,7 +61,8 @@ Allocate all field arrays for the given domain.
 """
 function allocate_fields(domain::Domain{T}) where T
     # Real-space fields
-    b    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    bₛ   = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    φₛ   = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     φ    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     u    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     v    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
@@ -79,7 +82,7 @@ function allocate_fields(domain::Domain{T}) where T
     tmpc2 = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
     
     return Fields{T, typeof(b), typeof(bhat)}(
-        b, φ, u, v, ω_z, 
+        bₛ, φₛ, φ, u, v, ω_z, 
         φ_mg, b_mg, R, 
         tmp, tmp2, tmp3, 
         bhat, φhat, 
@@ -92,7 +95,9 @@ end
 Set all fields to zero.
 """
 function zero_fields!(domain::Fields)
-    fields.b    .= 0
+    fields.bₛ   .= 0
+    fields.φₛ   .= 0
+
     fields.φ    .= 0
     fields.u    .= 0
     fields.v    .= 0

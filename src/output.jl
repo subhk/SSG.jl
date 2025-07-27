@@ -217,7 +217,7 @@ function save_simulation_state_full(filename::String, prob::SemiGeostrophicProbl
     mkpath(dirname(filename))
     
     # Gather distributed physical data to root process
-    b_global = gather_to_root(prob.fields.b)
+    b_global = gather_to_root(prob.fields.bₛ)
     φ_global = gather_to_root(prob.fields.φ)
     
     # Compute and gather velocities
