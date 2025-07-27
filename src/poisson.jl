@@ -219,6 +219,7 @@ function compute_ssg_residual!(level::SSGLevel{T}, ε::T) where T
     compute_d_operator!(level, level.r)
     
     # Compute residual: r = ∇²Φ - εDΦ - RHS
+    # For surface SSG, RHS = 0 (homogeneous)
     r_local = level.r.data
     laplacian_local = level.tmp_real.data
     b_local = level.b.data  # RHS
