@@ -244,9 +244,9 @@ function timestep_ab2_ls!(fields::Fields{T}, domain::Domain,
         copy_field!(state.db_dt_old, fields.tmp)
     else
         # Adams-Bashforth step: b^{n+1} = b^n + dt(3/2 * f^n - 1/2 * f^{n-1})
-        b_data = fields.b.data
+        b_data   = fields.b.data
         tmp_data = fields.tmp.data           # current tendency
-        old_data = state.db_dt_old.data   # previous tendency
+        old_data = state.db_dt_old.data     # previous tendency
         
         @inbounds @simd for i in eachindex(b_data)
             b_data[i] += dt * (1.5 * tmp_data[i] - 0.5 * old_data[i])

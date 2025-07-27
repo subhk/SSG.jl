@@ -49,7 +49,7 @@ function compute_tendency!(db_dt::PencilArray{T, 2},
                           params::TimeParams{T}) where T
     
     # Solve Monge-Ampère equation
-    solve_monge_ampere_fields!(fields, domain)
+    # solve_monge_ampere_fields!(fields, domain)
     
     # Compute Jacobian
     compute_jacobian!(db_dt, fields.φ, fields.b, fields, domain)
