@@ -9,6 +9,7 @@ Container for all physical and numerical parameters.
 - `κ`: Laplacian diffusivity coefficient
 - `νh`: Hyperdiffusivity coefficient  
 - `p_h`: Order of hyperdiffusion operator
+- `ε`: External parameter for SSG equation: Rossby number measure
 
 # Numerical Parameters
 - `MA_tol`: Tolerance for Monge-Ampère solver
@@ -26,6 +27,7 @@ struct Params{T}
     κ::T            # Laplacian diffusivity
     νh::T           # hyperdiffusivity coefficient
     p_h::Int        # order of hyperdiffusion
+    ε::T            # Global Rossby number
     
     # Numerical parameters  
     MA_tol::T       # Monge-Ampere tolerance
@@ -47,6 +49,7 @@ Constructor for Params with keyword arguments and defaults.
 - `κ=1e-4`: Laplacian diffusivity
 - `νh=0.0`: Hyperdiffusivity coefficient
 - `p_h=4`: Hyperdiffusion order
+- `ε=0.1`: SSG external parameter (Rossby number measure)
 - `MA_tol=1e-8`: Monge-Ampère tolerance
 - `MA_maxiter=20`: Monge-Ampère max iterations
 - `t_end=1.0`: End time
