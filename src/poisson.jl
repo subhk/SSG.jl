@@ -278,30 +278,30 @@ function apply_ssg_boundary_conditions!(level::SSGLevel{T}) where T
 end
 
 
-# """
-# Set surface boundary condition b̃s from buoyancy field
-# Compatible with existing Fields structure
-# """
-# function set_surface_bc_from_buoyancy!(level::SSGLevel{T}, buoyancy_field::PencilArray{T, 3}) where T
-#     # Extract surface buoyancy (top z level) for boundary condition (A4)
-#     b_local = buoyancy_field.data
-#     bs_local = parent(level.bs_surface)
+"""
+Set surface boundary condition b̃s from buoyancy field
+Compatible with existing Fields structure
+"""
+function set_surface_bc_from_buoyancy!(level::SSGLevel{T}, buoyancy_field::PencilArray{T, 3}) where T
+    # Extract surface buoyancy (top z level) for boundary condition (A4)
+    b_local = buoyancy_field.data
+    bs_local = parent(level.bs_surface)
     
-#     nx_local, ny_local, nz_local = size(b_local)
+    nx_local, ny_local, nz_local = size(b_local)
     
-#     # Copy surface buoyancy to boundary condition
-#     if size(bs_local, 1) >= nx_local && size(bs_local, 2) >= ny_local
-#         @inbounds for j = 1:ny_local
-#             for i = 1:nx_local
-#                 # Surface boundary condition: ∂Φ/∂Z = b̃s at Z=0
-#                 # Use surface buoyancy as boundary condition
-#                 bs_local[i,j] = b_local[i,j,nz_local]  # Surface level
-#             end
-#         end
-#     end
+    # Copy surface buoyancy to boundary condition
+    if size(bs_local, 1) >= nx_local && size(bs_local, 2) >= ny_local
+        @inbounds for j = 1:ny_local
+            for i = 1:nx_local
+                # Surface boundary condition: ∂Φ/∂Z = b̃s at Z=0
+                # Use surface buoyancy as boundary condition
+                bs_local[i,j] = b_local[i,j,nz_local]  # Surface level
+            end
+        end
+    end
     
-#     return nothing
-# end
+    return nothing
+end
 
 # =============================================================================
 # SSG SMOOTHERS WITH NON-UNIFORM GRID SUPPORT
@@ -908,7 +908,8 @@ end
 
 
 """
-Simple Poisson solver for testing/fallback: Δφ = b
+Simple Poisson solver for testing: Δφ = b
+Fallback when ε → 0 in equation (A1)
 """
 function solve_poisson_simple(Φ_initial::PencilArray{T, 3},
                              b_rhs::PencilArray{T, 3}, 
@@ -1044,20 +1045,42 @@ end
 """
 Compute Monge-Ampère residual in fields structure
 """
-function compute_ma_residual_fields!(fields::Fields{T}, domain::Domain) where T
-    # For now, compute Poisson residual: R = Δφ - b
+# function compute_ma_residual_fields!(fields::Fields{T}, domain::Domain) where T
+#     # For now, compute Poisson residual: R = Δφ - b
     
-    # Compute Laplacian of φ
-    rfft!(domain, fields.φ, fields.φhat)
-    laplacian_h!(domain, fields.φhat, fields.tmpc)
-    irfft!(domain, fields.tmpc, fields.R)
+#     # Compute Laplacian of φ
+#     rfft!(domain, fields.φ, fields.φhat)
+#     laplacian_h!(domain, fields.φhat, fields.tmpc)
+#     irfft!(domain, fields.tmpc, fields.R)
     
-    # Add vertical Laplacian if needed
-    d2dz2!(domain, fields.φ, fields.tmp)
-    fields.R.data .+= fields.tmp.data
+#     # Add vertical Laplacian if needed
+#     d2dz2!(domain, fields.φ, fields.tmp)
+#     fields.R.data .+= fields.tmp.data
     
-    # Subtract RHS: R = Δφ - b
-    fields.R.data .-= fields.b.data
+#     # Subtract RHS: R = Δφ - b
+#     fields.R.data .-= fields.b.data
+    
+#     return fields.R
+# end
+
+
+function compute_ma_residual_fields!(fields::Fields{T}, 
+                                    domain::Domain; 
+                                    ε::T=T(0.1)) where T
+
+    # Extend 2D surface fields to 3D for SSG computation
+    Φ_3d = extend_2d_to_3d(fields.φ, domain)
+    
+    # Create temporary SSG level for residual computation
+    temp_level = SSGLevel{T}(domain, 1)
+    copy_field!(temp_level.Φ, Φ_3d)
+    set_surface_bc_from_buoyancy!(temp_level, extend_2d_to_3d(fields.b, domain))
+    
+    # Compute SSG residual
+    compute_ssg_residual!(temp_level, ε)
+    
+    # Extract surface residual back to 2D
+    extract_surface_to_2d!(fields.R, temp_level.r, domain)
     
     return fields.R
 end
