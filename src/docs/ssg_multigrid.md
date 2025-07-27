@@ -10,7 +10,7 @@ where:
 
 ### Boundary Conditions:
 - ∂Φ/∂Z = b̃s  at Z = 0 (surface)
-- ∂Φ/∂Z = 0   at Z = -1 (bottom)
+- ∂Φ/∂Z = 0   at Z = -H (bottom)
 
 ### Key Features:
 1. **Spectral accuracy** in horizontal directions (X,Y)
