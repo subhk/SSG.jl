@@ -64,16 +64,17 @@ The parameter ε appears in the SSG equation (A1): ∇²Φ = εDΦ
 - Typical values: ε ∈ [0.1, 1.0] for oceanic applications
 """
 function Params(;
-    κ::Real=1e-4,
-    νh::Real=0.0,
+    κ::Float64=1e-4,
+    νh::Float64=0.0,
     p_h::Integer=4,
-    MA_tol::Real=1e-8,
+    ε::Float64=0.1,
+    MA_tol::Float64=1e-8,
     MA_maxiter::Integer=20,
-    t_end::Real=1.0,
+    t_end::Float64=1.0,
     nsave::Integer=50,
     filter=nothing
 )
-    T = promote_type(typeof(κ), typeof(νh), typeof(MA_tol), typeof(t_end))
+    T = promote_type(typeof(κ), typeof(νh), typeof(ε), typeof(MA_tol), typeof(t_end))
     return Params{T}(T(κ), T(νh), Int(p_h), T(MA_tol), Int(MA_maxiter), 
                      T(t_end), Int(nsave), filter)
 end
@@ -135,6 +136,16 @@ function validate_params(params::Params)
     
     if params.p_h < 1
         @warn "Hyperdiffusion order p_h = $(params.p_h) should be ≥ 1"
+        valid = false
+    end
+
+    if params.ε < 0
+        @warn "Negative SSG parameter ε = $(params.ε)"
+        valid = false
+    end
+    
+    if params.ε > 10
+        @warn "Very large SSG parameter ε = $(params.ε) may cause numerical issues"
         valid = false
     end
     
