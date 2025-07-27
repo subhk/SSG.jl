@@ -28,7 +28,10 @@ function compute_jacobian!(db_dt::PencilArray{T, 2},
                           domain::Domain) where T
     
     # Use the mutating jacobian! function from transforms.jl
-    jacobian!(db_dt, ψ, b, domain, fields.tmpc, fields.tmpc2, fields.tmp2, fields.tmp3, fields.tmpc)
+    jacobian!(db_dt, ψ, b, domain, 
+            fields.tmpc, fields.tmpc2, 
+            fields.tmp2, fields.tmp3, 
+            fields.tmpc)
     
     # Apply negative sign for advection: ∂b/∂t = -J(ψ,b)
     db_dt.data .*= -1
