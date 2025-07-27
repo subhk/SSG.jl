@@ -961,66 +961,46 @@ function solve_monge_ampere_fields!(fields::Fields{T},
                                    domain::Domain; 
                                    tol::T=T(1e-10), 
                                    verbose::Bool=false,
-                                   method::Symbol=:poisson) where T
+                                   ε::T=T(0.1)) where T
     
-    if method == :poisson
-        # Use simple Poisson approximation for testing
-        φhat = create_spectral_field(domain, T)
-        bhat = create_spectral_field(domain, T)
-        
-        # Transform buoyancy to spectral space
-        rfft!(domain, fields.b, bhat)
-        
-        # Solve Δφ = b in spectral space
-        bhat_local = bhat.data
-        φhat_local = φhat.data
-        local_ranges = local_range(domain.pc)
-        
-        @inbounds for k in axes(bhat_local, 3)
-            for (j_local, j_global) in enumerate(local_ranges[2])
-                for (i_local, i_global) in enumerate(local_ranges[1])
-                    if i_global <= length(domain.kx) && j_global <= length(domain.ky)
-                        kx = domain.kx[i_global]
-                        ky = domain.ky[j_global]
-                        k2 = kx^2 + ky^2
-                        
-                        if k2 > 1e-14
-                            φhat_local[i_local, j_local, k] = -bhat_local[i_local, j_local, k] / k2
-                        else
-                            φhat_local[i_local, j_local, k] = 0
-                        end
-                    else
-                        φhat_local[i_local, j_local, k] = 0
-                    end
-                end
-            end
-        end
-        
-        # Transform back to physical space
-        irfft!(domain, φhat, fields.φ)
-        
-        return true
-        
-    elseif method == :ssg
-        # Use full SSG solver
-        ε = T(0.1)  # Default Rossby number parameter
-        
-        # Create RHS from buoyancy
-        b_rhs = copy(fields.b)
-        
-        # Solve SSG equation
-        solution, diag = solve_ssg_equation(fields.φ, b_rhs, ε, domain; 
-                                          tol=tol, verbose=verbose)
-        
-        # Copy solution back
-        copy_field!(fields.φ, solution)
-        
-        return diag.converged
-        
-    else
-        error("Unknown Monge-Ampère solver method: $method")
-    end
+    # Create temporary 3D fields by extending 2D surface fields
+    Φ_3d = extend_2d_to_3d(fields.φ, domain)
+    b_3d = extend_2d_to_3d(fields.b, domain)
+    
+    # Solve 3D SSG equation (A1)
+    solution, diagnostics = solve_ssg_equation(Φ_3d, b_3d, ε, domain; 
+                                             tol=tol, 
+                                             maxiter=maxiter,
+                                             verbose=verbose,
+                                             smoother=:spectral)
+    
+    # Extract surface solution back to 2D
+    extract_surface_to_2d!(fields.φ, solution, domain)
+    
+    return diagnostics.converged
 end
+
+
+"""
+Extend 2D surface field to 3D for SSG solver
+"""
+function extend_2d_to_3d(field_2d::PencilArray{T, 2}, domain::Domain) where T
+    # Create 3D field
+    field_3d = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    
+    # Copy 2D field to all z levels (initial guess)
+    field_2d_local = field_2d.data
+    field_3d_local = field_3d.data
+    
+    nz = size(field_3d_local, 3)
+    
+    @inbounds for k = 1:nz
+        @views field_3d_local[:,:,k] .= field_2d_local[:,:]
+    end
+    
+    return field_3d
+end
+
 
 """
 Compute Monge-Ampère residual in fields structure
