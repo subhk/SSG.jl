@@ -1300,7 +1300,7 @@ end
 #         end
         
 #         if rank == 0
-#             println("📊 Summary:")
+#             println(" Summary:")
 #             println("• Standard SOR works for uniform/mildly stretched grids")
 #             println("• Enhanced SOR handles moderate stretching (ratio < 5)")  
 #             println("• Adaptive smoother automatically chooses best method")
@@ -1323,7 +1323,7 @@ end
 #     rank = MPI.Comm_rank(comm)
     
 #     if rank == 0
-#         println("🧪 Testing Simple Poisson Solver")
+#         println(" Testing Simple Poisson Solver")
 #         println("=" ^ 35)
 #     end
     
