@@ -891,6 +891,7 @@ function create_surface_field(domain::Domain, ::Type{T}) where T
     end
 end
 
+
 """
 Compute norm for 3D PencilArrays
 """
@@ -904,6 +905,7 @@ function norm_field(φ::PencilArray{T, 3}) where T
     
     return sqrt(global_norm_sq)
 end
+
 
 """
 Simple Poisson solver for testing/fallback: Δφ = b
