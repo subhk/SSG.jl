@@ -278,30 +278,30 @@ function apply_ssg_boundary_conditions!(level::SSGLevel{T}) where T
 end
 
 
-"""
-Set surface boundary condition b̃s from buoyancy field
-Compatible with existing Fields structure
-"""
-function set_surface_bc_from_buoyancy!(level::SSGLevel{T}, buoyancy_field::PencilArray{T, 3}) where T
-    # Extract surface buoyancy (top z level) for boundary condition (A4)
-    b_local = buoyancy_field.data
-    bs_local = parent(level.bs_surface)
+# """
+# Set surface boundary condition b̃s from buoyancy field
+# Compatible with existing Fields structure
+# """
+# function set_surface_bc_from_buoyancy!(level::SSGLevel{T}, buoyancy_field::PencilArray{T, 3}) where T
+#     # Extract surface buoyancy (top z level) for boundary condition (A4)
+#     b_local = buoyancy_field.data
+#     bs_local = parent(level.bs_surface)
     
-    nx_local, ny_local, nz_local = size(b_local)
+#     nx_local, ny_local, nz_local = size(b_local)
     
-    # Copy surface buoyancy to boundary condition
-    if size(bs_local, 1) >= nx_local && size(bs_local, 2) >= ny_local
-        @inbounds for j = 1:ny_local
-            for i = 1:nx_local
-                # Surface boundary condition: ∂Φ/∂Z = b̃s at Z=0
-                # Use surface buoyancy as boundary condition
-                bs_local[i,j] = b_local[i,j,nz_local]  # Surface level
-            end
-        end
-    end
+#     # Copy surface buoyancy to boundary condition
+#     if size(bs_local, 1) >= nx_local && size(bs_local, 2) >= ny_local
+#         @inbounds for j = 1:ny_local
+#             for i = 1:nx_local
+#                 # Surface boundary condition: ∂Φ/∂Z = b̃s at Z=0
+#                 # Use surface buoyancy as boundary condition
+#                 bs_local[i,j] = b_local[i,j,nz_local]  # Surface level
+#             end
+#         end
+#     end
     
-    return nothing
-end
+#     return nothing
+# end
 
 # =============================================================================
 # SSG SMOOTHERS WITH NON-UNIFORM GRID SUPPORT
@@ -619,8 +619,8 @@ function restrict_ssg_3d!(coarse::SSGLevel{T}, fine::SSGLevel{T}) where T
     # Restrict solution field
     restrict_3d_field!(coarse.Φ, fine.Φ)
     
-    # Restrict RHS
-    restrict_3d_field!(coarse.b, fine.b)
+    # # Restrict RHS
+    # restrict_3d_field!(coarse.b, fine.b)
     
     # Restrict boundary conditions
     restrict_2d_field!(coarse.bs_surface, fine.bs_surface)
