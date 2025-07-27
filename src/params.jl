@@ -55,6 +55,13 @@ Constructor for Params with keyword arguments and defaults.
 - `t_end=1.0`: End time
 - `nsave=50`: Save frequency
 - `filter=nothing`: Spectral filter
+
+# Notes on ε Parameter
+The parameter ε appears in the SSG equation (A1): ∇²Φ = εDΦ
+- ε ≈ 0: Reduces to Poisson equation (surface quasi-geostrophic limit)
+- ε ~ O(1): Full semi-geostrophic dynamics
+- ε >> 1: Strong ageostrophic effects
+- Typical values: ε ∈ [0.1, 1.0] for oceanic applications
 """
 function Params(;
     κ::Real=1e-4,
