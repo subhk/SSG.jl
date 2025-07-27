@@ -204,10 +204,10 @@ end
 Pretty print field information.
 """
 function Base.show(io::IO, fields::Fields)
-    T = eltype(fields.b)
+    T = eltype(fields.bₛ)
     println(io, "Fields{$T}:")
-    println(io, "  Prognostic: b (buoyancy)")
+    println(io, "  Prognostic: bₛ (buoyancy)")
     println(io, "  Diagnostic: φ (streamfunction), u, v (velocities)")
     println(io, "  Scratch   : R, tmp, tmp2 (real), tmpc (spectral)")
-    println(io, "  Local size: $(size(fields.b))")
+    println(io, "  Local size: $(size(fields.bₛ))")
 end
