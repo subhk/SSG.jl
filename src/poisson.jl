@@ -1194,175 +1194,250 @@ function demo_ssg_solver()
     end
 end
 
+# """
+# Demo function for testing non-uniform grid SSG solver
+# """
+# function demo_nonuniform_grid_ssg()
+#     MPI.Init()
+#     comm = MPI.COMM_WORLD
+#     rank = MPI.Comm_rank(comm)
+    
+#     if rank == 0
+#         println("🌊 Non-Uniform Grid SSG Solver Demo")
+#         println("=" ^ 40)
+#         println("Testing stretched vertical grids typical for ocean models")
+#         println()
+#     end
+    
+#     try
+#         # Test different grid types
+#         grid_types = [
+#             (:uniform, "Uniform spacing"),
+#             (:stretched, "Surface-concentrated"), 
+#             (:stretched, "Bottom-concentrated")
+#         ]
+        
+#         for (i, (grid_type, description)) in enumerate(grid_types)
+#             if rank == 0
+#                 println("Test $i: $description")
+#                 println("-" ^ 30)
+#             end
+            
+#             # Create domain with different vertical grids
+#             if grid_type == :uniform
+#                 domain = make_domain(32, 32, 8; Lx=2π, Ly=2π, Lz=1.0, 
+#                                    z_grid=:uniform, comm=comm)
+#             else
+#                 # Create stretched grid parameters
+#                 if description == "Surface-concentrated"
+#                     stretch_params = (type=:tanh, β=2.0, surface_concentration=true)
+#                 else
+#                     stretch_params = (type=:tanh, β=2.0, surface_concentration=false)
+#                 end
+                
+#                 domain = make_domain(32, 32, 8; Lx=2π, Ly=2π, Lz=1.0,
+#                                    z_grid=:stretched, 
+#                                    stretch_params=stretch_params,
+#                                    comm=comm)
+#             end
+            
+#             if rank == 0
+#                 println("Grid spacing (dz): ", round.(domain.dz, digits=4))
+#                 stretch_ratio = maximum(domain.dz) / minimum(domain.dz)
+#                 println("Max stretch ratio: $(round(stretch_ratio, digits=2))")
+#             end
+            
+#             # Create test problem
+#             Φ_initial = PencilArray(domain.pr, zeros(Float64, local_size(domain.pr)))
+#             b_rhs = PencilArray(domain.pr, zeros(Float64, local_size(domain.pr)))
+            
+#             # Initialize with test function that varies in z
+#             local_ranges = local_range(domain.pr)
+#             b_local = b_rhs.data
+            
+#             for (k_local, k_global) in enumerate(local_ranges[3])
+#                 z = domain.z[k_global]
+#                 for (j_local, j_global) in enumerate(local_ranges[2])
+#                     y = (j_global - 1) * 2π / domain.Ny
+#                     for (i_local, i_global) in enumerate(local_ranges[1])
+#                         x = (i_global - 1) * 2π / domain.Nx
+                        
+#                         # Test function with vertical variation
+#                         b_local[i_local, j_local, k_local] = sin(x) * cos(y) * exp(-z)
+#                     end
+#                 end
+#             end
+            
+#             # Test different smoothers
+#             smoothers = [:adaptive, :enhanced, :spectral]
+#             smoother_names = ["Adaptive", "Enhanced", "Spectral"]
+            
+#             for (smoother, smoother_name) in zip(smoothers, smoother_names)
+#                 if rank == 0
+#                     print("  Testing $smoother_name smoother... ")
+#                 end
+                
+#                 start_time = time()
+#                 solution, diag = solve_ssg_equation(Φ_initial, b_rhs, 0.1, domain;
+#                                                   tol=1e-6,
+#                                                   verbose=false,
+#                                                   smoother=smoother,
+#                                                   maxiter=20)
+#                 solve_time = time() - start_time
+                
+#                 if rank == 0
+#                     if diag.converged
+#                         println("✓ Converged in $(diag.iterations) iterations ($(round(solve_time*1000, digits=1))ms)")
+#                     else
+#                         println("✗ Did not converge ($(round(solve_time*1000, digits=1))ms)")
+#                     end
+#                 end
+#             end
+            
+#             if rank == 0
+#                 println()
+#             end
+#         end
+        
+#         if rank == 0
+#             println("📊 Summary:")
+#             println("• Standard SOR works for uniform/mildly stretched grids")
+#             println("• Enhanced SOR handles moderate stretching (ratio < 5)")  
+#             println("• Adaptive smoother automatically chooses best method")
+#             println("• Spectral smoother generally most robust")
+#             println("• Non-uniform grids properly supported in vertical direction")
+#         end
+        
+#     finally
+#         MPI.Finalize()
+#     end
+# end
+
+
+# """
+# Test simple Poisson solver
+# """
+# function test_poisson_solver()
+#     MPI.Init()
+#     comm = MPI.COMM_WORLD
+#     rank = MPI.Comm_rank(comm)
+    
+#     if rank == 0
+#         println("🧪 Testing Simple Poisson Solver")
+#         println("=" ^ 35)
+#     end
+    
+#     try
+#         # Smaller problem for testing
+#         domain = make_domain(32, 32, 4; Lx=2π, Ly=2π, Lz=1.0, comm=comm)
+        
+#         # Create test fields
+#         Φ_initial = PencilArray(domain.pr, zeros(Float64, local_size(domain.pr)))
+#         b_rhs = PencilArray(domain.pr, zeros(Float64, local_size(domain.pr)))
+        
+#         # Simple RHS: b = sin(x)cos(y)
+#         local_ranges = local_range(domain.pr)
+#         b_local = b_rhs.data
+        
+#         for (k_local, k_global) in enumerate(local_ranges[3])
+#             for (j_local, j_global) in enumerate(local_ranges[2])
+#                 y = (j_global - 1) * 2π / domain.Ny
+#                 for (i_local, i_global) in enumerate(local_ranges[1])
+#                     x = (i_global - 1) * 2π / domain.Nx
+#                     b_local[i_local, j_local, k_local] = sin(x) * cos(y)
+#                 end
+#             end
+#         end
+        
+#         # Solve
+#         solution, diag = solve_poisson_simple(Φ_initial, b_rhs, domain; verbose=(rank == 0))
+        
+#         if rank == 0
+#             println("✓ Poisson solver test completed")
+#             println("  Converged: $(diag.converged)")
+#             println("  Method: Spectral (horizontal) + finite difference (vertical)")
+#         end
+        
+#         return solution, diag
+        
+#     finally
+#         MPI.Finalize()
+#     end
+# end
+
+
 """
-Demo function for testing non-uniform grid SSG solver
+Test compatibility with existing Fields structure
 """
-function demo_nonuniform_grid_ssg()
+function test_fields_compatibility()
     MPI.Init()
     comm = MPI.COMM_WORLD
     rank = MPI.Comm_rank(comm)
     
     if rank == 0
-        println("🌊 Non-Uniform Grid SSG Solver Demo")
-        println("=" ^ 40)
-        println("Testing stretched vertical grids typical for ocean models")
-        println()
+        println("🧪 Testing SSG-Fields Compatibility")
+        println("=" ^ 35)
     end
     
     try
-        # Test different grid types
-        grid_types = [
-            (:uniform, "Uniform spacing"),
-            (:stretched, "Surface-concentrated"), 
-            (:stretched, "Bottom-concentrated")
-        ]
+        # Create domain and fields
+        domain = make_domain(32, 32, 4; Lx=2π, Ly=2π, Lz=1.0, comm=comm)
+        fields = allocate_fields(domain)
         
-        for (i, (grid_type, description)) in enumerate(grid_types)
-            if rank == 0
-                println("Test $i: $description")
-                println("-" ^ 30)
-            end
-            
-            # Create domain with different vertical grids
-            if grid_type == :uniform
-                domain = make_domain(32, 32, 8; Lx=2π, Ly=2π, Lz=1.0, 
-                                   z_grid=:uniform, comm=comm)
-            else
-                # Create stretched grid parameters
-                if description == "Surface-concentrated"
-                    stretch_params = (type=:tanh, β=2.0, surface_concentration=true)
-                else
-                    stretch_params = (type=:tanh, β=2.0, surface_concentration=false)
-                end
-                
-                domain = make_domain(32, 32, 8; Lx=2π, Ly=2π, Lz=1.0,
-                                   z_grid=:stretched, 
-                                   stretch_params=stretch_params,
-                                   comm=comm)
-            end
-            
-            if rank == 0
-                println("Grid spacing (dz): ", round.(domain.dz, digits=4))
-                stretch_ratio = maximum(domain.dz) / minimum(domain.dz)
-                println("Max stretch ratio: $(round(stretch_ratio, digits=2))")
-            end
-            
-            # Create test problem
-            Φ_initial = PencilArray(domain.pr, zeros(Float64, local_size(domain.pr)))
-            b_rhs = PencilArray(domain.pr, zeros(Float64, local_size(domain.pr)))
-            
-            # Initialize with test function that varies in z
-            local_ranges = local_range(domain.pr)
-            b_local = b_rhs.data
-            
-            for (k_local, k_global) in enumerate(local_ranges[3])
-                z = domain.z[k_global]
-                for (j_local, j_global) in enumerate(local_ranges[2])
-                    y = (j_global - 1) * 2π / domain.Ny
-                    for (i_local, i_global) in enumerate(local_ranges[1])
-                        x = (i_global - 1) * 2π / domain.Nx
-                        
-                        # Test function with vertical variation
-                        b_local[i_local, j_local, k_local] = sin(x) * cos(y) * exp(-z)
-                    end
-                end
-            end
-            
-            # Test different smoothers
-            smoothers = [:adaptive, :enhanced, :spectral]
-            smoother_names = ["Adaptive", "Enhanced", "Spectral"]
-            
-            for (smoother, smoother_name) in zip(smoothers, smoother_names)
-                if rank == 0
-                    print("  Testing $smoother_name smoother... ")
-                end
-                
-                start_time = time()
-                solution, diag = solve_ssg_equation(Φ_initial, b_rhs, 0.1, domain;
-                                                  tol=1e-6,
-                                                  verbose=false,
-                                                  smoother=smoother,
-                                                  maxiter=20)
-                solve_time = time() - start_time
-                
-                if rank == 0
-                    if diag.converged
-                        println("✓ Converged in $(diag.iterations) iterations ($(round(solve_time*1000, digits=1))ms)")
-                    else
-                        println("✗ Did not converge ($(round(solve_time*1000, digits=1))ms)")
-                    end
-                end
-            end
-            
-            if rank == 0
-                println()
+        # Initialize surface buoyancy
+        local_ranges = local_range(fields.b.pencil)
+        b_local = fields.b.data
+        
+        for (j_local, j_global) in enumerate(local_ranges[2])
+            y = domain.y[j_global]
+            for (i_local, i_global) in enumerate(local_ranges[1])
+                x = domain.x[i_global]
+                b_local[i_local, j_local] = sin(x) * cos(y)
             end
         end
+        
+        # Test SSG solve via Fields interface
+        if rank == 0
+            print("Testing solve_monge_ampere_fields!... ")
+        end
+        
+        converged = solve_monge_ampere_fields!(fields, domain; 
+                                             tol=1e-6, 
+                                             verbose=false,
+                                             ε=0.1)
         
         if rank == 0
-            println("📊 Summary:")
-            println("• Standard SOR works for uniform/mildly stretched grids")
-            println("• Enhanced SOR handles moderate stretching (ratio < 5)")  
-            println("• Adaptive smoother automatically chooses best method")
-            println("• Spectral smoother generally most robust")
-            println("• Non-uniform grids properly supported in vertical direction")
+            if converged
+                println("✓ Success")
+                println("  • Fields interface working")
+                println("  • 2D ↔ 3D conversion functional")
+                println("  • Boundary conditions from surface buoyancy")
+            else
+                println("✗ Failed to converge")
+            end
         end
+        
+        # Test residual computation
+        if rank == 0
+            print("Testing compute_ma_residual_fields!... ")
+        end
+        
+        compute_ma_residual_fields!(fields, domain; ε=0.1)
+        residual_norm = norm_field(fields.R)
+        
+        if rank == 0
+            println("✓ Residual norm: $(residual_norm)")
+            println("  • Residual computation functional")
+            println("  • Integration with existing code complete")
+        end
+        
+        return fields, converged
         
     finally
         MPI.Finalize()
     end
 end
 
-"""
-Test simple Poisson solver
-"""
-function test_poisson_solver()
-    MPI.Init()
-    comm = MPI.COMM_WORLD
-    rank = MPI.Comm_rank(comm)
-    
-    if rank == 0
-        println("🧪 Testing Simple Poisson Solver")
-        println("=" ^ 35)
-    end
-    
-    try
-        # Smaller problem for testing
-        domain = make_domain(32, 32, 4; Lx=2π, Ly=2π, Lz=1.0, comm=comm)
-        
-        # Create test fields
-        Φ_initial = PencilArray(domain.pr, zeros(Float64, local_size(domain.pr)))
-        b_rhs = PencilArray(domain.pr, zeros(Float64, local_size(domain.pr)))
-        
-        # Simple RHS: b = sin(x)cos(y)
-        local_ranges = local_range(domain.pr)
-        b_local = b_rhs.data
-        
-        for (k_local, k_global) in enumerate(local_ranges[3])
-            for (j_local, j_global) in enumerate(local_ranges[2])
-                y = (j_global - 1) * 2π / domain.Ny
-                for (i_local, i_global) in enumerate(local_ranges[1])
-                    x = (i_global - 1) * 2π / domain.Nx
-                    b_local[i_local, j_local, k_local] = sin(x) * cos(y)
-                end
-            end
-        end
-        
-        # Solve
-        solution, diag = solve_poisson_simple(Φ_initial, b_rhs, domain; verbose=(rank == 0))
-        
-        if rank == 0
-            println("✓ Poisson solver test completed")
-            println("  Converged: $(diag.converged)")
-            println("  Method: Spectral (horizontal) + finite difference (vertical)")
-        end
-        
-        return solution, diag
-        
-    finally
-        MPI.Finalize()
-    end
-end
 
 # =============================================================================
 # MODULE INTEGRATION
