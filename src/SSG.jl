@@ -34,7 +34,7 @@ module SSG
     export Fields, allocate_fields, zero_fields!, copy_field!, field_stats
 
     # params.jl exports
-    export Params, has_diffusion, has_hyperdiffusion, has_filter
+    export Params, validate_params, has_diffusion, has_hyperdiffusion, has_filter
 
     # coarse_domain.jl exports
     export create_coarse_domain, validate_coarsening, estimate_mg_memory
