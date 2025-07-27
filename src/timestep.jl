@@ -1,16 +1,6 @@
 # src/timestep.jl
 # Time integration for surface semi-geostrophic equations
-# Supports low-storage 2nd order Adams-Bashforth and 3rd order Runge-Kutta
-# with spectral filtering and Monge-Ampère inversion
-
-# using PencilArrays
-# using PencilFFTs
-# using LinearAlgebra
-# using Printf
-
-# # Import required modules
-# include("transforms.jl")
-# include("fields.jl")
+# Supports low-storage 2nd order Adams-Bashforth and 3rd order Runge-Kutta with spectral filtering 
 #
 # ============================================================================
 # TIME INTEGRATION PARAMETERS AND STRUCTURES
