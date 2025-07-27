@@ -17,14 +17,14 @@ Set the buoyancy field and update all derived variables for SSG solver.
 """
 function set_b!(prob::SemiGeostrophicProblem{T}, b_field, domain::Domain) where T
     # Ensure buoyancy field is properly sized
-    @ensuresamegrid(prob.fields.b, b_field)
+    @ensuresamegrid(prob.fields.bₛ, b_field)
     
     # Copy buoyancy field to problem structure
-    copy_field!(prob.fields.b, b_field)
+    copy_field!(prob.fields.bₛ, b_field)
     
     # Zero mean constraint for spectral methods (critical for periodic domains)
     # Transform to spectral space first
-    rfft!(domain, prob.fields.b, prob.fields.bhat)
+    rfft!(domain, prob.fields.bₛ, prob.fields.bhat)
     
     # Set k=0 mode to zero (removes domain average)
     # Handle PencilArray structure and local ranges
@@ -44,7 +44,7 @@ function set_b!(prob::SemiGeostrophicProblem{T}, b_field, domain::Domain) where 
     dealias!(domain, prob.fields.bhat)
     
     # Transform back to physical space
-    irfft!(domain, prob.fields.bhat, prob.fields.b)
+    irfft!(domain, prob.fields.bhat, prob.fields.bₛ)
     
     # Solve Monge-Ampère equation: det(D²φ) = b
     solve_monge_ampere_fields!(prob.fields, domain; 
