@@ -7,7 +7,8 @@ Container for all simulation fields (prognostic, diagnostic, and scratch).
 
 # Fields
 ## Prognostic
-- `b`: Surface buoyancy anomaly
+- `bₛ`: Surface buoyancy anomaly
+- `φₛ`: Surface streamfunction extracted from 3D φ 
 
 ## Diagnostic  
 - `φ`: Geostrophic streamfunction
