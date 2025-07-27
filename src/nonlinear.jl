@@ -40,9 +40,10 @@ function compute_jacobian!(db_dt::PencilArray{T, 2},
 end
 
 """
-Compute buoynacy tendency for surface semi-geostrophic equations
+Compute buoyancy tendency for surface semi-geostrophic equations
+Only evolves SURFACE buoyancy - streamfunction is diagnostic
 """
-function compute_tendency!(db_dt::PencilArray{T, 3}, 
+function compute_tendency!(db_dt::PencilArray{T, 2}, 
                           fields::Fields{T}, 
                           domain::Domain, 
                           params::TimeParams{T}) where T
