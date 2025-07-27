@@ -318,8 +318,8 @@ function ssg_sor_smoother!(level::SSGLevel{T},
     Φ_local = level.Φ.data
     
     domain = level.domain
-    dx = domain.Lx / domain.Nx
-    dy = domain.Ly / domain.Ny
+    dx = domain.x[2] -  domain.x[1]    #domain.Lx / domain.Nx
+    dy = domain.y[2] -  domain.y[1]    #domain.Ly / domain.Ny
     dz = domain.dz  # Non-uniform vertical spacing array
 
     inv_dx2 = 1/(dx^2) 
@@ -351,7 +351,7 @@ function ssg_sor_smoother!(level::SSGLevel{T},
                         Φ_d = Φ_local[i,j,k-1]  # Lower level
                         
                         # Non-uniform vertical spacing
-                        h_below = k > 1 ? dz[k-1] : dz[1]      # Spacing to level below
+                        h_below = k > 1 ? dz[k-1] : dz[1]           # Spacing to level below
                         h_above = k < length(dz) ? dz[k] : dz[end]  # Spacing to level above
                         h_total = h_below + h_above
                         
@@ -363,7 +363,13 @@ function ssg_sor_smoother!(level::SSGLevel{T},
                         
                         # Diagonal coefficient for linearized SSG operator
                         # ∇²Φ ≈ (∂²/∂x² + ∂²/∂y² + ∂²/∂z²)Φ = source
-                        diag_coeff = -2 * inv_dx2 - 2 * inv_dy2 + β
+                        # diag_coeff = -2 * inv_dx2 - 2 * inv_dy2 + β
+
+                        # Diagonal coefficient for linearized SSG operator
+                        # ∇²Φ - ε·(linearized DΦ term) = 0
+                        # For simplicity, approximate DΦ linearization as αDΦ coefficient
+                        linearization_coeff = ε * 0.1  # Simple approximation
+                        diag_coeff = -2 * inv_dx2 - 2 * inv_dy2 + β - linearization_coeff
                         
                         # Off-diagonal contributions
                         off_diag_sum = (Φ_e + Φ_w) * inv_dx2 + 
