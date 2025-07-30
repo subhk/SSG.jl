@@ -195,6 +195,7 @@ function compute_d_operator!(level::SSGLevel{T}, result::PencilArray{T, 3}) wher
     rfft!(domain, level.Φ, level.Φ_hat)
     ddy!(domain, level.Φ_hat, level.tmp_spec)          # ∂Φ/∂Y
     ddy!(domain, level.tmp_spec, level.tmp_spec)       # ∂²Φ/∂Y²
+    irfft!(domain, level.tmp_spec, level.Φ_yy)
     
     # # Then differentiate twice with respect to Y
     # ddy!(domain, level.tmp_spec, level.tmp_spec)      # ∂³Φ/∂X²∂Y
@@ -203,13 +204,16 @@ function compute_d_operator!(level::SSGLevel{T}, result::PencilArray{T, 3}) wher
     
     # Compute DΦ = (∂²Φ/∂X²)(∂²Φ/∂Y²) - (∂²Φ/∂X∂Y)²
     result_local = result.data
-    d4_local = level.Φ_xxyy.data
+    # d4_local = level.Φ_xxyy.data
+    
+    Φ_xx_local = level.Φ_xx.data
+    Φ_yy_local = level.Φ_yy.data
     Φ_xy_local = level.Φ_xy.data
     
     @inbounds for k in axes(result_local, 3)
         for j in axes(result_local, 2)
             @simd for i in axes(result_local, 1)
-                result_local[i,j,k] = d4_local[i,j,k] - Φ_xy_local[i,j,k]^2
+                result_local[i,j,k] = Φ_xx_local[i,j,k]*Φ_yy_local[i,j,k] - Φ_xy_local[i,j,k]^2
             end
         end
     end
