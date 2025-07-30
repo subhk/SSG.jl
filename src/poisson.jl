@@ -51,8 +51,6 @@ mutable struct SSGLevel{T<:AbstractFloat}
     Φ_old::PencilArray{T, 3}                    # Previous iteration
     tmp_real::PencilArray{T, 3}                 # Real workspace
     tmp_spec::PencilArray{Complex{T}, 3}        # Spectral workspace
-    
-    #tmp_spec1::PencilArray{Complex{T}, 3}       # Spectral workspace
 
     # Derivative fields for DΦ computation
     Φ_xx::PencilArray{T, 3}        # ∂²Φ/∂X²
@@ -81,10 +79,8 @@ mutable struct SSGLevel{T<:AbstractFloat}
         
         Φ_old = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
         tmp_real = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+        tmp_spec = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
 
-        tmp_spec  = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
-        #tmp_spec1 = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
-        
         # Derivative fields
         Φ_xx = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
         Φ_yy = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
@@ -96,7 +92,7 @@ mutable struct SSGLevel{T<:AbstractFloat}
         bs_surface = create_surface_field(domain, T)
         
         new{T}(domain, level, nx_global, ny_global, nz_global,
-               Φ, b, r, Φ_hat, b_hat, r_hat, Φ_old, tmp_real, tmp_spec, #tmp_spec1,
+               Φ, b, r, Φ_hat, b_hat, r_hat, Φ_old, tmp_real, tmp_spec, 
                Φ_xx, Φ_yy, Φ_zz, Φ_xy, Φ_xxyy, bs_surface)
     end
 end
@@ -186,25 +182,20 @@ function compute_d_operator!(level::SSGLevel{T}, result::PencilArray{T, 3}) wher
     irfft!(domain, level.tmp_spec, level.Φ_xy)
     
     # Compute (∂²Φ/∂X²)(∂²Φ/∂Y²) 
-    # First get ∂²Φ/∂X² in spectral space
+    # ∂²Φ/∂X²:
     rfft!(domain, level.Φ, level.Φ_hat)
     ddx!(domain, level.Φ_hat, level.tmp_spec)           # ∂Φ/∂X
     ddx!(domain, level.tmp_spec, level.tmp_spec)        # ∂²Φ/∂X²
     irfft!(domain, level.tmp_spec, level.Φ_xx)
 
+    # ∂²Φ/∂Y²:
     rfft!(domain, level.Φ, level.Φ_hat)
     ddy!(domain, level.Φ_hat, level.tmp_spec)          # ∂Φ/∂Y
     ddy!(domain, level.tmp_spec, level.tmp_spec)       # ∂²Φ/∂Y²
     irfft!(domain, level.tmp_spec, level.Φ_yy)
     
-    # # Then differentiate twice with respect to Y
-    # ddy!(domain, level.tmp_spec, level.tmp_spec)      # ∂³Φ/∂X²∂Y
-    # ddy!(domain, level.tmp_spec, level.tmp_spec)      # ∂⁴Φ/∂X²∂Y²
-    # irfft!(domain, level.tmp_spec, level.Φ_xxyy)      # ∂⁴Φ/∂X²∂Y²
-    
     # Compute DΦ = (∂²Φ/∂X²)(∂²Φ/∂Y²) - (∂²Φ/∂X∂Y)²
     result_local = result.data
-    # d4_local = level.Φ_xxyy.data
     
     Φ_xx_local = level.Φ_xx.data
     Φ_yy_local = level.Φ_yy.data
