@@ -7,7 +7,7 @@
 #
 # Where:
 #   ∇² = ∂²/∂X² + ∂²/∂Y² + ∂²/∂Z²  (3D Laplacian in geostrophic coordinates)
-#   DΦ = ∂²Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²  (nonlinear differential operator)
+#   DΦ = (∂²Φ/∂X²)(∂²Φ/∂Y²) - (∂²Φ/∂X∂Y)²  (nonlinear differential operator)
 #   ε is an external parameter     (measure of global Rossby number)
 # ============================================================================
 
