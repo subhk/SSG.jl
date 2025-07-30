@@ -38,20 +38,22 @@ mutable struct SSGLevel{T<:AbstractFloat}
     nz_global::Int
     
     # Solution and RHS fields
-    Φ::PencilArray{T, 3}        # Solution field Φ(X,Y,Z)
-    b::PencilArray{T, 3}        # Right-hand side (εDΦ)
-    r::PencilArray{T, 3}        # Residual
+    Φ::PencilArray{T, 3}                        # Solution field Φ(X,Y,Z)
+    b::PencilArray{T, 3}                        # Right-hand side (εDΦ)
+    r::PencilArray{T, 3}                        # Residual
     
     # Spectral workspace arrays
-    Φ_hat::PencilArray{Complex{T}, 3}   # Spectral solution
-    b_hat::PencilArray{Complex{T}, 3}   # Spectral RHS
-    r_hat::PencilArray{Complex{T}, 3}   # Spectral residual
+    Φ_hat::PencilArray{Complex{T}, 3}           # Spectral solution
+    b_hat::PencilArray{Complex{T}, 3}           # Spectral RHS
+    r_hat::PencilArray{Complex{T}, 3}           # Spectral residual
     
     # Temporary arrays
-    Φ_old::PencilArray{T, 3}       # Previous iteration
-    tmp_real::PencilArray{T, 3}    # Real workspace
-    tmp_spec::PencilArray{Complex{T}, 3}  # Spectral workspace
+    Φ_old::PencilArray{T, 3}                    # Previous iteration
+    tmp_real::PencilArray{T, 3}                 # Real workspace
+    tmp_spec::PencilArray{Complex{T}, 3}        # Spectral workspace
     
+    #tmp_spec1::PencilArray{Complex{T}, 3}       # Spectral workspace
+
     # Derivative fields for DΦ computation
     Φ_xx::PencilArray{T, 3}        # ∂²Φ/∂X²
     Φ_yy::PencilArray{T, 3}        # ∂²Φ/∂Y²
@@ -79,7 +81,9 @@ mutable struct SSGLevel{T<:AbstractFloat}
         
         Φ_old = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
         tmp_real = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-        tmp_spec = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+
+        tmp_spec  = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+        #tmp_spec1 = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
         
         # Derivative fields
         Φ_xx = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
@@ -92,7 +96,7 @@ mutable struct SSGLevel{T<:AbstractFloat}
         bs_surface = create_surface_field(domain, T)
         
         new{T}(domain, level, nx_global, ny_global, nz_global,
-               Φ, b, r, Φ_hat, b_hat, r_hat, Φ_old, tmp_real, tmp_spec,
+               Φ, b, r, Φ_hat, b_hat, r_hat, Φ_old, tmp_real, tmp_spec, #tmp_spec1,
                Φ_xx, Φ_yy, Φ_zz, Φ_xy, Φ_xxyy, bs_surface)
     end
 end
@@ -137,13 +141,13 @@ function compute_3d_laplacian!(level::SSGLevel{T}, result::PencilArray{T, 3}) wh
     rfft!(domain, level.Φ, level.Φ_hat)
     
     # Compute ∂²Φ/∂X²
-    ddx!(domain, level.Φ_hat, level.tmp_spec)  # ∂Φ/∂X
+    ddx!(domain, level.Φ_hat, level.tmp_spec)     # ∂Φ/∂X
     ddx!(domain, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂X²
     irfft!(domain, level.tmp_spec, level.Φ_xx)
     
     # Compute ∂²Φ/∂Y²
     rfft!(domain, level.Φ, level.Φ_hat)  # Refresh spectral field
-    ddy!(domain, level.Φ_hat, level.tmp_spec)  # ∂Φ/∂Y
+    ddy!(domain, level.Φ_hat, level.tmp_spec)     # ∂Φ/∂Y
     ddy!(domain, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂Y²
     irfft!(domain, level.tmp_spec, level.Φ_yy)
     
@@ -168,7 +172,7 @@ function compute_3d_laplacian!(level::SSGLevel{T}, result::PencilArray{T, 3}) wh
 end
 
 """
-Compute nonlinear operator DΦ = ∂²Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²
+Compute nonlinear operator DΦ = (∂²Φ/∂X²)(∂²Φ/∂Y²) - (∂²Φ/∂X∂Y)²
 """
 function compute_d_operator!(level::SSGLevel{T}, result::PencilArray{T, 3}) where T
     domain = level.domain
@@ -177,22 +181,27 @@ function compute_d_operator!(level::SSGLevel{T}, result::PencilArray{T, 3}) wher
     rfft!(domain, level.Φ, level.Φ_hat)
     
     # Compute ∂²Φ/∂X∂Y using spectral methods
-    ddx!(domain, level.Φ_hat, level.tmp_spec)     # ∂Φ/∂X
-    ddy!(domain, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂X∂Y
+    ddx!(domain, level.Φ_hat, level.tmp_spec)       # ∂Φ/∂X
+    ddy!(domain, level.tmp_spec, level.tmp_spec)    # ∂²Φ/∂X∂Y
     irfft!(domain, level.tmp_spec, level.Φ_xy)
     
-    # Compute ∂⁴Φ/∂X²∂Y² (fourth-order mixed derivative)
+    # Compute (∂²Φ/∂X²)(∂²Φ/∂Y²) 
     # First get ∂²Φ/∂X² in spectral space
     rfft!(domain, level.Φ, level.Φ_hat)
-    ddx!(domain, level.Φ_hat, level.tmp_spec)     # ∂Φ/∂X
-    ddx!(domain, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂X²
+    ddx!(domain, level.Φ_hat, level.tmp_spec)           # ∂Φ/∂X
+    ddx!(domain, level.tmp_spec, level.tmp_spec)        # ∂²Φ/∂X²
+    irfft!(domain, level.tmp_spec, level.Φ_xx)
+
+    rfft!(domain, level.Φ, level.Φ_hat)
+    ddy!(domain, level.Φ_hat, level.tmp_spec)          # ∂Φ/∂Y
+    ddy!(domain, level.tmp_spec, level.tmp_spec)       # ∂²Φ/∂Y²
     
-    # Then differentiate twice with respect to Y
-    ddy!(domain, level.tmp_spec, level.tmp_spec)    # ∂³Φ/∂X²∂Y
-    ddy!(domain, level.tmp_spec, level.tmp_spec)    # ∂⁴Φ/∂X²∂Y²
-    irfft!(domain, level.tmp_spec, level.Φ_xxyy)   # ∂⁴Φ/∂X²∂Y²
+    # # Then differentiate twice with respect to Y
+    # ddy!(domain, level.tmp_spec, level.tmp_spec)      # ∂³Φ/∂X²∂Y
+    # ddy!(domain, level.tmp_spec, level.tmp_spec)      # ∂⁴Φ/∂X²∂Y²
+    # irfft!(domain, level.tmp_spec, level.Φ_xxyy)      # ∂⁴Φ/∂X²∂Y²
     
-    # Compute DΦ = ∂⁴Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²
+    # Compute DΦ = (∂²Φ/∂X²)(∂²Φ/∂Y²) - (∂²Φ/∂X∂Y)²
     result_local = result.data
     d4_local = level.Φ_xxyy.data
     Φ_xy_local = level.Φ_xy.data
