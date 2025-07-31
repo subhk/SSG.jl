@@ -107,10 +107,10 @@ function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, domain::Domain) wher
     # This would need the inverse relationship - simplified here
     rfft!(domain, prob.fields.φ, prob.fields.φhat)
     laplacian_h!(domain, prob.fields.φhat, prob.fields.bhat)  # ∇²φ
-    irfft!(domain, prob.fields.bhat, prob.fields.b)
+    irfft!(domain, prob.fields.bhat, prob.fields.bₛ)
     
     # Apply zero mean to buoyancy as well - handle PencilArray distribution
-    rfft!(domain, prob.fields.b, prob.fields.bhat)
+    rfft!(domain, prob.fields.bₛ, prob.fields.bhat)
     local_ranges = local_range(prob.fields.bhat.pencil)
     bhat_local = prob.fields.bhat.data
     
@@ -129,7 +129,7 @@ function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, domain::Domain) wher
     
     # Energy diagnostics
     ke_total = compute_kinetic_energy(prob.fields, domain)
-    b_stats = field_stats(prob.fields.b)
+    b_stats  = field_stats(prob.fields.bₛ)
     
     @printf "min/max value of u: %f %f\n" extrema(prob.fields.u.data)...
     @printf "min/max value of v: %f %f\n" extrema(prob.fields.v.data)...
