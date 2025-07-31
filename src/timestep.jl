@@ -487,7 +487,7 @@ end
 Compute total buoyancy (should be conserved)
 """
 function compute_total_buoyancy(fields::Fields{T}, domain::Domain) where T
-    b_data = fields.b.data
+    b_data = fields.bₛ.data
     b_sum_local = sum(b_data)
     b_sum_global = MPI.Allreduce(b_sum_local, MPI.SUM, fields.domain.pc.comm)
     
