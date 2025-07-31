@@ -1049,25 +1049,6 @@ end
 """
 Compute Monge-Ampère residual in fields structure
 """
-# function compute_ma_residual_fields!(fields::Fields{T}, domain::Domain) where T
-#     # For now, compute Poisson residual: R = Δφ - b
-    
-#     # Compute Laplacian of φ
-#     rfft!(domain, fields.φ, fields.φhat)
-#     laplacian_h!(domain, fields.φhat, fields.tmpc)
-#     irfft!(domain, fields.tmpc, fields.R)
-    
-#     # Add vertical Laplacian if needed
-#     d2dz2!(domain, fields.φ, fields.tmp)
-#     fields.R.data .+= fields.tmp.data
-    
-#     # Subtract RHS: R = Δφ - b
-#     fields.R.data .-= fields.b.data
-    
-#     return fields.R
-# end
-
-
 function compute_ma_residual_fields!(fields::Fields{T}, 
                                     domain::Domain; 
                                     ε::T=T(0.1)) where T
