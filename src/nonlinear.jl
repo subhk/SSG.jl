@@ -45,14 +45,14 @@ end
 """
 Compute buoyancy tendency for surface semi-geostrophic equations
 Only evolves SURFACE buoyancy - streamfunction is diagnostic
+```math
+    ∂b/∂t + J(ψ, b) = 0
+    u = -∂ψ/∂y,  v = ∂ψ/∂x 
 """
 function compute_tendency!(db_dt::PencilArray{T, 2}, 
                           fields::Fields{T}, 
                           domain::Domain, 
                           params::TimeParams{T}) where T
-    
-    # Solve Monge-Ampère equation
-    # solve_monge_ampere_fields!(fields, domain)
     
     # Compute Jacobian
     compute_jacobian!(db_dt, fields.φ, fields.b, fields, domain)
