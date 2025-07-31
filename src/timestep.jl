@@ -559,7 +559,7 @@ function compute_total_buoyancy(fields::Fields{T}, domain::Domain) where T
 end
 
 """
-Compute maximum divergence (should be small for geostrophic flow)
+Compute maximum divergence (should be zero for geostrophic flow)
 """
 function compute_max_divergence(fields::Fields{T}, domain::Domain) where T
     # Ensure velocities are current
