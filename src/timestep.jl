@@ -175,7 +175,7 @@ function timestep_ab2_ls!(fields::Fields{T}, domain::Domain,
     
     if state.step == 0
         # First step: Forward Euler
-        b_data = fields.b.data
+        b_data = fields.bₛ.data
         tmp_data = fields.tmp.data
         @inbounds @simd for i in eachindex(b_data)
             b_data[i] += dt * tmp_data[i]
@@ -184,8 +184,8 @@ function timestep_ab2_ls!(fields::Fields{T}, domain::Domain,
         # Store tendency for next step
         copy_field!(state.db_dt_old, fields.tmp)
     else
-        # Adams-Bashforth step: b^{n+1} = b^n + dt(3/2 * f^n - 1/2 * f^{n-1})
-        b_data   = fields.b.data
+        # Adams-Bashforth step: bₛ^{n+1} = bₛ^n + dt(3/2 * f^n - 1/2 * f^{n-1})
+        b_data   = fields.bₛ.data
         tmp_data = fields.tmp.data           # current tendency
         old_data = state.db_dt_old.data     # previous tendency
         
@@ -214,14 +214,14 @@ function timestep_rk3!(fields::Fields{T}, domain::Domain,
     state.dt_actual = dt
     
     # Store initial state
-    copy_field!(state.b_stage, fields.b)
+    copy_field!(state.b_stage, fields.bₛ)
     
     # RK3 coefficients (classical 3rd order)
     # Stage 1: k1 = f(t_n, y_n)
     compute_tendency!(state.k1, fields, domain, params)
     
     # Update to intermediate state: y1 = y_n + dt/2 * k1
-    b_data = fields.b.data
+    b_data = fields.bₛ.data
     b_stage_data = state.b_stage.data
     k1_data = state.k1.data
     
@@ -269,7 +269,7 @@ function timestep_rk3_ls!(fields::Fields{T}, domain::Domain,
     
     # Initialize: S = 0, U = b^n
     zero_field!(state.k1)  # Use k1 as S (accumulator)
-    copy_field!(state.b_stage, fields.b)  # Use b_stage as U
+    copy_field!(state.b_stage, fields.bₛ)  # Use b_stage as U
     
     for stage = 1:3
         # Compute tendency: k = f(U)
