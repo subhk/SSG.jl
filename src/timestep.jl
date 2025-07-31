@@ -16,8 +16,8 @@ Time integration scheme selector
 """
 @enum TimeScheme begin
     AB2_LowStorage  # 2nd order Adams-Bashforth (low storage)
-    RK3            # 3rd order Runge-Kutta
-    RK3_LowStorage # 3rd order Runge-Kutta (low storage variant)
+    RK3             # 3rd order Runge-Kutta
+    RK3_LowStorage  # 3rd order Runge-Kutta (low storage variant)
 end
 
 """
@@ -91,65 +91,6 @@ mutable struct TimeState{T, PA}
     end
 end
 
-# """
-# Compute Jacobian J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x
-# """
-# function compute_jacobian!(db_dt::PencilArray{T, 3}, 
-#                           ψ::PencilArray{T, 3}, 
-#                           b::PencilArray{T, 3}, 
-#                           fields::Fields{T}, 
-#                           domain::Domain) where T
-    
-#     # Use the mutating jacobian! function from transforms.jl
-#     jacobian!(db_dt, ψ, b, domain, fields.tmpc, fields.tmpc2, fields.tmp2, fields.tmp3, fields.tmpc)
-    
-#     # Apply negative sign for advection: ∂b/∂t = -J(ψ,b)
-#     db_dt.data .*= -1
-    
-#     return db_dt
-# end
-
-# """
-# Compute buoynacy tendency for surface semi-geostrophic equations
-# """
-# function compute_tendency!(db_dt::PencilArray{T, 3}, 
-#                           fields::Fields{T}, 
-#                           domain::Domain, 
-#                           params::TimeParams{T}) where T
-    
-#     # Solve Monge-Ampère equation
-#     solve_monge_ampere_fields!(fields, domain)
-    
-#     # Compute Jacobian
-#     compute_jacobian!(db_dt, fields.φ, fields.b, fields, domain)
-    
-#     # Apply dealiasing
-#     rfft!(domain, db_dt, fields.tmpc)
-#     dealias!(domain, fields.tmpc)
-#     irfft!(domain, fields.tmpc, db_dt)
-    
-#     return db_dt
-# end
-
-
-# """
-# Compute geostrophic velocities from streamfunction
-# """
-# function compute_geostrophic_velocities!(fields::Fields{T}, domain::Domain) where T
-#     # Transform streamfunction to spectral space
-#     rfft!(domain, fields.φ, fields.φhat)
-    
-#     # Compute u = -∂φ/∂y
-#     ddy!(domain, fields.φhat, fields.tmpc)
-#     irfft!(domain, fields.tmpc, fields.u)
-#     fields.u.data .*= -1
-    
-#     # Compute v = ∂φ/∂x  
-#     ddx!(domain, fields.φhat, fields.tmpc)
-#     irfft!(domain, fields.tmpc, fields.v)
-    
-#     return nothing
-# end
 
 # ============================================================================
 # CFL CONDITION AND ADAPTIVE TIME STEPPING

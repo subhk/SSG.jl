@@ -23,7 +23,7 @@ Compute Jacobian J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x
 """
 function compute_jacobian!(db_dt::PencilArray{T, 2}, 
                           Φ::PencilArray{T, 3}, 
-                          b::PencilArray{T, 2}, 
+                          bₛ::PencilArray{T, 2}, 
                           fields::Fields{T}, 
                           domain::Domain) where T
     
@@ -31,7 +31,7 @@ function compute_jacobian!(db_dt::PencilArray{T, 2},
     extract_surface_to_2d!(fields.φₛ, Φ, domain)    
 
     # Use the mutating jacobian! function from transforms.jl
-    jacobian!(db_dt, fields.φₛ, b, domain, 
+    jacobian!(db_dt, fields.φₛ, bₛ, domain, 
             fields.tmpc, fields.tmpc2, 
             fields.tmp2, fields.tmp3, 
             fields.tmpc)
@@ -55,7 +55,7 @@ function compute_tendency!(db_dt::PencilArray{T, 2},
                           params::TimeParams{T}) where T
     
     # Compute Jacobian
-    compute_jacobian!(db_dt, fields.φ, fields.b, fields, domain)
+    compute_jacobian!(db_dt, fields.φ, fields.bₛ, fields, domain)
     
     # # Apply dealiasing
     # rfft!(domain, db_dt, fields.tmpc)
