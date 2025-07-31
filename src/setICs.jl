@@ -4,7 +4,7 @@
 Set the buoyancy field and update all derived variables for SSG solver.
 
 # Arguments
-- `prob`: SemiGeostrophicProblem structure
+- `prob`: Surface Semi-GeostrophicProblem structure
 - `b_field`: Buoyancy field (PencilArray or Matrix)
 - `domain`: Domain structure from SSG.jl
 
