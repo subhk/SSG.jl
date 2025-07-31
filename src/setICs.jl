@@ -150,18 +150,6 @@ function solve_monge_ampere_fields!(fields::Fields{T},
                                    tol::T=T(1e-10),
                                    maxiter::Int=20,
                                    verbose::Bool=false) where T
-    
-    # # Use SSG.jl's advanced multigrid Monge-Ampère solver
-    # solution, diagnostics = solve_monge_ampere_pencil(
-    #     fields.φ,           # Initial guess
-    #     fields.b,           # RHS (buoyancy)
-    #     domain.Lx, domain.Ly;     # Domain size
-    #     tol=tol,
-    #     maxiter=maxiter,
-    #     verbose=verbose,
-    #     method=:adaptive,
-    #     smoother=:sor
-    # )
 
     solution, diagnostics = solve_ssg_equation(fields.φ, 
                                       fields.b, 
