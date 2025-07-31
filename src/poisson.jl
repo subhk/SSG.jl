@@ -1379,7 +1379,7 @@ function test_fields_compatibility()
     rank = MPI.Comm_rank(comm)
     
     if rank == 0
-        println("🧪 Testing SSG-Fields Compatibility")
+        println(" Testing SSG-Fields Compatibility")
         println("=" ^ 35)
     end
     
