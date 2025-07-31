@@ -57,10 +57,10 @@ function compute_tendency!(db_dt::PencilArray{T, 2},
     # Compute Jacobian
     compute_jacobian!(db_dt, fields.φ, fields.b, fields, domain)
     
-    # Apply dealiasing
-    rfft!(domain, db_dt, fields.tmpc)
-    dealias!(domain, fields.tmpc)
-    irfft!(domain, fields.tmpc, db_dt)
+    # # Apply dealiasing
+    # rfft!(domain, db_dt, fields.tmpc)
+    # dealias!(domain, fields.tmpc)
+    # irfft!(domain, fields.tmpc, db_dt)
     
     return db_dt
 end

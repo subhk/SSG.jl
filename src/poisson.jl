@@ -1043,7 +1043,6 @@ function extract_surface_to_2d!(field_2d::PencilArray{T, 2},
     # Copy surface level (Z=0, top of domain)
     @views field_2d_local[:,:] .= field_3d_local[:,:,nz]
     
-    #return field_2d
 end
 
 """
