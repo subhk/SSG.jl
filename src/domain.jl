@@ -264,30 +264,30 @@ end
 # =============================================================================
 
 """
-    dealias!(dom::Domain, field_spec)
+    dealias!(domain::Domain, field_spec)
 
 Apply dealiasing to a spectral field by zeroing out aliased wavenumbers.
 """
-function dealias!(dom::Domain, field_spec)
-    _dealias!(field_spec, dom)
+function dealias!(domain::Domain, field_spec)
+    _dealias!(field_spec, domain)
     return nothing
 end
 
 """
-    _dealias!(field_spec, dom::Domain)
+    _dealias!(field_spec, domain::Domain)
 
 Internal dealiasing function that zeros out aliased wavenumbers.
 """
-function _dealias!(field_spec, dom::Domain)
+function _dealias!(field_spec, domain::Domain)
     # Get local array from PencilArray
     field_local = field_spec.data
     
     # Get local ranges for this MPI process
-    local_ranges = local_range(dom.pc)
+    local_ranges = local_range(domain.pc)
     
     # Map global alias ranges to local ranges
-    kx_local_alias = intersect_ranges(dom.kxalias, local_ranges[1])
-    ky_local_alias = intersect_ranges(dom.kyalias, local_ranges[2])
+    kx_local_alias = intersect_ranges(domain.kxalias, local_ranges[1])
+    ky_local_alias = intersect_ranges(domain.kyalias, local_ranges[2])
     
     # Zero out aliased wavenumbers
     if !isempty(kx_local_alias)
