@@ -260,7 +260,7 @@ function save_simulation_state_full(filename::String,
         file["grid/Lz"] = prob.domain.Lz
 
         file["grid/x"] = prob.domain.x  # collect(range(0, prob.domain.Lx, length=prob.domain.Nx+1)[1:end-1])
-        file["grid/y"] = prob.domain.y  #collect(range(0, prob.domain.Ly, length=prob.domain.Ny+1)[1:end-1])
+        file["grid/y"] = prob.domain.y  # collect(range(0, prob.domain.Ly, length=prob.domain.Ny+1)[1:end-1])
         file["grid/z"] = prob.domain.z
 
         # Wavenumber arrays
@@ -882,12 +882,16 @@ function load_simulation_state_full(filename::String, domain::Domain{T};
         if validate_grid
             file_Nx = file["grid/Nx"] 
             file_Ny = file["grid/Ny"]
+            file_Nz = file["grid/Nz"]
+
             file_Lx = file["grid/Lx"]
             file_Ly = file["grid/Ly"]
+            file_Lz = file["grid/Lz"]
             
-            grid_compatible = (file_Nx == domain.Nx && file_Ny == domain.Ny &&
+            grid_compatible = (file_Nx == domain.Nx && file_Ny == domain.Ny && file_Nz == domain.Nz &&
                              isapprox(file_Lx, domain.Lx, rtol=1e-10) &&
-                             isapprox(file_Ly, domain.Ly, rtol=1e-10))
+                             isapprox(file_Ly, domain.Ly, rtol=1e-10) &&
+                             isapprox(file_Lz, domain.Lz, rtol=1e-10))
             
             if !grid_compatible
                 error("Grid incompatibility detected!\n" *
