@@ -41,7 +41,7 @@ struct Domain{T, PA<:AbstractPencil, PC<:AbstractPencil, PF, PB}
     ky::Vector{T}
     Krsq::Matrix{T}        # kr² + ky² for real FFTs
     invKrsq::Matrix{T}     # 1/(kr² + ky²)
-    
+
     mask::BitMatrix
     z_boundary::Symbol
     z_grid::Symbol
@@ -415,12 +415,12 @@ function Base.show(io::IO, dom::Domain)
     println(io, "3D Domain (Periodic x,y; Bounded z):")
     println(io, "  Nx × Ny × Nz: $(dom.Nx) × $(dom.Ny) × $(dom.Nz)")
     println(io, "  Lx × Ly × Lz: $(dom.Lx) × $(dom.Ly) × $(dom.Lz)")
-    println(io, "  dx × dy × dz: $((dom.Lx/dom.Nx)) × $((dom.Ly/dom.Ny)) × $((dom.Lz/dom.Nz))")
-    println(io, "  Z boundary  : $(dom.z_boundary)")
-    println(io, "  Z grid type : $(dom.chebyshev === nothing ? "uniform/finite-difference" : "Chebyshev spectral")")
-    println(io, "  Real pencil : $(typeof(dom.pr))")
-    println(io, "  Spectral pencil: $(typeof(dom.pc))")
-    println(io, "  MPI processes: $(MPI.Comm_size(dom.pr.comm))")
+    println(io, "  dx × dy × dz: $((domain.Lx/domain.Nx)) × $((domain.Ly/domain.Ny)) × $((domain.Lz/domain.Nz))")
+    println(io, "  Z boundary  : $(domain.z_boundary)")
+    println(io, "  Z grid type : $(domain.chebyshev === nothing ? "uniform/finite-difference" : "Chebyshev spectral")")
+    println(io, "  Real pencil : $(typeof(domain.pr))")
+    println(io, "  Spectral pencil: $(typeof(domain.pc))")
+    println(io, "  MPI processes: $(MPI.Comm_size(domain.pr.comm))")
 end
 
 # =============================================================================
@@ -428,36 +428,36 @@ end
 # =============================================================================
 
 """
-    gridpoints(dom::Domain) -> (X, Y, Z)
+    gridpoints(domain::Domain) -> (X, Y, Z)
 
 Return 3D coordinate arrays for the domain.
 """
-function gridpoints(dom::Domain)
-    X = [dom.x[i] for i=1:dom.Nx, j=1:dom.Ny, k=1:dom.Nz]
-    Y = [dom.y[j] for i=1:dom.Nx, j=1:dom.Ny, k=1:dom.Nz]
-    Z = [dom.z[k] for i=1:dom.Nx, j=1:dom.Ny, k=1:dom.Nz]
+function gridpoints(domain::Domain)
+    X = [domain.x[i] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
+    Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
+    Z = [domain.z[k] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
     
     return X, Y, Z
 end
 
 """
-    gridpoints_2d(dom::Domain) -> (X, Y)
+    gridpoints_2d(domain::Domain) -> (X, Y)
 
 Return 2D horizontal coordinate arrays for the domain.
 """
-function gridpoints_2d(dom::Domain)
-    X = [dom.x[i] for i=1:dom.Nx, j=1:dom.Ny]
-    Y = [dom.y[j] for i=1:dom.Nx, j=1:dom.Ny]
+function gridpoints_2d(domain::Domain)
+    X = [domain.x[i] for i=1:domain.Nx, j=1:domain.Ny]
+    Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny]
     
     return X, Y
 end
 
 """
-    Base.eltype(dom::Domain) -> Type
+    Base.eltype(domain::Domain) -> Type
 
 Return the element type of the domain coordinates.
 """
-Base.eltype(dom::Domain) = eltype(dom.x)
+Base.eltype(domain::Domain) = eltype(domain.x)
 
 # Add FT constant if not defined elsewhere
 const FT = Float64
