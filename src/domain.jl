@@ -317,12 +317,12 @@ end
 # =============================================================================
 
 """
-    makefilter(dom::Domain; order=4, innerK=2/3, outerK=1, tol=1e-15) -> Array
+    makefilter(domain::Domain; order=4, innerK=2/3, outerK=1, tol=1e-15) -> Array
 
 Create a spectral filter for the domain.
 
 # Arguments
-- `dom`: Domain structure
+- `domain`: Domain structure
 - `order`: Filter order (higher = sharper transition)
 - `innerK`: Inner wavenumber (filter inactive below this)
 - `outerK`: Outer wavenumber (filter approaches tol at this value)
@@ -331,17 +331,17 @@ Create a spectral filter for the domain.
 # Returns
 - Filter array matching spectral space dimensions
 """
-function makefilter(dom::Domain; order=4, innerK=2/3, outerK=1, tol=1e-15)
+function makefilter(domain::Domain; order=4, innerK=2/3, outerK=1, tol=1e-15)
     # Create normalized wavenumber magnitude
-    dx = dom.Lx / dom.Nx
-    dy = dom.Ly / dom.Ny
+    dx = domain.Lx / domain.Nx
+    dy = domain.Ly / domain.Ny
     
-    Nx, Nyc = length(dom.kx), length(dom.ky)
+    Nx, Nyc = length(domain.kx), length(domain.ky)
     K = zeros(FT, Nx, Nyc)
     
     for i in 1:Nx, j in 1:Nyc
-        kx_norm = abs(dom.kx[i] * dx / π)
-        ky_norm = abs(dom.ky[j] * dy / π)
+        kx_norm = abs(domain.kx[i] * dx / π)
+        ky_norm = abs(domain.ky[j] * dy / π)
         K[i, j] = sqrt(kx_norm^2 + ky_norm^2)
     end
     
@@ -407,14 +407,14 @@ function twothirds_mask(Nx::Int, Nyc::Int)
 end
 
 """
-    Base.show(io::IO, dom::Domain)
+    Base.show(io::IO, domain::Domain)
 
 Pretty print 3D domain information.
 """
-function Base.show(io::IO, dom::Domain)
+function Base.show(io::IO, domain::Domain)
     println(io, "3D Domain (Periodic x,y; Bounded z):")
-    println(io, "  Nx × Ny × Nz: $(dom.Nx) × $(dom.Ny) × $(dom.Nz)")
-    println(io, "  Lx × Ly × Lz: $(dom.Lx) × $(dom.Ly) × $(dom.Lz)")
+    println(io, "  Nx × Ny × Nz: $(domain.Nx) × $(domain.Ny) × $(domain.Nz)")
+    println(io, "  Lx × Ly × Lz: $(domain.Lx) × $(domain.Ly) × $(domain.Lz)")
     println(io, "  dx × dy × dz: $((domain.Lx/domain.Nx)) × $((domain.Ly/domain.Ny)) × $((domain.Lz/domain.Nz))")
     println(io, "  Z boundary  : $(domain.z_boundary)")
     println(io, "  Z grid type : $(domain.chebyshev === nothing ? "uniform/finite-difference" : "Chebyshev spectral")")
