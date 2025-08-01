@@ -86,7 +86,8 @@ OutputFrequency(step_interval::Int, ::Type{T}=Float64) where T = OutputFrequency
 """
 Check if output should occur based on frequency specification
 """
-function should_output(freq::OutputFrequency{T}, current_time::T, current_step::Int,
+function should_output(freq::OutputFrequency{T}, 
+                      current_time::T, current_step::Int,
                       last_output_time::T, last_output_step::Int) where T
     
     if freq.use_time_based
