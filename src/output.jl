@@ -203,7 +203,8 @@ end
 """
 Save complete simulation state including spectral fields
 """
-function save_simulation_state_full(filename::String, prob::SemiGeostrophicProblem{T};
+function save_simulation_state_full(filename::String, 
+                                   prob::SemiGeostrophicProblem{T};
                                    save_spectral::Bool=true,
                                    save_diagnostics::Bool=true,
                                    save_metadata::Bool=true,
