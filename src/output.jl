@@ -895,8 +895,8 @@ function load_simulation_state_full(filename::String, domain::Domain{T};
             
             if !grid_compatible
                 error("Grid incompatibility detected!\n" *
-                      "File: $(file_Nx)×$(file_Ny), Lx=$(file_Lx), Ly=$(file_Ly)\n" *
-                      "Domain: $(domain.Nx)×$(domain.Ny), Lx=$(domain.Lx), Ly=$(domain.Ly)")
+                      "File: $(file_Nx)×$(file_Ny)×$(file_Nz), Lx=$(file_Lx), Ly=$(file_Ly), Lz=$(file_Lz)\n" *
+                      "Domain: $(domain.Nx)×$(domain.Ny)×$(domain.Nz), Lx=$(domain.Lx), Ly=$(domain.Ly), Lz=$(domain.Lz)")
             end
         end
         
