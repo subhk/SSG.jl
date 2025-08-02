@@ -517,7 +517,7 @@ function compute_integral_3(divQ_h::Array{Complex{T}, 3},
             
             if k_val > 1e-14
                 I₁_val = -2 * sinh(k_val*H)
-                I₂_val = exp(-k_val*H) * I₂[i,j] - exp(k_val*H) * t₁[i,j]
+                I₂_val = -exp(-k_val*H) * I₂[i,j] + exp(k_val*H) * t₁[i,j]
                 factor = 2 * I₂_val / I₁_val
                 
                 for kt in 1:grid.nz
@@ -543,7 +543,7 @@ Vertical velocity calculation with multi-threading
                  Integral_1                Integral_2              Integral_3
 
     ⊕  I₁(k)    = -2sinh(kh)
-    ⊕  I₂(k)    = -eᵏʰ∫₋ₕ⁰ I₄(k, z') dz' - e⁻ᵏʰ∫₋ₕ⁰ I₃(k, z') dz'; 
+    ⊕  I₂(k)    = eᵏʰ∫₋ₕ⁰ I₄(k, z') dz' - e⁻ᵏʰ∫₋ₕ⁰ I₃(k, z') dz'; 
     ⊕  I₃(k,z') = e⁻ᵏᶻ divQ_h(k,z')/2k
     ⊕  I₄(k,z') = eᵏᶻ  divQ_h(k,z')/2k
 """
