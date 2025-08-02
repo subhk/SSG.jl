@@ -483,6 +483,8 @@ function compute_integral_3(divQ_h::Array{Complex{T}, 3},
     
     Integral_3 = similar(divQ_h)
     K, invK = workspace.K, sqrt.(grid.invKrsq)
+
+    H = abs.(grid.z) |> maximum
     
     # Temporary arrays for integration
     t₃ = similar(divQ_h)
@@ -514,8 +516,8 @@ function compute_integral_3(divQ_h::Array{Complex{T}, 3},
             k_val = K[i,j]
             
             if k_val > 1e-14
-                I₁_val = -2 * sinh(k_val)
-                I₂_val = exp(-k_val) * I₂[i,j] - exp(k_val) * t₁[i,j]
+                I₁_val = -2 * sinh(k_val*H)
+                I₂_val = exp(-k_val*H) * I₂[i,j] - exp(k_val*H) * t₁[i,j]
                 factor = 2 * I₂_val / I₁_val
                 
                 for kt in 1:grid.nz
@@ -539,8 +541,9 @@ Vertical velocity calculation with multi-threading
     →  w⋆ = eᵏᶻ ∫₀ᶻ I₃(k, z') dz' - e⁻ᵏᶻ ∫₀ᶻ I₄(k, z') dz' + 2 I₂(k)/I₁(k) sinh(kz)
             --------------------     ---------------------   ----------------------
                  Integral_1                Integral_2              Integral_3
-    ⊕  I₁(k)   = -2sinh(k)
-    ⊕  I₂(k)   = -eᵏ∫₋₁⁰ I₄(k, z') dz' + e⁻ᵏ∫₋₁⁰ I₃(k, z') dz'
+
+    ⊕  I₁(k)    = -2sinh(kh)
+    ⊕  I₂(k)    = -eᵏʰ∫₋ₕ⁰ I₄(k, z') dz' - e⁻ᵏʰ∫₋ₕ⁰ I₃(k, z') dz'; 
     ⊕  I₃(k,z') = e⁻ᵏᶻ divQ_h(k,z')/2k
     ⊕  I₄(k,z') = eᵏᶻ  divQ_h(k,z')/2k
 """
