@@ -1,39 +1,56 @@
-using Plots
+using Plots, FFTW
 
 """
-Make a non-periodic function periodic by extending it with a given period.
+Make a 2D non-periodic function periodic by extending it with given periods in x and y directions.
 
 Parameters:
-- f: the original non-periodic function
-- period: the desired period for the periodic extension
-- method: extension method (:repeat, :reflect, or :zero_pad)
+- f: the original 2D non-periodic function f(x,y)
+- period_x: the desired period in x direction
+- period_y: the desired period in y direction  
+- method: extension method (:repeat, :reflect, :symmetric, :zero_pad)
 """
-function make_periodic(f, period; method=:repeat)
-    function periodic_f(x)
-        # Normalize x to be within [0, period)
-        x_normalized = mod(x, period)
+function make_periodic_2d(f, period_x, period_y; method=:repeat)
+    function periodic_f(x, y)
+        # Normalize coordinates to be within their respective periods
+        x_norm = mod(x, period_x)
+        y_norm = mod(y, period_y)
         
         if method == :repeat
-            # Simple periodic repetition
-            return f(x_normalized)
+            # Simple periodic repetition in both dimensions
+            return f(x_norm, y_norm)
+            
         elseif method == :reflect
-            # Reflect the function at the boundaries for smoother transitions
-            half_period = period / 2
-            if x_normalized <= half_period
-                return f(x_normalized)
-            else
-                # Reflect around the half-period point
-                return f(period - x_normalized)
-            end
+            # Reflect in both dimensions independently
+            half_px, half_py = period_x/2, period_y/2
+            
+            x_eval = x_norm <= half_px ? x_norm : period_x - x_norm
+            y_eval = y_norm <= half_py ? y_norm : period_y - y_norm
+            
+            return f(x_eval, y_eval)
+            
+        elseif method == :symmetric
+            # 4-fold symmetry: reflect across both axes at period boundaries
+            half_px, half_py = period_x/2, period_y/2
+            
+            # Determine which quadrant we're in and apply appropriate symmetry
+            x_quad = x_norm <= half_px ? 1 : 2
+            y_quad = y_norm <= half_py ? 1 : 2
+            
+            x_eval = x_quad == 1 ? x_norm : period_x - x_norm
+            y_eval = y_quad == 1 ? y_norm : period_y - y_norm
+            
+            return f(x_eval, y_eval)
+            
         elseif method == :zero_pad
-            # Return zero outside the original domain, then repeat
-            if 0 <= x_normalized <= period
-                return f(x_normalized)
+            # Return original function in first period, zero elsewhere
+            if 0 <= x_norm <= period_x && 0 <= y_norm <= period_y
+                return f(x_norm, y_norm)
             else
                 return 0.0
             end
+            
         else
-            error("Unknown method: $method. Use :repeat, :reflect, or :zero_pad")
+            error("Unknown method: $method. Use :repeat, :reflect, :symmetric, or :zero_pad")
         end
     end
     
@@ -41,126 +58,234 @@ function make_periodic(f, period; method=:repeat)
 end
 
 """
-Alternative approach: Make periodic using Fourier series approximation
+2D Fourier series approximation for periodic extension
 """
-function fourier_periodic(f, period, n_terms=10; domain_start=0, domain_end=nothing)
-    if domain_end === nothing
-        domain_end = period
-    end
+function fourier_periodic_2d(f, period_x, period_y, n_terms_x=10, n_terms_y=10; 
+                             domain_x=(0, nothing), domain_y=(0, nothing))
     
-    # Calculate Fourier coefficients
-    function integrate_simpson(func, a, b, n=1000)
-        h = (b - a) / n
-        x = a:h:b
-        y = func.(x)
-        return h/3 * (y[1] + 4*sum(y[2:2:end-1]) + 2*sum(y[3:2:end-2]) + y[end])
-    end
+    # Set default domain bounds
+    x_start, x_end = domain_x[1], domain_x[2] === nothing ? period_x : domain_x[2]
+    y_start, y_end = domain_y[1], domain_y[2] === nothing ? period_y : domain_y[2]
     
-    # Calculate a0 (DC component)
-    a0 = (2/period) * integrate_simpson(x -> f(x), domain_start, domain_end)
-    
-    # Calculate an and bn coefficients
-    an = zeros(n_terms)
-    bn = zeros(n_terms)
-    
-    for n in 1:n_terms
-        an[n] = (2/period) * integrate_simpson(x -> f(x) * cos(2π*n*x/period), domain_start, domain_end)
-        bn[n] = (2/period) * integrate_simpson(x -> f(x) * sin(2π*n*x/period), domain_start, domain_end)
-    end
-    
-    # Return the Fourier series approximation
-    function fourier_series(x)
-        result = a0/2
-        for n in 1:n_terms
-            result += an[n] * cos(2π*n*x/period) + bn[n] * sin(2π*n*x/period)
+    # 2D numerical integration using Simpson's rule
+    function integrate_2d(func, x_bounds, y_bounds, nx=50, ny=50)
+        x_start, x_end = x_bounds
+        y_start, y_end = y_bounds
+        
+        hx, hy = (x_end - x_start)/nx, (y_end - y_start)/ny
+        
+        total = 0.0
+        for i in 0:nx, j in 0:ny
+            x, y = x_start + i*hx, y_start + j*hy
+            
+            # Simpson's rule weights
+            wx = i == 0 || i == nx ? 1 : (i % 2 == 0 ? 2 : 4)
+            wy = j == 0 || j == ny ? 1 : (j % 2 == 0 ? 2 : 4)
+            
+            total += wx * wy * func(x, y)
         end
-        return result
+        
+        return (hx * hy / 9) * total
     end
     
-    return fourier_series
+    # Calculate 2D Fourier coefficients
+    A = zeros(2*n_terms_x+1, 2*n_terms_y+1)
+    
+    for m in -n_terms_x:n_terms_x, n in -n_terms_y:n_terms_y
+        coeff_func(x, y) = f(x, y) * exp(-2π*im*(m*x/period_x + n*y/period_y))
+        A[m+n_terms_x+1, n+n_terms_y+1] = integrate_2d(coeff_func, (x_start, x_end), (y_start, y_end)) / (period_x * period_y)
+    end
+    
+    # Return the 2D Fourier series
+    function fourier_2d(x, y)
+        result = 0.0 + 0.0im
+        for m in -n_terms_x:n_terms_x, n in -n_terms_y:n_terms_y
+            result += A[m+n_terms_x+1, n+n_terms_y+1] * exp(2π*im*(m*x/period_x + n*y/period_y))
+        end
+        return real(result)
+    end
+    
+    return fourier_2d
 end
 
-# Example usage and demonstration
-function demo_periodic_functions()
-    # Define a non-periodic function (e.g., a Gaussian pulse)
-    original_func(x) = exp(-(x-2)^2) * sin(x)
+"""
+Create a 2D periodic function from discrete data (like an image)
+"""
+function make_periodic_2d_discrete(data::Matrix; method=:repeat)
+    rows, cols = size(data)
     
-    period = 4π
+    function periodic_discrete(x, y)
+        # Convert continuous coordinates to discrete indices
+        i = mod(round(Int, x), rows) + 1
+        j = mod(round(Int, y), cols) + 1
+        
+        # Ensure indices are within bounds
+        i = clamp(i, 1, rows)
+        j = clamp(j, 1, cols)
+        
+        if method == :repeat
+            return data[i, j]
+        elseif method == :reflect
+            # Reflect indices if needed
+            i_refl = i <= rows÷2 ? i : rows - i + 1
+            j_refl = j <= cols÷2 ? j : cols - j + 1
+            return data[clamp(i_refl, 1, rows), clamp(j_refl, 1, cols)]
+        else
+            return data[i, j]
+        end
+    end
     
-    # Create periodic versions using different methods
-    periodic_repeat = make_periodic(original_func, period, method=:repeat)
-    periodic_reflect = make_periodic(original_func, period, method=:reflect)
-    periodic_fourier = fourier_periodic(original_func, period, 20, domain_end=period)
+    return periodic_discrete
+end
+
+"""
+Visualize 2D periodic function
+"""
+function plot_2d_periodic(f, period_x, period_y; 
+                          x_range=(-period_x, 2*period_x), 
+                          y_range=(-period_y, 2*period_y),
+                          resolution=100,
+                          title="2D Periodic Function")
     
-    # Plot comparison
-    x_range = -2*period:0.1:2*period
+    x_vals = range(x_range[1], x_range[2], length=resolution)
+    y_vals = range(y_range[1], y_range[2], length=resolution)
     
-    p1 = plot(x_range, original_func.(mod.(x_range, period)), 
-              label="Original (repeated)", linewidth=2, title="Periodic Extensions")
-    plot!(p1, x_range, periodic_repeat.(x_range), 
-          label="Simple Repeat", linewidth=2, linestyle=:dash)
-    plot!(p1, x_range, periodic_reflect.(x_range), 
-          label="Reflected", linewidth=2, linestyle=:dot)
-    plot!(p1, x_range, periodic_fourier.(x_range), 
-          label="Fourier Series", linewidth=2, linestyle=:dashdot)
+    z_vals = [f(x, y) for y in y_vals, x in x_vals]
     
-    # Add vertical lines to show period boundaries
+    p = heatmap(x_vals, y_vals, z_vals, 
+                aspect_ratio=:equal, 
+                title=title,
+                xlabel="x", ylabel="y",
+                colorbar_title="f(x,y)")
+    
+    # Add grid lines to show period boundaries
     for i in -2:2
-        vline!(p1, [i*period], color=:gray, alpha=0.3, label="")
+        vline!(p, [i * period_x], color=:white, alpha=0.7, linewidth=1, label="")
+        hline!(p, [i * period_y], color=:white, alpha=0.7, linewidth=1, label="")
     end
     
-    xlabel!(p1, "x")
-    ylabel!(p1, "f(x)")
-    
-    return p1
+    return p
 end
 
-# Example with a step function
-function demo_step_function()
-    # Define a step function
-    step_func(x) = x < 2π ? 1.0 : 0.0
+# Demonstration functions
+function demo_2d_gaussian()
+    println("Demo: 2D Gaussian function made periodic")
     
-    period = 4π
+    # Original 2D Gaussian
+    gaussian_2d(x, y) = exp(-((x-π)^2 + (y-π)^2)/2)
     
-    # Create periodic versions
-    periodic_step = make_periodic(step_func, period)
-    fourier_step = fourier_periodic(step_func, period, 50, domain_end=period)
+    period_x, period_y = 2π, 2π
     
-    x_range = -period:0.05:2*period
+    # Create different periodic versions
+    periodic_repeat = make_periodic_2d(gaussian_2d, period_x, period_y, method=:repeat)
+    periodic_reflect = make_periodic_2d(gaussian_2d, period_x, period_y, method=:reflect)
+    periodic_symmetric = make_periodic_2d(gaussian_2d, period_x, period_y, method=:symmetric)
     
-    p2 = plot(x_range, periodic_step.(x_range), 
-              label="Periodic Step", linewidth=2, title="Step Function - Periodic Extension")
-    plot!(p2, x_range, fourier_step.(x_range), 
-          label="Fourier Approximation", linewidth=2, linestyle=:dash)
+    # Create plots
+    p1 = plot_2d_periodic(periodic_repeat, period_x, period_y, title="2D Gaussian - Repeat")
+    p2 = plot_2d_periodic(periodic_reflect, period_x, period_y, title="2D Gaussian - Reflect")
+    p3 = plot_2d_periodic(periodic_symmetric, period_x, period_y, title="2D Gaussian - Symmetric")
     
-    # Add vertical lines to show period boundaries
-    for i in -1:2
-        vline!(p2, [i*period], color=:gray, alpha=0.3, label="")
+    # Combine plots
+    combined_plot = plot(p1, p2, p3, layout=(1,3), size=(1200, 400))
+    display(combined_plot)
+    
+    return combined_plot
+end
+
+function demo_2d_wave_interference()
+    println("Demo: 2D wave interference pattern made periodic")
+    
+    # Wave interference pattern
+    wave_2d(x, y) = sin(x) * cos(y) + 0.5 * sin(2*x + y)
+    
+    period_x, period_y = 2π, 2π
+    
+    # Create periodic version and Fourier approximation
+    periodic_wave = make_periodic_2d(wave_2d, period_x, period_y, method=:repeat)
+    fourier_wave = fourier_periodic_2d(wave_2d, period_x, period_y, 15, 15)
+    
+    # Create plots
+    p1 = plot_2d_periodic(periodic_wave, period_x, period_y, title="Wave Pattern - Original Periodic")
+    p2 = plot_2d_periodic(fourier_wave, period_x, period_y, title="Wave Pattern - Fourier Series")
+    
+    combined_plot = plot(p1, p2, layout=(1,2), size=(800, 400))
+    display(combined_plot)
+    
+    return combined_plot
+end
+
+function demo_2d_step_function()
+    println("Demo: 2D step function (square) made periodic")
+    
+    # 2D step function (square in center)
+    step_2d(x, y) = (1 <= x <= 3 && 1 <= y <= 3) ? 1.0 : 0.0
+    
+    period_x, period_y = 4, 4
+    
+    # Create different periodic versions
+    periodic_step = make_periodic_2d(step_2d, period_x, period_y, method=:repeat)
+    symmetric_step = make_periodic_2d(step_2d, period_x, period_y, method=:symmetric)
+    
+    # Create plots
+    p1 = plot_2d_periodic(periodic_step, period_x, period_y, title="2D Step - Repeat")
+    p2 = plot_2d_periodic(symmetric_step, period_x, period_y, title="2D Step - Symmetric")
+    
+    combined_plot = plot(p1, p2, layout=(1,2), size=(800, 400))
+    display(combined_plot)
+    
+    return combined_plot
+end
+
+function demo_discrete_image_periodic()
+    println("Demo: Making discrete data (image-like) periodic")
+    
+    # Create a simple 2D pattern
+    pattern = zeros(20, 20)
+    for i in 1:20, j in 1:20
+        pattern[i, j] = sin(i/3) * cos(j/3) + 0.5 * exp(-((i-10)^2 + (j-10)^2)/50)
     end
     
-    xlabel!(p2, "x")
-    ylabel!(p2, "f(x)")
+    # Make it periodic
+    periodic_pattern = make_periodic_2d_discrete(pattern, method=:repeat)
     
-    return p2
+    # Create extended grid to show periodicity
+    extended_x = 1:60
+    extended_y = 1:60
+    extended_pattern = [periodic_pattern(x, y) for y in extended_y, x in extended_x]
+    
+    p = heatmap(extended_x, extended_y, extended_pattern,
+               aspect_ratio=:equal,
+               title="Discrete Pattern Made Periodic",
+               xlabel="x", ylabel="y")
+    
+    # Add grid lines to show original pattern boundaries
+    for i in 0:3
+        vline!(p, [i*20 + 0.5], color=:white, alpha=0.7, linewidth=2, label="")
+        hline!(p, [i*20 + 0.5], color=:white, alpha=0.7, linewidth=2, label="")
+    end
+    
+    display(p)
+    return p
 end
 
-# Run demonstrations
-println("Creating periodic function demonstrations...")
+# Run all demonstrations
+println("Creating 2D periodic function demonstrations...")
 
-# Generate plots
-plot1 = demo_periodic_functions()
-plot2 = demo_step_function()
+# Generate all demo plots
+demo_2d_gaussian()
+demo_2d_wave_interference()
+demo_2d_step_function()
+demo_discrete_image_periodic()
 
-# Display plots
-display(plot1)
-display(plot2)
+# Example of direct usage
+println("\nExample: Direct evaluation of 2D periodic functions")
+original_2d(x, y) = x^2 + y^2
+periodic_2d_func = make_periodic_2d(original_2d, 2π, 2π)
 
-# Example of using the functions directly
-println("\nExample: Evaluating periodic functions at specific points")
-original(x) = x^2
-periodic_func = make_periodic(original, 2π)
-
-test_points = [0, π, 2π, 3π, 4π]
-for x in test_points
-    println("x = $x: original(mod(x,2π)) = $(original(mod(x,2π))), periodic(x) = $(periodic_func(x))")
+test_points = [(0, 0), (π, π), (2π, 0), (3π, 2π), (4π, 4π)]
+for (x, y) in test_points
+    orig_val = original_2d(mod(x, 2π), mod(y, 2π))
+    periodic_val = periodic_2d_func(x, y)
+    println("(x,y) = ($x, $y): original = $orig_val, periodic = $periodic_val")
 end
