@@ -1,8 +1,8 @@
-# examples/initial_conditions_example.jl
-# Surface Semi-Geostrophic initial conditions from paper equation (20):
+# examples/badin_example.jl
+# Surface Semi-Geostrophic initial conditions from paper equation:
 #   b̃ₛ(k, t=0) = A * k^(m/4) / (k + k₀)^(m/2)
 # 
-# Usage: mpirun -np 4 julia initial_conditions_example.jl
+# Usage: mpirun -np 4 julia badin_example.jl
 
 using Random
 using Printf
@@ -11,7 +11,8 @@ using MPI
 using PencilArrays
 using PencilFFTs
 
-using SSG
+include("SSG.jl")
+using .SSG
 
 """
     initialize_spectral_buoyancy!(fields, domain, amplitude, k₀, m; 
@@ -238,7 +239,7 @@ function run_initial_condition_example()
     
     try
         # Setup
-        Nx, Ny, Nz = 512, 512, 20
+        Nx, Ny, Nz = 128, 128, 20
         Lx = Ly = 6.0  # L/L_D = 6 from paper
         k₀, m = 14.0, 20  # Paper parameters
         
@@ -264,7 +265,7 @@ function run_initial_condition_example()
         end
         
         # Create domain and fields
-        domain = make_domain(Nx, Ny, Nz; Lx=Lx, Ly=Ly, Lz=1.0,
+        domain = Domain(Nx, Ny, Nz; Lx=Lx, Ly=Ly, Lz=1.0,
                            z_boundary=:dirichlet, z_grid=:stretched,
                            stretch_params=(type=:exponential, β=2.0, surface_concentration=true),
                            comm=comm)
@@ -292,19 +293,19 @@ function run_initial_condition_example()
         # Set up time-based output frequency
         save_interval = 1.0  # Save every 1.0 time units
         output_manager = OutputManager{Float64}("output";
-                                               snapshot_time_freq=save_interval,
-                                               full_state_time_freq=5.0,  # Full state every 5.0 time units
-                                               diagnostics_time_freq=0.1, # Diagnostics every 0.1 time units
-                                               save_spectral_data=true,
-                                               verbose_output=true)
+                                            snapshot_time_freq=save_interval,
+                                            full_state_time_freq=5.0,  # Full state every 5.0 time units
+                                            diagnostics_time_freq=0.1, # Diagnostics every 0.1 time units
+                                            save_spectral_data=true,
+                                            verbose_output=true)
         
         prob = SemiGeostrophicProblem{Float64}(fields, domain, timestepper, clock;
-                                             diagnostics=DiagnosticTimeSeries{Float64}(),
-                                             output_settings=(manager=output_manager, 
-                                                            save_interval=save_interval))
+                                            diagnostics=DiagnosticTimeSeries{Float64}(),
+                                            output_settings=(manager=output_manager, 
+                                            save_interval=save_interval))
         
         rank == 0 && println(" Starting full simulation...")
-        rank == 0 && println("   run_with_time_based_output(prob, 25.0; save_interval=2.0)")
+        rank == 0 && println(" run_with_time_based_output(prob, 25.0; save_interval=2.0)")
         
         # Auto-start full simulation
         run_with_time_based_output(prob, 25.0; save_interval=2.0)
