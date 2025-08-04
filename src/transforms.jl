@@ -801,27 +801,27 @@ function divergence_3d!(domain::Domain, u, v, w, û, div, tmp_spec; fd_order=2)
     return div
 end
 
-# =============================================================================
-# UTILITY FUNCTIONS FOR PENCIL ARRAYS
-# =============================================================================
+# # =============================================================================
+# # UTILITY FUNCTIONS FOR PENCIL ARRAYS
+# # =============================================================================
 
-"""
-    create_real_field(domain::Domain, ::Type{T}=FT) where T
+# """
+#     create_real_field(domain::Domain, ::Type{T}=FT) where T
 
-Create a PencilArray for real-space fields.
-"""
-function create_real_field(domain::Domain, ::Type{T}=FT) where T
-    return PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-end
+# Create a PencilArray for real-space fields.
+# """
+# function create_real_field(domain::Domain, ::Type{T}=FT) where T
+#     return PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+# end
 
-"""
-    create_spectral_field(domain::Domain, ::Type{T}=FT) where T
+# """
+#     create_spectral_field(domain::Domain, ::Type{T}=FT) where T
 
-Create a PencilArray for spectral-space fields.
-"""
-function create_spectral_field(domain::Domain, ::Type{T}=FT) where T
-    return PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
-end
+# Create a PencilArray for spectral-space fields.
+# """
+# function create_spectral_field(domain::Domain, ::Type{T}=FT) where T
+#     return PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+# end
 
 """
     copy_field!(dest, src)
