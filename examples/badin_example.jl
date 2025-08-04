@@ -4,12 +4,21 @@
 # 
 # Usage: mpirun -np 4 julia initial_conditions_example.jl
 
-using SSG, Random, Printf, LinearAlgebra, MPI, PencilArrays, PencilFFTs
+using Random
+using Printf
+using LinearAlgebra
+using MPI
+using PencilArrays
+using PencilFFTs
+
+using SSG
 
 """
-    initialize_spectral_buoyancy!(fields, domain, amplitude, k₀, m; target_rms_velocity=1.0, seed=12345)
+    initialize_spectral_buoyancy!(fields, domain, amplitude, k₀, m; 
+                                target_rms_velocity=1.0, seed=12345)
 
-Initialize surface buoyancy with spectral perturbation. MPI-parallel with synchronized random phases.
+Initialize surface buoyancy with spectral perturbation. MPI-parallel 
+with synchronized random phases.
 """
 function initialize_spectral_buoyancy!(fields::Fields{T}, domain::Domain, 
                                       amplitude::T, k₀::T, m::Int;
@@ -186,7 +195,7 @@ function run_with_time_based_output(prob, final_time::Real; save_interval::Real=
     next_save_time = save_interval * ceil(current_time / save_interval)
     save_counter = 0
     
-    rank == 0 && println("🚀 Starting simulation with time-based saves every $(save_interval) time units")
+    rank == 0 && println("Starting simulation with time-based saves every $(save_interval) time units")
     
     while current_time < final_time
         # Determine next target time
@@ -199,10 +208,10 @@ function run_with_time_based_output(prob, final_time::Real; save_interval::Real=
         # Save if we've reached a save time
         if abs(current_time - next_save_time) < 1e-10
             save_counter += 1
-            filename = "state_t$(Int(round(current_time))).jld2"
+            filename = "state_$(save_counter).jld2"
             
             if rank == 0
-                println("💾 Saving at t=$(round(current_time, digits=2)) (save #$save_counter)")
+                println("Saving at t=$(round(current_time, digits=2)) → $(filename)")
             end
             
             save_initial_state(filename, prob.fields, prob.domain)
@@ -247,7 +256,7 @@ function run_initial_condition_example()
             total_hours = n_steps * step_time / 3600
             n_saves = Int(round(t_end / 2.0))  # Save every 2.0 time units
             
-            println("\n⏱️  FULL SIMULATION RUNTIME:")
+            println("\n FULL SIMULATION RUNTIME:")
             println("   Target: t=0 → $(t_end) ($(n_saves) saves every 2.0 time units)")
             println("   Expected time: $(round(total_hours, digits=1)) hours")
             println("   Memory per process: $(round(8 * Nx * Ny * Nz * 10 / nprocs / 1e9, digits=1)) GB")
@@ -294,7 +303,7 @@ function run_initial_condition_example()
                                              output_settings=(manager=output_manager, 
                                                             save_interval=save_interval))
         
-        rank == 0 && println("🚀 Starting full simulation...")
+        rank == 0 && println(" Starting full simulation...")
         rank == 0 && println("   run_with_time_based_output(prob, 25.0; save_interval=2.0)")
         
         # Auto-start full simulation
@@ -313,7 +322,7 @@ function run_initial_condition_example()
     end
 end
 
-# Execute if run directly
-if abspath(PROGRAM_FILE) == @__FILE__
-    run_initial_condition_example()
-end
+# # Execute if run directly
+# if abspath(PROGRAM_FILE) == @__FILE__
+#     run_initial_condition_example()
+# end
