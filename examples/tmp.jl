@@ -124,10 +124,7 @@ function run_initial_condition_example()
         rethrow(e)
     finally
         # Don't finalize MPI here as it might be used elsewhere
-        # Only finalize if we initialized it
-        if MPI.Initialized() && !MPI.Finalized()
-            MPI.Finalize()
-        end
+        # MPI.Finalize()
     end
 end
 
@@ -248,11 +245,10 @@ function create_problem_with_spectral_ics(Nx::Int, Ny::Int, Nz::Int;
                                          target_rms::Real=1.0,
                                          scheme=RK3,
                                          dt::Real=0.001,
-                                         comm=MPI.COMM_WORLD,
                                          kwargs...)
     
     # Create domain
-    domain = make_domain(Nx, Ny, Nz; Lx=Lx, Ly=Ly, Lz=Lz, comm=comm, kwargs...)
+    domain = make_domain(Nx, Ny, Nz; Lx=Lx, Ly=Ly, Lz=Lz, kwargs...)
     
     # Create fields
     fields = allocate_fields(domain)
@@ -261,15 +257,13 @@ function create_problem_with_spectral_ics(Nx::Int, Ny::Int, Nz::Int;
     initialize_spectral_buoyancy!(fields, domain, 1.0, k₀, m; 
                                  target_rms_velocity=target_rms)
     
-    # Create timestepper and clock
+    # Create timestepper
     timestepper = TimeParams{Float64}(dt; scheme=scheme)
     clock = TimeState{Float64, typeof(fields.bₛ)}(0.0, fields)
     
     # Create problem structure
     prob = SemiGeostrophicProblem{Float64}(fields, domain, timestepper, clock;
-                                         diagnostics=DiagnosticTimeSeries{Float64}(),
-                                         output_settings=(dir="output", save_freq=100, 
-                                                        diag_freq=10, verbose=true))
+                                         enable_diagnostics=true)
     
     return prob
 end
@@ -334,94 +328,6 @@ function demo_spectral_initialization()
 end
 
 # ============================================================================
-# SIMPLE TEST FUNCTION
-# ============================================================================
-
-"""
-    test_spectral_initialization()
-
-Simple test of the spectral initialization without full simulation setup.
-"""
-function test_spectral_initialization()
-    println("🧪 Testing Spectral Initialization")
-    println("=" ^ 40)
-    
-    MPI.Initialized() || MPI.Init()
-    
-    try
-        # Small domain for testing
-        Nx, Ny, Nz = 64, 64, 8
-        Lx = Ly = 2π
-        Lz = 1.0
-        
-        if MPI.Comm_rank(MPI.COMM_WORLD) == 0
-            println("Creating test domain: $(Nx)×$(Ny)×$(Nz)")
-        end
-        
-        # Create domain with simple uniform grid
-        domain = make_domain(Nx, Ny, Nz; Lx=Lx, Ly=Ly, Lz=Lz,
-                           z_boundary=:dirichlet,
-                           z_grid=:uniform,
-                           comm=MPI.COMM_WORLD)
-        
-        # Allocate fields
-        fields = allocate_fields(domain)
-        
-        if MPI.Comm_rank(domain.pc.comm) == 0
-            println("✓ Domain and fields created successfully")
-            println("Testing spectral initialization...")
-        end
-        
-        # Test spectral initialization
-        initialize_spectral_buoyancy!(fields, domain, 1.0, 14.0, 20; 
-                                     target_rms_velocity=0.5,
-                                     seed=12345)
-        
-        if MPI.Comm_rank(domain.pc.comm) == 0
-            println("✓ Spectral initialization completed")
-            
-            # Basic checks
-            rms_vel = compute_rms_velocity(fields, domain)
-            max_b = MPI.Allreduce(maximum(abs.(fields.bₛ.data)), MPI.MAX, domain.pc.comm)
-            max_u = MPI.Allreduce(maximum(abs.(fields.u.data)), MPI.MAX, domain.pc.comm)
-            max_v = MPI.Allreduce(maximum(abs.(fields.v.data)), MPI.MAX, domain.pc.comm)
-            
-            println("Results:")
-            println("  RMS velocity: $(rms_vel) (target was 0.5)")
-            println("  Max |buoyancy|: $(max_b)")
-            println("  Max |u|: $(max_u)")
-            println("  Max |v|: $(max_v)")
-            
-            # Check if results are reasonable
-            if 0.4 < rms_vel < 0.6
-                println("✅ RMS velocity test PASSED")
-            else
-                println("❌ RMS velocity test FAILED")
-            end
-            
-            if max_b > 0 && max_u > 0 && max_v > 0
-                println("✅ Field initialization test PASSED")
-            else
-                println("❌ Field initialization test FAILED")
-            end
-        end
-        
-        return fields, domain
-        
-    catch e
-        if MPI.Comm_rank(MPI.COMM_WORLD) == 0
-            println("❌ Test failed with error: $e")
-            println(stacktrace())
-        end
-        rethrow(e)
-    finally
-        if MPI.Initialized() && !MPI.Finalized()
-            MPI.Finalize()
-        end
-    end
-end
-
-# ============================================================================
 # EXAMPLE USAGE AND DOCUMENTATION 
 # ============================================================================
 
@@ -475,13 +381,7 @@ buoyancy_variance = compute_buoyancy_variance(fields.bₛ, domain)
 
 # Run example if executed directly
 if abspath(PROGRAM_FILE) == @__FILE__
-    # Run the simple test first
-    println("Running simple test...")
-    test_spectral_initialization()
-    
-    println("\n" * "="^50)
-    println("If test passed, you can run the full example:")
-    println("run_initial_condition_example()")
+    run_initial_condition_example()
 end# examples/initial_conditions_example.jl
 # Example implementation of initial surface buoyancy perturbation
 # Based on equation (20) from the paper:
@@ -825,11 +725,14 @@ function run_initial_condition_example()
         domain = make_domain(Nx, Ny, Nz; Lx=Lx, Ly=Ly, Lz=Lz,
                            z_boundary=:dirichlet,
                            z_grid=:stretched,
-                           stretch_params=(type=:exponential, β=2.0, surface_concentration=true),
-                           comm=MPI.COMM_WORLD)
+                           stretch_params=(type=:exponential, β=2.0, surface_concentration=true))
         
-        # Allocate fields structure
-        fields = allocate_fields(domain)
+        # Create problem
+        prob = SemiGeostrophicProblem(domain; 
+                                    scheme=RK3, 
+                                    dt=0.001,
+                                    adaptive_dt=true,
+                                    enable_diagnostics=true)
         
         # Set initial conditions following equation (20)
         amplitude = 1.0  # Will be adjusted automatically
@@ -848,7 +751,7 @@ function run_initial_condition_example()
         end
         
         # Initialize with spectral perturbation
-        initialize_spectral_buoyancy!(fields, domain, amplitude, k₀, m;
+        initialize_spectral_buoyancy!(prob, amplitude, k₀, m;
                                      target_rms_velocity=target_rms,
                                      seed=12345)
         
@@ -856,29 +759,22 @@ function run_initial_condition_example()
         if MPI.Comm_rank(domain.pc.comm) == 0
             println("✓ Initial conditions set successfully")
             
-            # Compute diagnostics using functions from transforms.jl
-            ke = compute_energy(fields.u, fields.v, domain)
-            b_variance = compute_buoyancy_variance(fields.bₛ, domain)
-            
-            # Local field statistics
-            max_b = maximum(abs.(fields.bₛ.data))
-            max_u = maximum(abs.(fields.u.data))
-            max_v = maximum(abs.(fields.v.data))
-            
-            # Global reductions
-            max_b_global = MPI.Allreduce(max_b, MPI.MAX, domain.pc.comm)
-            max_u_global = MPI.Allreduce(max_u, MPI.MAX, domain.pc.comm)
-            max_v_global = MPI.Allreduce(max_v, MPI.MAX, domain.pc.comm)
+            # Compute diagnostics
+            ke = compute_kinetic_energy(prob.fields, domain)
+            b_variance = compute_buoyancy_variance(prob.fields.bₛ, domain)
+            max_b = maximum(abs.(prob.fields.bₛ.data))
+            max_u = maximum(abs.(prob.fields.u.data))
+            max_v = maximum(abs.(prob.fields.v.data))
             
             println("\nInitial state diagnostics:")
             println("  Kinetic energy: $(ke)")
             println("  Buoyancy variance: $(b_variance)")
-            println("  Max |buoyancy|: $(max_b_global)")
-            println("  Max |u|: $(max_u_global) m/s")
-            println("  Max |v|: $(max_v_global) m/s")
+            println("  Max |buoyancy|: $(max_b)")
+            println("  Max |u|: $(max_u) m/s")
+            println("  Max |v|: $(max_v) m/s")
             
             # Verify RMS velocity
-            final_rms = compute_rms_velocity(fields, domain)
+            final_rms = compute_rms_velocity(prob.fields, domain)
             println("  Final RMS velocity: $(final_rms) m/s")
             println()
         end
@@ -893,14 +789,12 @@ function run_initial_condition_example()
                                   compress=true)
         
         if MPI.Comm_rank(domain.pc.comm) == 0
+            println("✓ Initial state saved to initial_state_spectral.jld2")
             println("\nReady for time integration!")
-            println("Next steps:")
-            println("  1. Use the created 'prob' structure for time stepping")
-            println("  2. Example: step_until!(prob, 10.0) to advance to t=10")
-            println("  3. Or use stepforward!(prob, 1000) for 1000 time steps")
+            println("Use: step_until!(prob, target_time) to advance simulation")
         end
         
-        return prob, fields, domain
+        return prob
         
     finally
         MPI.Finalize()
