@@ -175,20 +175,20 @@ end
 # ============================================================================
 
 """
-    apply_spectral_filter!(fld::Fields, domain::Domain, filter::AbstractSpectralFilter; dt=nothing)
+    apply_spectral_filter!(fields::Fields, domain::Domain, filter::AbstractSpectralFilter; dt=nothing)
 
 Apply spectral filter to all prognostic fields in Fields structure.
 """
-function apply_spectral_filter!(fld::Fields{T}, domain::Domain, 
+function apply_spectral_filter!(fields::Fields{T}, domain::Domain, 
                                filter::AbstractSpectralFilter{T}; 
                                dt::Union{T, Nothing}=nothing) where T
     
     # Apply filter to buoyancy field
-    apply_filter_to_field!(fld.b, fld.bhat, domain, filter; dt=dt)
+    apply_filter_to_field!(fields.b, fields.bhat, domain, filter; dt=dt)
     
     # Apply filter to streamfunction if needed
-    if hasfield(typeof(fld), :φ)
-        apply_filter_to_field!(fld.φ, fld.φhat, domain, filter; dt=dt)
+    if hasfield(typeof(fields), :φ)
+        apply_filter_to_field!(fields.φ, fields.φhat, domain, filter; dt=dt)
     end
     
     return nothing
@@ -429,18 +429,18 @@ end
 # # ============================================================================
 
 # """
-#     apply_spectral_filter!(fld::Fields, domain::Domain, filter_strength::Real)
+#     apply_spectral_filter!(fields::Fields, domain::Domain, filter_strength::Real)
 
 # Legacy interface matching timestep.jl - applies exponential filter.
 # """
-# function apply_spectral_filter!(fld::Fields{T}, domain::Domain, 
+# function apply_spectral_filter!(fields::Fields{T}, domain::Domain, 
 #                                filter_strength::Real) where T
     
 #     # Create exponential filter with legacy parameters
 #     filter = ExponentialFilter{T}(T(filter_strength), 4, T(0.65))
     
 #     # Apply to buoyancy field
-#     apply_spectral_filter!(fld, domain, filter)
+#     apply_spectral_filter!(fields, domain, filter)
     
 #     return nothing
 # end

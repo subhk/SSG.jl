@@ -95,7 +95,7 @@ end
     zero_fields!(fields::Fields)
 Set all fields to zero.
 """
-function zero_fields!(domain::Fields)
+function zero_fields!(fields::Fields)
     fields.bₛ    .= 0.0
     fields.φₛ    .= 0.0
 
