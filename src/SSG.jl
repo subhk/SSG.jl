@@ -27,11 +27,11 @@ module SSG
 
     # Export main functions
 
-    # domain.jl exports
-    export Domain, make_domain, gridpoints, gridpoints_2d
-
     # fields.jl exports  
     export Fields, allocate_fields, zero_fields!, copy_field!, field_stats
+
+   # domain.jl exports
+    export Domain, gridpoints, gridpoints_2d
 
     # params.jl exports
     export Params, validate_params, has_diffusion, has_hyperdiffusion, has_filter

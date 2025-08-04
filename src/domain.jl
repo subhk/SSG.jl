@@ -87,7 +87,7 @@ For `z_grid = :custom`, provide:
 # Returns
 - `Domain`: Configured 3D domain structure
 """
-function make_domain(Nx::Int, Ny::Int, Nz::Int; 
+function Domain(Nx::Int, Ny::Int, Nz::Int; 
                      Lx=2π, Ly=2π, Lz=1.0, 
                      z_boundary=:dirichlet,
                      z_grid=:uniform,

@@ -48,14 +48,6 @@ function safe_divide(num, den; eps=1e-12)
     end
 end
 
-
-# src/utils.jl
-# Utility functions for surface semigeostrophic model
-
-# =============================================================================
-# FIELD UTILITY FUNCTIONS
-# =============================================================================
-
 """
     create_real_field(domain::Domain, ::Type{T}=FT) where T
 
