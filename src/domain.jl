@@ -47,8 +47,8 @@ struct Domain{T, PA<:AbstractPencil, PC<:AbstractPencil, PF, PB}
     z_grid::Symbol
     
     # Pencil descriptors
-    pr::PA # real-space pencil
-    pc::PC # complex/spectral pencil
+    pr::PA      # real-space pencil
+    pc::PC      # complex/spectral pencil
     
     # FFT plans (horizontal only)
     fplan::PF
@@ -61,7 +61,7 @@ struct Domain{T, PA<:AbstractPencil, PC<:AbstractPencil, PF, PB}
 end
 
 """
-    make_domain(Nx, Ny, Nz; Lx=2π, Ly=2π, Lz=1.0, z_boundary=:dirichlet, 
+    Domain(Nx, Ny, Nz; Lx=2π, Ly=2π, Lz=1.0, z_boundary=:dirichlet, 
                 z_grid=:uniform, stretch_params=nothing, comm=MPI.COMM_WORLD) -> Domain
 
 Create a 3D domain with periodic horizontal directions and bounded vertical direction.
@@ -99,11 +99,11 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     
     # Create pencil descriptors for 3D arrays
     # Real-space: full (Nx, Ny, Nz) array
-    pr = Pencil((Nx, Ny, Nz), comm)
+    pr  = Pencil((Nx, Ny, Nz), comm)
     
     # Spectral-space: rFFT reduces y dimension to Ny÷2+1, z remains same
     Nyc = fld(Ny, 2) + 1
-    pc = Pencil((Nx, Nyc, Nz), comm)
+    pc  = Pencil((Nx, Nyc, Nz), comm)
     
     # Create FFT plans using dummy arrays (only for horizontal directions)
     u_r = PencilArray(pr, zeros(FT, local_size(pr)))
@@ -123,16 +123,25 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     z, dz = make_vertical_grid(Nz, Lz, z_grid, z_boundary, stretch_params)
     
     # Horizontal wavenumber arrays (periodic)
-    kx = [(i <= Nx÷2 ? i : i - Nx) * (2π/Lx) for i in 0:(Nx-1)]
+    kx      = [(i <= Nx÷2 ? i : i - Nx) * (2π/Lx) for i in 0:(Nx-1)]
     ky_full = [(j <= Ny÷2 ? j : j - Ny) * (2π/Ly) for j in 0:(Ny-1)]
-    ky = ky_full[1:Nyc] # Truncated for rFFT
+    ky      = ky_full[1:Nyc] # Truncated for rFFT
     
     # Dealiasing mask (only for horizontal directions)
     mask = twothirds_mask(Nx, Nyc)
+
+    Krsq, invKrsq = make_wavenumber_arrays(kx, ky, Nx, Nyc)
+
+    aliased_fraction = 1/3
+    kxalias, kyalias =  get_aliased_wavenumbers(Nx, Nyc, aliased_fraction)
     
     return Domain{FT, typeof(pr), typeof(pc), typeof(fplan), typeof(iplan)}(
-        Nx, Ny, Nz, Lx, Ly, Lz, x, y, z, dz, kx, ky, mask, z_boundary, z_grid,
-        pr, pc, fplan, iplan
+        Nx, Ny, Nz, Lx, Ly, Lz, 
+        x, y, z, dz, 
+        kx, ky, Krsq, invKrsq, 
+        mask, z_boundary, z_grid,
+        pr, pc, fplan, iplan,
+        aliased_fraction, kxalias, kyalias
     )
 end
 
@@ -436,7 +445,6 @@ function gridpoints(domain::Domain)
     X = [domain.x[i] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
     Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
     Z = [domain.z[k] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
-    
     return X, Y, Z
 end
 
@@ -448,7 +456,6 @@ Return 2D horizontal coordinate arrays for the domain.
 function gridpoints_2d(domain::Domain)
     X = [domain.x[i] for i=1:domain.Nx, j=1:domain.Ny]
     Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny]
-    
     return X, Y
 end
 
