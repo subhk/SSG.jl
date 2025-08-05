@@ -2,9 +2,9 @@
 # Spectral filtering for surface semi-geostrophic equations
 # Supports exponential, hyperviscosity, and custom filter functions
 
-using PencilArrays
+using PencilArrays: local_range
 using PencilFFTs
-using LinearAlgebra
+using LinearAlgebra: mul!, ldiv!
 using Printf
 
 ###############################################################################
@@ -184,7 +184,7 @@ function apply_spectral_filter!(fields::Fields{T}, domain::Domain,
                                dt::Union{T, Nothing}=nothing) where T
     
     # Apply filter to buoyancy field
-    apply_filter_to_field!(fields.b, fields.bhat, domain, filter; dt=dt)
+    apply_filter_to_field!(fields.bₛ, fields.bhat, domain, filter; dt=dt)
     
     # Apply filter to streamfunction if needed
     if hasfield(typeof(fields), :φ)
@@ -497,7 +497,7 @@ function filter_energy_removal(field_before::PencilArray{T, N},
     
     # Transform to spectral space
     rfft!(domain, field_before, spec_before)
-    rfft!(domain, field_after, spec_after)
+    rfft!(domain, field_after,  spec_after)
     
     # Compute energy using Parseval's theorem
     energy_before = 0.5 * parsevalsum2(spec_before, domain)
