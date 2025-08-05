@@ -23,7 +23,7 @@ Periodic in x,y directions; bounded in z direction.
 - `aliased_fraction`: Fraction of wavenumbers that are aliased (e.g., 1/3)
 - `kxalias, kyalias`: Ranges of aliased wavenumber indices
 """
-struct Domain{T, PA, PC, PF, PB}
+struct Domain{T, PA<:AbstractPencil, PC<:AbstractPencil, PF, PB}
     Nx::Int
     Ny::Int
     Nz::Int
@@ -145,6 +145,7 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     )
 end
 
+
 """
     make_domain(Nx, Ny, Nz; kwargs...) -> Domain
 
@@ -188,6 +189,7 @@ function make_domain(Nx::Int, Ny::Int, Nz::Int;
                  stretch_params=stretch_params,
                  comm=comm)
 end
+
 
 """
     make_vertical_grid(Nz, Lz, z_grid, z_boundary, stretch_params) -> (z, dz)
@@ -239,6 +241,138 @@ function make_vertical_grid(Nz::Int, Lz, z_grid::Symbol, z_boundary::Symbol, str
     
     return z, dz
 end
+
+
+"""
+    create_stretched_grid(Nz, Lz, stretch_params) -> (z, dz)
+
+Create a stretched vertical grid based on the specified parameters.
+"""
+function create_stretched_grid(Nz::Int, Lz, stretch_params)
+    stretch_type = get(stretch_params, :type, :tanh)
+    
+    if stretch_type == :tanh
+        β = get(stretch_params, :β, 2.0)
+        surface_concentration = get(stretch_params, :surface_concentration, true)
+        return create_tanh_grid(Nz, Lz, β, surface_concentration)
+        
+    elseif stretch_type == :exponential
+        β = get(stretch_params, :β, 2.0) 
+        surface_concentration = get(stretch_params, :surface_concentration, true)
+        return create_exponential_grid(Nz, Lz, β, surface_concentration)
+        
+    elseif stretch_type == :sinh
+        β = get(stretch_params, :β, 2.0)
+        return create_sinh_grid(Nz, Lz, β)
+        
+    elseif stretch_type == :power
+        α = get(stretch_params, :α, 1.5)
+        return create_power_grid(Nz, Lz, α)
+        
+    else
+        error("Unknown stretch type: $stretch_type")
+    end
+end
+
+"""
+    create_tanh_grid(Nz, Lz, β, surface_concentration) -> (z, dz)
+
+Create hyperbolic tangent stretched grid.
+"""
+function create_tanh_grid(Nz::Int, Lz, β, surface_concentration::Bool)
+    # Uniform grid in computational space
+    ξ = collect(range(0, 1, length=Nz))
+    
+    if surface_concentration
+        # Concentrate points near surface (z = Lz)
+        z = Lz .* (1 .- 0.5 .* (1 .+ tanh.(β .* (2 .* ξ .- 1)) ./ tanh(β)))
+    else
+        # Concentrate points near bottom (z = 0)
+        z = Lz .* 0.5 .* (1 .+ tanh.(β .* (2 .* ξ .- 1)) ./ tanh(β))
+    end
+    
+    # Compute grid spacing
+    dz = zeros(FT, Nz)
+    for i in 2:Nz-1
+        dz[i] = 0.5 * (z[i+1] - z[i-1])
+    end
+    dz[1] = z[2] - z[1]
+    dz[Nz] = z[Nz] - z[Nz-1]
+    
+    return z, dz
+end
+
+"""
+    create_exponential_grid(Nz, Lz, β, surface_concentration) -> (z, dz)
+
+Create exponentially stretched grid.
+"""
+function create_exponential_grid(Nz::Int, Lz, β, surface_concentration::Bool)
+    ξ = collect(range(0, 1, length=Nz))
+    
+    if surface_concentration
+        # Exponential clustering at surface
+        z = Lz .* (1 .- exp.(-β .* ξ) ./ (1 - exp(-β)))
+    else
+        # Exponential clustering at bottom
+        z = Lz .* (exp.(β .* ξ) .- 1) ./ (exp(β) - 1)
+    end
+    
+    # Compute spacing
+    dz = zeros(FT, Nz)
+    for i in 2:Nz-1
+        dz[i] = 0.5 * (z[i+1] - z[i-1])
+    end
+    dz[1] = z[2] - z[1] 
+    dz[Nz] = z[Nz] - z[Nz-1]
+    
+    return z, dz
+end
+
+"""
+    create_sinh_grid(Nz, Lz, β) -> (z, dz)
+
+Create hyperbolic sine stretched grid.
+"""
+function create_sinh_grid(Nz::Int, Lz, β)
+    ξ = collect(range(-1, 1, length=Nz))
+    
+    # Symmetric stretching about middle
+    z = Lz .* (0.5 .+ sinh.(β .* ξ) ./ (2 * sinh(β)))
+    
+    # Compute spacing
+    dz = zeros(FT, Nz)
+    for i in 2:Nz-1
+        dz[i] = 0.5 * (z[i+1] - z[i-1])
+    end
+    dz[1] = z[2] - z[1]
+    dz[Nz] = z[Nz] - z[Nz-1]
+    
+    return z, dz
+end
+
+"""
+    create_power_grid(Nz, Lz, α) -> (z, dz)
+
+Create power-law stretched grid.
+"""
+function create_power_grid(Nz::Int, Lz, α)
+    ξ = collect(range(0, 1, length=Nz))
+    
+    # Power law stretching
+    z = Lz .* ξ.^α
+    
+    # Compute spacing
+    dz = zeros(FT, Nz)
+    for i in 2:Nz-1
+        dz[i] = 0.5 * (z[i+1] - z[i-1])
+    end
+    dz[1] = z[2] - z[1]
+    dz[Nz] = z[Nz] - z[Nz-1]
+    
+    return z, dz
+end
+
 
 """
     make_wavenumber_arrays(kx, ky, Nx, Nyc) -> (Krsq, invKrsq)
@@ -470,7 +604,7 @@ function Base.show(io::IO, domain::Domain)
     println(io, "  Lx × Ly × Lz: $(domain.Lx) × $(domain.Ly) × $(domain.Lz)")
     println(io, "  dx × dy × dz: $((domain.Lx/domain.Nx)) × $((domain.Ly/domain.Ny)) × $((domain.Lz/domain.Nz))")
     println(io, "  Z boundary  : $(domain.z_boundary)")
-    println(io, "  Z grid type : $(domain.z_grid)")
+    println(io, "  Z grid type : $(domain.chebyshev === nothing ? "uniform/finite-difference" : "Chebyshev spectral")")
     println(io, "  Real pencil : $(typeof(domain.pr))")
     println(io, "  Spectral pencil: $(typeof(domain.pc))")
     println(io, "  MPI processes: $(MPI.Comm_size(domain.pr.comm))")
@@ -510,136 +644,5 @@ Return the element type of the domain coordinates.
 """
 Base.eltype(domain::Domain) = eltype(domain.x)
 
-# =============================================================================
-# STRETCHED GRID IMPLEMENTATIONS
-# =============================================================================
-
-"""
-    create_stretched_grid(Nz, Lz, stretch_params) -> (z, dz)
-
-Create a stretched vertical grid based on the specified parameters.
-"""
-function create_stretched_grid(Nz::Int, Lz, stretch_params)
-    stretch_type = get(stretch_params, :type, :tanh)
-    
-    if stretch_type == :tanh
-        β = get(stretch_params, :β, 2.0)
-        surface_concentration = get(stretch_params, :surface_concentration, true)
-        return create_tanh_grid(Nz, Lz, β, surface_concentration)
-        
-    elseif stretch_type == :exponential
-        β = get(stretch_params, :β, 2.0) 
-        surface_concentration = get(stretch_params, :surface_concentration, true)
-        return create_exponential_grid(Nz, Lz, β, surface_concentration)
-        
-    elseif stretch_type == :sinh
-        β = get(stretch_params, :β, 2.0)
-        return create_sinh_grid(Nz, Lz, β)
-        
-    elseif stretch_type == :power
-        α = get(stretch_params, :α, 1.5)
-        return create_power_grid(Nz, Lz, α)
-        
-    else
-        error("Unknown stretch type: $stretch_type")
-    end
-end
-
-"""
-    create_tanh_grid(Nz, Lz, β, surface_concentration) -> (z, dz)
-
-Create hyperbolic tangent stretched grid.
-"""
-function create_tanh_grid(Nz::Int, Lz, β, surface_concentration::Bool)
-    # Uniform grid in computational space
-    ξ = collect(range(0, 1, length=Nz))
-    
-    if surface_concentration
-        # Concentrate points near surface (z = Lz)
-        z = Lz .* (1 .- 0.5 .* (1 .+ tanh.(β .* (2 .* ξ .- 1)) ./ tanh(β)))
-    else
-        # Concentrate points near bottom (z = 0)
-        z = Lz .* 0.5 .* (1 .+ tanh.(β .* (2 .* ξ .- 1)) ./ tanh(β))
-    end
-    
-    # Compute grid spacing
-    dz = zeros(FT, Nz)
-    for i in 2:Nz-1
-        dz[i] = 0.5 * (z[i+1] - z[i-1])
-    end
-    dz[1] = z[2] - z[1]
-    dz[Nz] = z[Nz] - z[Nz-1]
-    
-    return z, dz
-end
-
-"""
-    create_exponential_grid(Nz, Lz, β, surface_concentration) -> (z, dz)
-
-Create exponentially stretched grid.
-"""
-function create_exponential_grid(Nz::Int, Lz, β, surface_concentration::Bool)
-    ξ = collect(range(0, 1, length=Nz))
-    
-    if surface_concentration
-        # Exponential clustering at surface
-        z = Lz .* (1 .- exp.(-β .* ξ) ./ (1 - exp(-β)))
-    else
-        # Exponential clustering at bottom
-        z = Lz .* (exp.(β .* ξ) .- 1) ./ (exp(β) - 1)
-    end
-    
-    # Compute spacing
-    dz = zeros(FT, Nz)
-    for i in 2:Nz-1
-        dz[i] = 0.5 * (z[i+1] - z[i-1])
-    end
-    dz[1] = z[2] - z[1] 
-    dz[Nz] = z[Nz] - z[Nz-1]
-    
-    return z, dz
-end
-
-"""
-    create_sinh_grid(Nz, Lz, β) -> (z, dz)
-
-Create hyperbolic sine stretched grid.
-"""
-function create_sinh_grid(Nz::Int, Lz, β)
-    ξ = collect(range(-1, 1, length=Nz))
-    
-    # Symmetric stretching about middle
-    z = Lz .* (0.5 .+ sinh.(β .* ξ) ./ (2 * sinh(β)))
-    
-    # Compute spacing
-    dz = zeros(FT, Nz)
-    for i in 2:Nz-1
-        dz[i] = 0.5 * (z[i+1] - z[i-1])
-    end
-    dz[1] = z[2] - z[1]
-    dz[Nz] = z[Nz] - z[Nz-1]
-    
-    return z, dz
-end
-
-"""
-    create_power_grid(Nz, Lz, α) -> (z, dz)
-
-Create power-law stretched grid.
-"""
-function create_power_grid(Nz::Int, Lz, α)
-    ξ = collect(range(0, 1, length=Nz))
-    
-    # Power law stretching
-    z = Lz .* ξ.^α
-    
-    # Compute spacing
-    dz = zeros(FT, Nz)
-    for i in 2:Nz-1
-        dz[i] = 0.5 * (z[i+1] - z[i-1])
-    end
-    dz[1] = z[2] - z[1]
-    dz[Nz] = z[Nz] - z[Nz-1]
-    
-    return z, dz
-end
+# Add FT constant if not defined elsewhere
+const FT = Float64

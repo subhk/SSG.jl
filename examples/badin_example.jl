@@ -12,7 +12,7 @@ using PencilArrays
 using PencilFFTs
 
 include("SSG.jl")
-using .SSG
+using ..SSG
 
 """
     initialize_spectral_buoyancy!(fields, domain, amplitude, k₀, m; 

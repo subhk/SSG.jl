@@ -10,9 +10,10 @@ using LinearAlgebra
 using MPI
 using PencilArrays
 using PencilFFTs
+using JLD2
 
 include("../src/SSG.jl")
-using ..SSG
+using .SSG
 
 """
     initialize_spectral_buoyancy!(fields, domain, amplitude, k₀, m; 
@@ -161,7 +162,6 @@ function save_initial_state(filename::String, fields::Fields, domain::Domain)
     
     if rank == 0
         try
-            using JLD2
             jldopen(filename, "w") do file
                 file["buoyancy"] = b_global
                 file["streamfunction"] = φ_global

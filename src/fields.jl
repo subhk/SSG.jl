@@ -154,10 +154,6 @@ end
 
 """
     field_stats(field) -> (mean, std, min, max)
-Compute basic statistics for a field.
-"""
-"""
-    field_stats(field) -> (mean, std, min, max)
 
 Compute basic statistics for a field.
 """
