@@ -5,11 +5,11 @@ This function takes a fine domain and creates a coarser domain with reduced
 resolution by the given coarsening factor. Essential for multigrid methods.
 
 Parameters:
-- domain: The actual Domain object
-- factor: Coarsening factor (typically 2, meaning half resolution in each direction)
+- `domain`: original Domain{T,PR,PC,PFP} object
+- `factor`: coarsening factor (e.g., 2 halves horizontal resolution)
 
 Returns:
-- coarse_domain: New Domain object with coarser resolution
+- `coarse_domain`: new Domain with (Nx/factor, Ny/factor, Nz)
 """
 function create_coarse_domain(domain::Domain, factor::Int=2)
     # Extract fine domain parameters
@@ -32,13 +32,13 @@ function create_coarse_domain(domain::Domain, factor::Int=2)
     coarse_Ny = coarse_Ny % 2 == 0 ? coarse_Ny : coarse_Ny + 1
     
     # Get communicator and other parameters from fine domain
-    comm = domain.pc.comm
+    comm = domain.pr.comm
     
     # Create new domain with coarser resolution
     # This depends on your Domain constructor - here are common patterns:
     
     # OPTION 1: If your Domain constructor takes (Nx, Ny, Nz, Lx, Ly, Lz, comm)
-    coarse_domain = Domain(coarse_Nx, coarse_Ny, coarse_Nz, Lx, Ly, Lz, comm)
+    #coarse_domain = Domain(coarse_Nx, coarse_Ny, coarse_Nz, Lx, Ly, Lz, comm)
     
     # OPTION 2: If you need to preserve more parameters from fine domain
     # coarse_domain = Domain(
@@ -52,8 +52,18 @@ function create_coarse_domain(domain::Domain, factor::Int=2)
     #     boundary_conditions = domain.boundary_conditions,
     #     # ... other parameters from domain
     # )
+
+    # Construct new Domain with matching options
+    return Domain(
+        coarse_Nx, coarse_Ny, coarse_Nz;
+        Lx = Lx, Ly = Ly, Lz = Lz,
+        z_boundary   = domain.z_boundary,
+        z_grid       = domain.z_grid,
+        stretch_params = domain.z_grid == :custom ? (z_coords = domain.z,) : nothing,
+        comm          = comm
+    )
     
-    return coarse_domain
+    #return coarse_domain
 end
 
 # ============================================================================
@@ -145,30 +155,36 @@ function next_fft_size(n::Int)
 end
 
 """
-Semi-coarsening version (coarsen only in one direction)
-Useful for anisotropic problems
+Create a semi-coarsened Domain by reducing resolution in one direction.
+
+Parameters:
+- `domain`: original Domain
+- `direction`: `:x`, `:y`, or `:z`
+- `factor`: reduction factor in that direction
 """
-function create_semicoarse_domain(domain::Domain, direction::Symbol, factor::Int=2)
-    coarse_Nx = domain.Nx
-    coarse_Ny = domain.Ny
-    coarse_Nz = domain.Nz
-    
+function create_semicoarse_domain(domain::Domain{T,PR,PC,PFP},
+                                  direction::Symbol, factor::Int=2) where {T,PR,PC,PFP}
+    Nx, Ny, Nz = domain.Nx, domain.Ny, domain.Nz
     if direction == :x
-        coarse_Nx = max(domain.Nx ÷ factor, 5)
-    elseif direction == :y  
-        coarse_Ny = max(domain.Ny ÷ factor, 5)
+        Nx = max(Nx ÷ factor, 5)
+        Nx += isodd(Nx) ? 1 : 0
+    elseif direction == :y
+        Ny = max(Ny ÷ factor, 5)
+        Ny += isodd(Ny) ? 1 : 0
     elseif direction == :z
-        coarse_Nz = max(domain.Nz ÷ factor, 3)
+        Nz = max(Nz ÷ factor, 3)
     else
-        error("Unknown coarsening direction: $direction")
+        error("Unknown direction: $direction; use :x, :y, or :z")
     end
-    
-    # Create domain with semi-coarsened resolution
-    coarse_domain = Domain(coarse_Nx, coarse_Ny, coarse_Nz, 
-                          domain.Lx, domain.Ly, domain.Lz,
-                          domain.pc.comm)
-    
-    return coarse_domain
+
+    return Domain(
+        Nx, Ny, Nz;
+        Lx = domain.Lx, Ly = domain.Ly, Lz = domain.Lz,
+        z_boundary   = domain.z_boundary,
+        z_grid       = domain.z_grid,
+        stretch_params = domain.z_grid == :custom ? (z_coords = domain.z,) : nothing,
+        comm          = domain.pr.comm
+    )
 end
 
 # ============================================================================
