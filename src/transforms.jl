@@ -39,8 +39,8 @@ end
 
 Forward real FFT for 2D surface fields using PencilFFT plans.
 """
-function rfft_2d!(surface_domain::SurfaceDomain, realfield_2d, specfield_2d)
-    mul!(specfield_2d, surface_domain.fplan_2d, realfield_2d)
+function rfft_2d!(domain::Domain, realfield_2d, specfield_2d)
+    mul!(specfield_2d, domain.fplan_2d, realfield_2d)
     return nothing
 end
 
@@ -50,8 +50,8 @@ end
 
 Inverse real FFT for 2D surface fields using PencilFFT plans.
 """
-function irfft_2d!(surface_domain::SurfaceDomain, specfield_2d, realfield_2d)
-    ldiv!(realfield_2d, surface_domain.iplan_2d, specfield_2d)
+function irfft_2d!(domain::Domain, specfield_2d, realfield_2d)
+    ldiv!(realfield_2d, domain.iplan_2d, specfield_2d)
     return nothing
 end
 
@@ -73,6 +73,28 @@ function dealias!(domain::Domain, Â)
     end
     return Â
 end
+
+
+"""
+    dealias_2d!(surface_domain::SurfaceDomain, field_spec_2d)
+
+Apply 2D dealiasing to surface spectral field.
+"""
+function dealias_2d!(domain::Domain, field_spec_2d)
+    # Get local array from PencilArray
+    field_local = field_spec_2d.data
+    
+    # Get local ranges for this MPI process
+    range_locals = range_local(domain.pc_2d)
+    
+    # Apply mask to local data
+    mask_local = view(domain.mask_2d, range_locals[1], range_locals[2])
+    
+    @inbounds @views @. field_local = ifelse(mask_local, field_local, 0)
+    
+    return nothing
+end
+
 
 # =============================================================================
 # HORIZONTAL SPECTRAL DERIVATIVES
@@ -97,7 +119,7 @@ function ddx!(domain::Domain, Â, out̂)
             @views out̂_local[i_local, :, k] = (im * kx) .* Â_local[i_local, :, k]
         end
     end
-    return out̂
+    return nothing #out̂
 end
 
 """
@@ -119,8 +141,48 @@ function ddy!(domain::Domain, Â, out̂)
             @views out̂_local[:, j_local, k] = (im * ky) .* Â_local[:, j_local, k]
         end
     end
-    return out̂
+    return nothing #out̂
 end
+
+
+"""
+    ddx_2d!(surface_domain::SurfaceDomain, Â, out̂)
+
+Spectral derivative ∂/∂x for 2D surface fields.
+"""
+function ddx_2d!(domain::Domain, Â, out̂)
+    range_locals = range_local(surface_domain.pc_2d)
+    kx_local = view(domain.kx, range_locals[1])
+    
+    Â_local = Â.data
+    out̂_local = out̂.data
+    
+    @inbounds for (i_local, i_global) in enumerate(range_locals[1])
+        kx = kx_local[i_local]
+        @views out̂_local[i_local, :] = (im * kx) .* Â_local[i_local, :]
+    end
+    return nothing #out̂
+end
+
+"""
+    ddy_2d!(surface_domain::SurfaceDomain, Â, out̂)
+
+Spectral derivative ∂/∂y for 2D surface fields.
+"""
+function ddy_2d!(domain::Domain, Â, out̂)
+    range_locals = range_local(domain.pc_2d)
+    ky_local = view(domain.ky, range_locals[2])
+    
+    Â_local = Â.data
+    out̂_local = out̂.data
+    
+    @inbounds for (j_local, j_global) in enumerate(range_locals[2])
+        ky = ky_local[j_local]
+        @views out̂_local[:, j_local] = (im * ky) .* Â_local[:, j_local]
+    end
+    return nothing #out̂
+end
+
 
 """
     laplacian_h!(domain::Domain, Â, out̂)
