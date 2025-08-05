@@ -16,6 +16,7 @@
 # 1. Low-storage 2nd order Adams-Bashforth (AB2-LS)
 # 2. 3rd order Runge-Kutta (RK3)
 # 3. Spectral filtering for numerical stability
+# This version uses proper PencilFFT 2D operations for surface fields.
 ###############################################################################
 
 """

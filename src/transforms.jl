@@ -17,6 +17,7 @@ function rfft!(domain::Domain, realfield, specfield)
     return nothing #specfield
 end
 
+
 """
     irfft!(domain::Domain, specfield, realfield)
 
@@ -27,6 +28,33 @@ function irfft!(domain, specfield, realfield)
     ldiv!(realfield, domain.iplan, specfield)
     return nothing #realfield
 end
+
+
+"""
+2D FFT operations using PencilFFTs for surface fields
+"""
+
+"""
+    rfft_2d!(surface_domain::SurfaceDomain, realfield_2d, specfield_2d)
+
+Forward real FFT for 2D surface fields using PencilFFT plans.
+"""
+function rfft_2d!(surface_domain::SurfaceDomain, realfield_2d, specfield_2d)
+    mul!(specfield_2d, surface_domain.fplan_2d, realfield_2d)
+    return nothing
+end
+
+
+"""
+    irfft_2d!(surface_domain::SurfaceDomain, specfield_2d, realfield_2d)
+
+Inverse real FFT for 2D surface fields using PencilFFT plans.
+"""
+function irfft_2d!(surface_domain::SurfaceDomain, specfield_2d, realfield_2d)
+    ldiv!(realfield_2d, surface_domain.iplan_2d, specfield_2d)
+    return nothing
+end
+
 
 """
     dealias!(domain::Domain, Â)
@@ -367,40 +395,66 @@ function gradient_h!(domain::Domain, field, field_spec, ∂x, ∂y, tmp_spec1, t
     return ∂x, ∂y
 end
 
-"""
-    advection_term!(result, u, v, field, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
 
-Compute the advection term -u·∇field = -(u∂field/∂x + v∂field/∂y) for surface flows.
 
-This is a common operation in surface semigeostrophic equations for computing
-the advection of buoyancy or other scalars.
 """
-function advection_term!(result, u, v, field, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
-    # Compute field gradients using the transforms module functions
-    gradient_h!(domain, field, tmp_spec1, tmp_real1, tmp_real2, tmp_spec2, tmp_spec1)
+    dealias_2d!(surface_domain::SurfaceDomain, field_spec_2d)
+
+Apply 2D dealiasing to surface spectral field.
+"""
+function dealias_2d!(surface_domain::SurfaceDomain, field_spec_2d)
+    # Get local array from PencilArray
+    field_local = field_spec_2d.data
     
-    # tmp_real1 = ∂field/∂x, tmp_real2 = ∂field/∂y
-    result_local = result.data
-    u_local      = u.data
-    v_local      = v.data
-    fx_local     = tmp_real1.data
-    fy_local     = tmp_real2.data
+    # Get local ranges for this MPI process
+    range_locals = range_local(surface_domain.pc_2d)
     
-    # Compute advection: -(u∂field/∂x + v∂field/∂y)
-    @. result_local = -(u_local * fx_local + v_local * fy_local)
+    # Apply mask to local data
+    mask_local = view(surface_domain.mask_2d, range_locals[1], range_locals[2])
     
-    return result
+    @inbounds @views @. field_local = ifelse(mask_local, field_local, 0)
+    
+    return nothing
 end
 
-# """
-#     vorticity_advection!(result, u, v, ω, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
+"""
+    ddx_2d!(surface_domain::SurfaceDomain, Â, out̂)
 
-# Compute the vorticity advection term for 2D flows: -u·∇ω.
-# This is used in vorticity-based formulations of the surface equations.
-# """
-# function vorticity_advection!(result, u, v, ω, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
-#     return advection_term!(result, u, v, ω, domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
-# end
+Spectral derivative ∂/∂x for 2D surface fields.
+"""
+function ddx_2d!(surface_domain::SurfaceDomain, Â, out̂)
+    range_locals = range_local(surface_domain.pc_2d)
+    kx_local = view(surface_domain.kx, range_locals[1])
+    
+    Â_local = Â.data
+    out̂_local = out̂.data
+    
+    @inbounds for (i_local, i_global) in enumerate(range_locals[1])
+        kx = kx_local[i_local]
+        @views out̂_local[i_local, :] = (im * kx) .* Â_local[i_local, :]
+    end
+    return out̂
+end
+
+"""
+    ddy_2d!(surface_domain::SurfaceDomain, Â, out̂)
+
+Spectral derivative ∂/∂y for 2D surface fields.
+"""
+function ddy_2d!(surface_domain::SurfaceDomain, Â, out̂)
+    range_locals = range_local(surface_domain.pc_2d)
+    ky_local = view(surface_domain.ky, range_locals[2])
+    
+    Â_local = Â.data
+    out̂_local = out̂.data
+    
+    @inbounds for (j_local, j_global) in enumerate(range_locals[2])
+        ky = ky_local[j_local]
+        @views out̂_local[:, j_local] = (im * ky) .* Â_local[:, j_local]
+    end
+    return out̂
+end
+
 
 """
     compute_enstrophy(ω, domain::Domain) -> Float64
