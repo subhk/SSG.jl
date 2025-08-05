@@ -63,7 +63,7 @@ Apply two-thirds dealiasing rule to spectral field (horizontal directions only).
 """
 function dealias!(domain::Domain, Â)
     range_locals = range_local(domain.pc)
-    mask_local = view(domain.mask, range_locals[1], range_locals[2])
+    mask_local   = view(domain.mask, range_locals[1], range_locals[2])
     
     # Get local array from PencilArray
     Â_local = Â.data
@@ -71,7 +71,7 @@ function dealias!(domain::Domain, Â)
     @inbounds for k in axes(Â_local, 3)
         @views @. Â_local[:, :, k] = ifelse(mask_local, Â_local[:, :, k], 0)
     end
-    return Â
+    return nothing #Â
 end
 
 
@@ -203,7 +203,7 @@ function laplacian_h!(domain::Domain, Â, out̂)
             end
         end
     end
-    return out̂
+    return nothing #out̂
 end
 
 """
@@ -225,7 +225,7 @@ function d2dxdy!(domain::Domain, Â, out̂)
             end
         end
     end
-    return out̂
+    return nothing #out̂
 end
 
 # =============================================================================
