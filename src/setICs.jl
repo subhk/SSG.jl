@@ -1,3 +1,6 @@
+
+using PencilArray: range_local
+
 """
     set_b!(prob, b_field, domain::Domain)
 
@@ -28,13 +31,13 @@ function set_b!(prob::SemiGeostrophicProblem{T}, b_field, domain::Domain) where 
     
     # Set k=0 mode to zero (removes domain average)
     # Handle PencilArray structure and local ranges
-    local_ranges = local_range(prob.fields.bhat.pencil)
+    range_locals = range_local(prob.fields.bhat.pencil)
     bhat_local = prob.fields.bhat.data
     
     # Check if this process owns the k=0 mode
-    if 1 in local_ranges[1] && 1 in local_ranges[2]
-        i_local = findfirst(x -> x == 1, local_ranges[1])
-        j_local = findfirst(x -> x == 1, local_ranges[2])
+    if 1 in range_locals[1] && 1 in range_locals[2]
+        i_local = findfirst(x -> x == 1, range_locals[1])
+        j_local = findfirst(x -> x == 1, range_locals[2])
         if i_local !== nothing && j_local !== nothing
             bhat_local[i_local, j_local, :] .= 0.0
         end
@@ -90,13 +93,13 @@ function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, domain::Domain) wher
     
     # Zero mean constraint - handle PencilArray distribution
     rfft!(domain, prob.fields.φ, prob.fields.φhat)
-    local_ranges = local_range(prob.fields.φhat.pencil)
+    range_locals = range_local(prob.fields.φhat.pencil)
     φhat_local = prob.fields.φhat.data
     
     # Check if this process owns the k=0 mode
-    if 1 in local_ranges[1] && 1 in local_ranges[2]
-        i_local = findfirst(x -> x == 1, local_ranges[1])
-        j_local = findfirst(x -> x == 1, local_ranges[2])
+    if 1 in range_locals[1] && 1 in range_locals[2]
+        i_local = findfirst(x -> x == 1, range_locals[1])
+        j_local = findfirst(x -> x == 1, range_locals[2])
         if i_local !== nothing && j_local !== nothing
             φhat_local[i_local, j_local, :] .= 0.0
         end
@@ -111,13 +114,13 @@ function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, domain::Domain) wher
     
     # Apply zero mean to buoyancy as well - handle PencilArray distribution
     rfft!(domain, prob.fields.bₛ, prob.fields.bhat)
-    local_ranges = local_range(prob.fields.bhat.pencil)
+    range_locals = range_local(prob.fields.bhat.pencil)
     bhat_local = prob.fields.bhat.data
     
     # Check if this process owns the k=0 mode
-    if 1 in local_ranges[1] && 1 in local_ranges[2]
-        i_local = findfirst(x -> x == 1, local_ranges[1])
-        j_local = findfirst(x -> x == 1, local_ranges[2])
+    if 1 in range_locals[1] && 1 in range_locals[2]
+        i_local = findfirst(x -> x == 1, range_locals[1])
+        j_local = findfirst(x -> x == 1, range_locals[2])
         if i_local !== nothing && j_local !== nothing
             bhat_local[i_local, j_local, :] .= 0.0
         end
