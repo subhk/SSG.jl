@@ -1,7 +1,7 @@
 # src/domain.jl
 # 3D Domain setup with vertically bounded domain
 
-using PencilArrays: local_size, size_global, local_range, range_local, Pencil
+using PencilArrays: size_local, size_global, range_local, Pencil
 using AbstractFFTs: fftfreq, rfftfreq
 
 const FT = Float64
@@ -367,10 +367,10 @@ function dealias!(domain::Domain, field_spec)
     field_local = field_spec.data
     
     # Get local ranges for this MPI process
-    local_ranges = local_range(domain.pc)
+    range_locals = range_local(domain.pc)
     
     # Apply mask to local data
-    mask_local = view(domain.mask, local_ranges[1], local_ranges[2])
+    mask_local = view(domain.mask, range_locals[1], range_locals[2])
     
     @inbounds for k in axes(field_local, 3)
         @views @. field_local[:, :, k] = ifelse(mask_local, field_local[:, :, k], 0)
@@ -390,20 +390,20 @@ function _dealias!(field_spec, domain::Domain)
     field_local = field_spec.data
     
     # Get local ranges for this MPI process
-    local_ranges = local_range(domain.pc)
+    range_locals = range_local(domain.pc)
     
     # Map global alias ranges to local ranges
-    kx_local_alias = intersect_ranges(domain.kxalias, local_ranges[1])
-    ky_local_alias = intersect_ranges(domain.kyalias, local_ranges[2])
+    kx_local_alias = intersect_ranges(domain.kxalias, range_locals[1])
+    ky_local_alias = intersect_ranges(domain.kyalias, range_locals[2])
     
     # Zero out aliased wavenumbers
     if !isempty(kx_local_alias)
-        kx_local_indices = [i for (i, ig) in enumerate(local_ranges[1]) if ig in kx_local_alias]
+        kx_local_indices = [i for (i, ig) in enumerate(range_locals[1]) if ig in kx_local_alias]
         @views @. field_local[kx_local_indices, :, :] = 0
     end
     
     if !isempty(ky_local_alias)
-        ky_local_indices = [j for (j, jg) in enumerate(local_ranges[2]) if jg in ky_local_alias]
+        ky_local_indices = [j for (j, jg) in enumerate(range_locals[2]) if jg in ky_local_alias]
         @views @. field_local[:, ky_local_indices, :] = 0
     end
     
@@ -411,12 +411,12 @@ function _dealias!(field_spec, domain::Domain)
 end
 
 """
-    intersect_ranges(global_range, local_range) -> Vector{Int}
+    intersect_ranges(global_range, range_local) -> Vector{Int}
 
 Find intersection between global aliasing range and local MPI range.
 """
-function intersect_ranges(global_range, local_range)
-    return [i for i in global_range if i in local_range]
+function intersect_ranges(global_range, range_local)
+    return [i for i in global_range if i in range_local]
 end
 
 # =============================================================================
@@ -477,10 +477,10 @@ Apply a spectral filter to a field in spectral space.
 """
 function apply_filter!(field_spec, filter)
     field_local = field_spec.data
-    local_ranges = local_range(field_spec.pencil)
+    range_locals = range_local(field_spec.pencil)
     
     # Get local portion of filter
-    filter_local = view(filter, local_ranges[1], local_ranges[2])
+    filter_local = view(filter, range_locals[1], range_locals[2])
     
     # Apply filter to all z levels
     for k in axes(field_local, 3)
