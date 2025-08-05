@@ -54,17 +54,17 @@ struct Domain{T, PR, PC, PFP, PR2D, PC2D, PFP2D}
     z_boundary::Symbol
     z_grid::Symbol
     
-    # Pencil descriptors
+    # 3D Pencil descriptors
     pr::PR      # real-space pencil
     pc::PC      # complex/spectral pencil
-
-    # 2D surface field support
-    pr_2d::PR2D      # 2D real-space pencil for surface
-    pc_2d::PC2D      # 2D complex/spectral pencil for surface
     
     # FFT plans (horizontal only)
     fplan::PFP
     iplan::PFP
+
+    # 2D surface field support
+    pr_2d::PR2D      # 2D real-space pencil for surface
+    pc_2d::PC2D      # 2D complex/spectral pencil for surface
 
     fplan_2d::PFP2D  # 2D FFT plans for surface
     iplan_2d::PFP2D
@@ -116,7 +116,7 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     
     # Create pencil descriptors for 3D arrays
     # Real-space: full (Nx, Ny, Nz) array
-    pr  = Pencil((Nx, Ny, Nz), comm)
+    pr  = Pencil((Nx, Ny, Nz),  comm)
     
     # Spectral-space: rFFT reduces y dimension to Ny÷2+1, z remains same
     Nyc = fld(Ny, 2) + 1
@@ -132,11 +132,8 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     )
     iplan = fplan  # same plan used for inverse (via ldiv! or \)
 
-    pr_2d = Pencil((domain.Nx, domain.Ny), domain.pr.comm)
-    
-    # For spectral 2D: (Nx, Ny÷2+1) 
-    Nyc = domain.Ny ÷ 2 + 1
-    pc_2d = Pencil((domain.Nx, Nyc), domain.pc.comm)
+    pr_2d = Pencil((Nx, Ny),  comm)
+    pc_2d = Pencil((Nx, Nyc), comm)
     
     # Create 2D FFT plans
     fplan_2d = PencilFFTPlan(
@@ -184,13 +181,15 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     aliased_fraction = T(1/3)
     kxalias, kyalias =  get_aliased_wavenumbers(Nx, Nyc, aliased_fraction)
     
-    return Domain{T, typeof(pr), typeof(pc), typeof(fplan)}(
+    return Domain{T, typeof(pr), typeof(pc), typeof(fplan), 
+            typeof(pr_2d), typeof(pc_2d), typeof(fplan_2d)}(
         Nx, Ny, Nz, 
         T(Lx), T(Ly), T(Lz), 
         x, y, z, dz, 
         kx, ky, Krsq, invKrsq, 
         mask, z_boundary, z_grid,
         pr, pc, fplan, iplan,
+        pr_2d, pc_2d, fplan_2d, iplan_2d,
         aliased_fraction, kxalias, kyalias
     )
 end
