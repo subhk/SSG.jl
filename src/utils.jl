@@ -56,7 +56,7 @@ end
 Create a PencilArray for real-space fields.
 """
 function create_real_field(domain::Domain, ::Type{T}=FT) where T
-    return PencilArray(domain.pr, T)
+    return PencilArray{T}(undef, domain.pr)
 end
 
 """
@@ -65,7 +65,7 @@ end
 Create a PencilArray for spectral-space fields.
 """
 function create_spectral_field(domain::Domain, ::Type{T}=FT) where T
-    return PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+    return PencilArray{Complex{T}}(undef, domain.pc)
 end
 
 """
@@ -86,9 +86,8 @@ end
 Set all values in a PencilArray to zero.
 """
 function zero_field!(field)
-    field_local = field.data
-    fill!(field_local, 0)
-    return field
+    fill!(field.data, zero(eltype(field)))
+    #return field
 end
 
 """
@@ -114,16 +113,14 @@ function norm_field(field; p=2)
     end
 end
 
+
 """
     inner_product(field1, field2)
 
 Compute the inner product of two PencilArray fields across all MPI processes.
 """
 function inner_product(field1, field2)
-    field1_local = field1.data
-    field2_local = field2.data
-    
-    local_dot = dot(field1_local, field2_local)
+    local_dot = dot(field1.data, field2.data)
     return MPI.Allreduce(local_dot, MPI.SUM, field1.pencil.comm)
 end
 
@@ -140,7 +137,6 @@ function gridpoints(domain::Domain)
     X = [domain.x[i] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
     Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
     Z = [domain.z[k] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
-    
     return X, Y, Z
 end
 
@@ -151,8 +147,7 @@ Return 2D horizontal coordinate arrays for the domain.
 """
 function gridpoints_2d(domain::Domain)
     X = [domain.x[i] for i=1:domain.Nx, j=1:domain.Ny]
-    Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny]
-    
+    Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny] 
     return X, Y
 end
 
