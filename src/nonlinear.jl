@@ -42,6 +42,113 @@ function compute_jacobian!(db_dt::PencilArray{T, 2},
     return db_dt
 end
 
+
+"""
+2D version of Jacobian computation for surface fields
+"""
+function jacobian_2d!(output, a, b, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2, jac_spec)
+    # Transform fields to spectral space (2D transforms)
+    rfft_2d!(domain, a, tmp_spec1)  # φ̂
+    rfft_2d!(domain, b, tmp_spec2)  # b̂
+    
+    # Compute ∂a/∂x = ∂φ/∂x
+    ddx_2d!(domain, tmp_spec1, jac_spec)
+    irfft_2d!(domain, jac_spec, tmp_real1)  # ∂φ/∂x in physical space
+    
+    # Compute ∂a/∂y = ∂φ/∂y  
+    ddy_2d!(domain, tmp_spec1, jac_spec)
+    irfft_2d!(domain, jac_spec, tmp_real2)  # ∂φ/∂y in physical space
+    
+    # Compute ∂b/∂x
+    ddx_2d!(domain, tmp_spec2, jac_spec)
+    irfft_2d!(domain, jac_spec, output)     # Use output as temp for ∂b/∂x
+    
+    # Compute ∂b/∂y  
+    ddy_2d!(domain, tmp_spec2, jac_spec)
+    irfft_2d!(domain, jac_spec, tmp_spec1)  # Reuse tmp_spec1 as real temp for ∂b/∂y
+    
+    # Compute Jacobian: J = ∂φ/∂x * ∂b/∂y - ∂φ/∂y * ∂b/∂x
+    output_data = output.data
+    φx_data = tmp_real1.data      # ∂φ/∂x
+    φy_data = tmp_real2.data      # ∂φ/∂y
+    bx_data = output.data         # ∂b/∂x (already in output)
+    by_data = tmp_spec1.data      # ∂b/∂y (reusing tmp_spec1)
+    
+    for i in eachindex(output_data)
+        output_data[i] = φx_data[i] * by_data[i] - φy_data[i] * bx_data[i]
+    end
+    
+    return nothing
+end
+
+"""
+2D FFT wrappers for surface fields (extract first z-level from 3D operations)
+"""
+function rfft_2d!(domain::Domain, field_2d, field_spec_2d)
+    # For now, use a simple approach - extend to 3D temporarily
+    # This is not the most efficient but will work
+    
+    # Get data directly
+    field_2d_data = field_2d.data
+    field_spec_2d_data = field_spec_2d.data
+    
+    # Use 2D FFT directly on the local data
+    # Note: This assumes we're working on a single process for now
+    # For MPI, you'd need proper PencilFFTs 2D transforms
+    
+    plan = FFTW.plan_rfft(field_2d_data)
+    field_spec_2d_data .= plan * field_2d_data
+    
+    return nothing
+end
+
+function irfft_2d!(domain::Domain, field_spec_2d, field_2d)
+    field_2d_data = field_2d.data
+    field_spec_2d_data = field_spec_2d.data
+    
+    # Get the size for inverse transform
+    nx, ny = size(field_2d_data)
+    
+    plan = FFTW.plan_irfft(field_spec_2d_data, nx, 1)
+    field_2d_data .= plan * field_spec_2d_data
+    
+    return nothing
+end
+
+function ddx_2d!(domain::Domain, field_spec_2d, output_spec_2d)
+    field_data = field_spec_2d.data
+    output_data = output_spec_2d.data
+    
+    nx, nyc = size(field_data)
+    
+    for j in 1:nyc
+        for i in 1:nx
+            kx = i <= length(domain.kx) ? domain.kx[i] : 0.0
+            output_data[i, j] = im * kx * field_data[i, j]
+        end
+    end
+    
+    return nothing
+end
+
+function ddy_2d!(domain::Domain, field_spec_2d, output_spec_2d)
+    field_data = field_spec_2d.data
+    output_data = output_spec_2d.data
+    
+    nx, nyc = size(field_data)
+    
+    for j in 1:nyc
+        ky = j <= length(domain.ky) ? domain.ky[j] : 0.0
+        for i in 1:nx
+            output_data[i, j] = im * ky * field_data[i, j]
+        end
+    end
+    
+    return nothing
+end
+
+
+
 """
 Compute buoyancy tendency for surface semi-geostrophic equations
 Only evolves SURFACE buoyancy - streamfunction is diagnostic
