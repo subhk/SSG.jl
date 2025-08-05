@@ -4,6 +4,7 @@
 # Vertical direction: finite differences
 
 using LinearAlgebra: mul!, ldiv!
+using PencilArrays: range_local
 
 """
     rfft!(domain::Domain, realfield, specfield)
@@ -33,8 +34,8 @@ end
 Apply two-thirds dealiasing rule to spectral field (horizontal directions only).
 """
 function dealias!(domain::Domain, Â)
-    local_ranges = local_range(domain.pc)
-    mask_local = view(domain.mask, local_ranges[1], local_ranges[2])
+    range_locals = range_local(domain.pc)
+    mask_local = view(domain.mask, range_locals[1], range_locals[2])
     
     # Get local array from PencilArray
     Â_local = Â.data
@@ -55,15 +56,15 @@ end
 Spectral derivative ∂/∂x: multiply by ik_x (all z levels).
 """
 function ddx!(domain::Domain, Â, out̂)
-    local_ranges = local_range(domain.pc)
-    kx_local = view(domain.kx, local_ranges[1])
+    range_locals = range_local(domain.pc)
+    kx_local = view(domain.kx, range_locals[1])
     
     # Get local arrays from PencilArrays
     Â_local = Â.data
     out̂_local = out̂.data
     
     @inbounds for k in axes(Â_local, 3)
-        for (i_local, i_global) in enumerate(local_ranges[1])
+        for (i_local, i_global) in enumerate(range_locals[1])
             kx = kx_local[i_local]
             @views out̂_local[i_local, :, k] = (im * kx) .* Â_local[i_local, :, k]
         end
@@ -77,15 +78,15 @@ end
 Spectral derivative ∂/∂y: multiply by ik_y (all z levels).
 """
 function ddy!(domain::Domain, Â, out̂)
-    local_ranges = local_range(domain.pc)
-    ky_local = view(domain.ky, local_ranges[2])
+    range_locals = range_local(domain.pc)
+    ky_local = view(domain.ky, range_locals[2])
     
     # Get local arrays from PencilArrays
     Â_local = Â.data
     out̂_local = out̂.data
     
     @inbounds for k in axes(Â_local, 3)
-        for (j_local, j_global) in enumerate(local_ranges[2])
+        for (j_local, j_global) in enumerate(range_locals[2])
             ky = ky_local[j_local]
             @views out̂_local[:, j_local, k] = (im * ky) .* Â_local[:, j_local, k]
         end
@@ -99,14 +100,14 @@ end
 Horizontal Laplacian: multiply by -(k_x² + k_y²) (all z levels).
 """
 function laplacian_h!(domain::Domain, Â, out̂)
-    local_ranges = local_range(domain.pc)
-    kx_local = view(domain.kx, local_ranges[1])
-    ky_local = view(domain.ky, local_ranges[2])
+    range_locals = range_local(domain.pc)
+    kx_local = view(domain.kx, range_locals[1])
+    ky_local = view(domain.ky, range_locals[2])
     
     @inbounds for k in axes(Â, 3)
-        for (i_local, i_global) in enumerate(local_ranges[1])
+        for (i_local, i_global) in enumerate(range_locals[1])
             kx2 = kx_local[i_local]^2
-            for (j_local, j_global) in enumerate(local_ranges[2])
+            for (j_local, j_global) in enumerate(range_locals[2])
                 ky2 = ky_local[j_local]^2
                 out̂[i_local, j_local, k] = -(kx2 + ky2) * Â[i_local, j_local, k]
             end
@@ -121,14 +122,14 @@ end
 Mixed horizontal derivative ∂²/∂x∂y: multiply by -k_x k_y (all z levels).
 """
 function d2dxdy!(domain::Domain, Â, out̂)
-    local_ranges = local_range(domain.pc)
-    kx_local = view(domain.kx, local_ranges[1])
-    ky_local = view(domain.ky, local_ranges[2])
+    range_locals = range_local(domain.pc)
+    kx_local = view(domain.kx, range_locals[1])
+    ky_local = view(domain.ky, range_locals[2])
     
     @inbounds for k in axes(Â, 3)
-        for (i_local, i_global) in enumerate(local_ranges[1])
+        for (i_local, i_global) in enumerate(range_locals[1])
             kx = kx_local[i_local]
-            for (j_local, j_global) in enumerate(local_ranges[2])
+            for (j_local, j_global) in enumerate(range_locals[2])
                 ky = ky_local[j_local]
                 out̂[i_local, j_local, k] = (-kx * ky) * Â[i_local, j_local, k]
             end
@@ -157,7 +158,7 @@ count the contribution from certain k-modes twice to account for conjugate symme
 function parsevalsum2(uh, domain::Domain)
     # Get local array from PencilArray
     uh_local = uh.data
-    local_ranges = local_range(uh.pencil)
+    range_locals = range_local(uh.pencil)
     
     # Initialize local sum
     local_sum = 0.0
@@ -168,19 +169,19 @@ function parsevalsum2(uh, domain::Domain)
         # Sum over all z levels
         for k in axes(uh_local, 3)
             # k = 0 modes (count once)
-            if 1 in local_ranges[1]
-                i_local = findfirst(x -> x == 1, local_ranges[1])
+            if 1 in range_locals[1]
+                i_local = findfirst(x -> x == 1, range_locals[1])
                 local_sum += sum(abs2, @view uh_local[i_local, :, k])
             end
             
             # k = nx/2 modes (count once)
-            if domain.Nx÷2 + 1 in local_ranges[1]
-                i_local = findfirst(x -> x == domain.Nx÷2 + 1, local_ranges[1])
+            if domain.Nx÷2 + 1 in range_locals[1]
+                i_local = findfirst(x -> x == domain.Nx÷2 + 1, range_locals[1])
                 local_sum += sum(abs2, @view uh_local[i_local, :, k])
             end
             
             # 0 < k < nx/2 modes (count twice for conjugate symmetry)
-            for (i_local, i_global) in enumerate(local_ranges[1])
+            for (i_local, i_global) in enumerate(range_locals[1])
                 if 1 < i_global < domain.Nx÷2 + 1
                     local_sum += 2 * sum(abs2, @view uh_local[i_local, :, k])
                 end
@@ -215,7 +216,7 @@ conjugate symmetry by counting certain k-modes twice.
 function parsevalsum(uh, domain::Domain)
     # Get local array from PencilArray
     uh_local = uh.data
-    local_ranges = local_range(uh.pencil)
+    range_locals = range_local(uh.pencil)
     
     # Initialize local sum
     local_sum = 0.0 + 0.0im
@@ -226,19 +227,19 @@ function parsevalsum(uh, domain::Domain)
         # Sum over all z levels
         for k in axes(uh_local, 3)
             # k = 0 modes (count once)
-            if 1 in local_ranges[1]
-                i_local = findfirst(x -> x == 1, local_ranges[1])
+            if 1 in range_locals[1]
+                i_local = findfirst(x -> x == 1, range_locals[1])
                 local_sum += sum(@view uh_local[i_local, :, k])
             end
             
             # k = nx/2 modes (count once)
-            if domain.Nx÷2 + 1 in local_ranges[1]
-                i_local = findfirst(x -> x == domain.Nx÷2 + 1, local_ranges[1])
+            if domain.Nx÷2 + 1 in range_locals[1]
+                i_local = findfirst(x -> x == domain.Nx÷2 + 1, range_locals[1])
                 local_sum += sum(@view uh_local[i_local, :, k])
             end
             
             # 0 < k < nx/2 modes (count twice for conjugate symmetry)
-            for (i_local, i_global) in enumerate(local_ranges[1])
+            for (i_local, i_global) in enumerate(range_locals[1])
                 if 1 < i_global < domain.Nx÷2 + 1
                     local_sum += 2 * sum(@view uh_local[i_local, :, k])
                 end
@@ -949,7 +950,7 @@ Compute spectral diagnostics including energy in different wavenumber bands.
 """
 function compute_spectral_diagnostics(field_spec, domain::Domain)
     field_local = field_spec.data
-    local_ranges = local_range(field_spec.pencil)
+    range_locals = range_local(field_spec.pencil)
     
     # Initialize energy counters for different scales
     large_scale_energy = 0.0   # Low wavenumbers
@@ -960,8 +961,8 @@ function compute_spectral_diagnostics(field_spec, domain::Domain)
     k_cutoff = min(domain.Nx, length(domain.ky)) ÷ 3
     
     for k in axes(field_local, 3)
-        for (j_local, j_global) in enumerate(local_ranges[2])
-            for (i_local, i_global) in enumerate(local_ranges[1])
+        for (j_local, j_global) in enumerate(range_locals[2])
+            for (i_local, i_global) in enumerate(range_locals[1])
                 energy_density = abs2(field_local[i_local, j_local, k])
                 
                 # Apply conjugate symmetry factor for real FFT

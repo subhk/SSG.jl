@@ -2,7 +2,7 @@
 # Spectral filtering for surface semi-geostrophic equations
 # Supports exponential, hyperviscosity, and custom filter functions
 
-using PencilArrays: local_range
+using PencilArrays: range_local
 using LinearAlgebra: mul!, ldiv!
 
 ###############################################################################
@@ -227,24 +227,24 @@ function apply_filter_spectral!(field_spec::PencilArray{Complex{T}, N},
     
     # Get local data and ranges for MPI compatibility
     field_local = field_spec.data
-    local_ranges = local_range(field_spec.pencil)
+    range_locals = range_local(field_spec.pencil)
     
     # Apply filter based on type
     if filter isa ExponentialFilter
-        apply_exponential_filter!(field_local, local_ranges, domain, filter)
+        apply_exponential_filter!(field_local, range_locals, domain, filter)
 
     elseif filter isa HyperviscosityFilter
         @assert dt !== nothing "Hyperviscosity filter requires time step dt"
-        apply_hyperviscosity_filter!(field_local, local_ranges, domain, filter, dt)
+        apply_hyperviscosity_filter!(field_local, range_locals, domain, filter, dt)
 
     elseif filter isa CutoffFilter
-        apply_cutoff_filter!(field_local, local_ranges, domain, filter)
+        apply_cutoff_filter!(field_local, range_locals, domain, filter)
 
     elseif filter isa CesaroFilter
-        apply_cesaro_filter!(field_local, local_ranges, domain, filter)
+        apply_cesaro_filter!(field_local, range_locals, domain, filter)
 
     elseif filter isa CustomFilter
-        apply_custom_filter!(field_local, local_ranges, domain, filter)
+        apply_custom_filter!(field_local, range_locals, domain, filter)
 
     else
         error("Unknown filter type: $(typeof(filter))")
@@ -258,12 +258,12 @@ end
 # ============================================================================
 
 """
-    apply_exponential_filter!(field_local, local_ranges, domain, filter)
+    apply_exponential_filter!(field_local, range_locals, domain, filter)
 
 Apply exponential filter with MPI domain decomposition.
 """
 function apply_exponential_filter!(field_local::AbstractArray{Complex{T}, N},
-                                  local_ranges, domain::Domain,
+                                  range_locals, domain::Domain,
                                   filter::ExponentialFilter{T}) where {T, N}
     
     # Precompute normalization factors
@@ -274,9 +274,9 @@ function apply_exponential_filter!(field_local::AbstractArray{Complex{T}, N},
     k_max = sqrt(k_max_x^2 + k_max_y^2)
     
     @inbounds for k in axes(field_local, 3)
-        for (j_local, j_global) in enumerate(local_ranges[2])
+        for (j_local, j_global) in enumerate(range_locals[2])
             ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
-            for (i_local, i_global) in enumerate(local_ranges[1])
+            for (i_local, i_global) in enumerate(range_locals[1])
                 kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
                 
                 # Compute normalized wavenumber magnitude
@@ -292,19 +292,19 @@ function apply_exponential_filter!(field_local::AbstractArray{Complex{T}, N},
 end
 
 """
-    apply_hyperviscosity_filter!(field_local, local_ranges, domain, filter, dt)
+    apply_hyperviscosity_filter!(field_local, range_locals, domain, filter, dt)
 
 Apply hyperviscosity filter: exp(-ν_p k^{2p} dt)
 """
 function apply_hyperviscosity_filter!(field_local::AbstractArray{Complex{T}, N},
-                                     local_ranges, domain::Domain,
+                                     range_locals, domain::Domain,
                                      filter::HyperviscosityFilter{T},
                                      dt::T) where {T, N}
     
     @inbounds for k in axes(field_local, 3)
-        for (j_local, j_global) in enumerate(local_ranges[2])
+        for (j_local, j_global) in enumerate(range_locals[2])
             ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
-            for (i_local, i_global) in enumerate(local_ranges[1])
+            for (i_local, i_global) in enumerate(range_locals[1])
                 kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
                 
                 # Compute wavenumber magnitude
@@ -319,12 +319,12 @@ function apply_hyperviscosity_filter!(field_local::AbstractArray{Complex{T}, N},
 end
 
 """
-    apply_cutoff_filter!(field_local, local_ranges, domain, filter)
+    apply_cutoff_filter!(field_local, range_locals, domain, filter)
 
 Apply sharp cutoff filter (2/3 rule or custom cutoff).
 """
 function apply_cutoff_filter!(field_local::AbstractArray{Complex{T}, N},
-                             local_ranges, domain::Domain,
+                             range_locals, domain::Domain,
                              filter::CutoffFilter{T}) where {T, N}
     
     # Precompute normalization
@@ -335,9 +335,9 @@ function apply_cutoff_filter!(field_local::AbstractArray{Complex{T}, N},
     k_max = sqrt(k_max_x^2 + k_max_y^2)
     
     @inbounds for k in axes(field_local, 3)
-        for (j_local, j_global) in enumerate(local_ranges[2])
+        for (j_local, j_global) in enumerate(range_locals[2])
             ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
-            for (i_local, i_global) in enumerate(local_ranges[1])
+            for (i_local, i_global) in enumerate(range_locals[1])
                 kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
                 
                 # Compute normalized wavenumber
@@ -353,12 +353,12 @@ function apply_cutoff_filter!(field_local::AbstractArray{Complex{T}, N},
 end
 
 """
-    apply_cesaro_filter!(field_local, local_ranges, domain, filter)
+    apply_cesaro_filter!(field_local, range_locals, domain, filter)
 
 Apply Cesàro filter with polynomial rolloff.
 """
 function apply_cesaro_filter!(field_local::AbstractArray{Complex{T}, N},
-                             local_ranges, domain::Domain,
+                             range_locals, domain::Domain,
                              filter::CesaroFilter{T}) where {T, N}
     
     # Precompute normalization
@@ -370,9 +370,9 @@ function apply_cesaro_filter!(field_local::AbstractArray{Complex{T}, N},
     k_max = sqrt(k_max_x^2 + k_max_y^2)
     
     @inbounds for k in axes(field_local, 3)
-        for (j_local, j_global) in enumerate(local_ranges[2])
+        for (j_local, j_global) in enumerate(range_locals[2])
             ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
-            for (i_local, i_global) in enumerate(local_ranges[1])
+            for (i_local, i_global) in enumerate(range_locals[1])
                 kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
                 
                 # Compute normalized wavenumber
@@ -388,12 +388,12 @@ function apply_cesaro_filter!(field_local::AbstractArray{Complex{T}, N},
 end
 
 """
-    apply_custom_filter!(field_local, local_ranges, domain, filter)
+    apply_custom_filter!(field_local, range_locals, domain, filter)
 
 Apply user-defined custom filter.
 """
 function apply_custom_filter!(field_local::AbstractArray{Complex{T}, N},
-                             local_ranges, domain::Domain,
+                             range_locals, domain::Domain,
                              filter::CustomFilter{T}) where {T, N}
     
     # Precompute normalization if needed
@@ -405,9 +405,9 @@ function apply_custom_filter!(field_local::AbstractArray{Complex{T}, N},
     k_max = sqrt(k_max_x^2 + k_max_y^2)
     
     @inbounds for k in axes(field_local, 3)
-        for (j_local, j_global) in enumerate(local_ranges[2])
+        for (j_local, j_global) in enumerate(range_locals[2])
             ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
-            for (i_local, i_global) in enumerate(local_ranges[1])
+            for (i_local, i_global) in enumerate(range_locals[1])
                 kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
                 
                 # Compute normalized wavenumber
