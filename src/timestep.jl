@@ -2,6 +2,8 @@
 # Time integration for surface semi-geostrophic equations
 # Supports low-storage 2nd order Adams-Bashforth and 3rd order Runge-Kutta with spectral filtering 
 
+using PencilArrays: range_local
+
 """
 Time integration scheme selector
 """
@@ -63,7 +65,8 @@ mutable struct TimeState{T, PA}
         
         # Allocate storage for time integration
         db_dt_old = similar(fields.bₛ)
-        b_stage = similar(fields.bₛ)
+        b_stage   = similar(fields.bₛ)
+
         k1 = similar(fields.bₛ)
         k2 = similar(fields.bₛ)
         k3 = similar(fields.bₛ)
@@ -263,17 +266,17 @@ function apply_exponential_filter!(bhat::PencilArray{Complex{T}, 2},
     bhat_data = bhat.data
     
     # Get local wavenumber ranges
-    local_ranges = local_range(bhat.pencil)
+    range_locals = range_local(bhat.pencil)
     
     # Filter parameters
     kx_max = π * domain.Nx / domain.Lx
     ky_max = π * domain.Ny / domain.Ly
     k_cutoff = 0.65 * min(kx_max, ky_max)  # Filter starts at 65% of Nyquist
     
-    @inbounds for (j_local, j_global) in enumerate(local_ranges[2])
+    @inbounds for (j_local, j_global) in enumerate(range_locals[2])
         if j_global <= length(domain.ky)
             ky = domain.ky[j_global]
-            for (i_local, i_global) in enumerate(local_ranges[1])
+            for (i_local, i_global) in enumerate(range_locals[1])
                 if i_global <= length(domain.kx)
                     kx = domain.kx[i_global]
                     
@@ -425,7 +428,8 @@ function SemiGeostrophicProblem(domain::Domain;
         verbose = true
     )
     
-    return SemiGeostrophicProblem{T}(fields, domain, timestepper, clock, diagnostics, output_settings)
+    return SemiGeostrophicProblem{T}(fields, domain, timestepper, 
+                                clock, diagnostics, output_settings)
 end
 
 """
