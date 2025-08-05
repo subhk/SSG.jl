@@ -13,11 +13,14 @@ import PencilArrays: PencilArray, size_local, range_local
 import PencilFFTs
 import MPI
 
-# Only load SSG module once
-if !isdefined(Main, :SSG)
-    include("../src/SSG.jl")
-    using .SSG
-end
+# # Only load SSG module once
+# if !isdefined(Main, :SSG)
+#     include("../src/SSG.jl")
+#     using .SSG
+# end
+
+include("SSG.jl")
+using .SSG
 
 """
 Simple single-process simulation wrapper
