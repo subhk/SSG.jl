@@ -187,21 +187,21 @@ function compute_d_operator!(level::SSGLevel{T}, result::PencilArray{T, 3}) wher
     rfft!(domain, level.Φ, level.Φ_hat)
     
     # Compute ∂²Φ/∂X∂Y using spectral methods
-    ddx!(domain, level.Φ_hat, level.tmp_spec)       # ∂Φ/∂X
-    ddy!(domain, level.tmp_spec, level.tmp_spec)    # ∂²Φ/∂X∂Y
+    ddx!(  domain, level.Φ_hat,    level.tmp_spec)       # ∂Φ/∂X
+    ddy!(  domain, level.tmp_spec, level.tmp_spec)    # ∂²Φ/∂X∂Y
     irfft!(domain, level.tmp_spec, level.Φ_xy)
     
     # Compute (∂²Φ/∂X²)(∂²Φ/∂Y²) 
     # ∂²Φ/∂X²:
-    rfft!(domain, level.Φ, level.Φ_hat)
-    ddx!(domain, level.Φ_hat, level.tmp_spec)           # ∂Φ/∂X
-    ddx!(domain, level.tmp_spec, level.tmp_spec)        # ∂²Φ/∂X²
+    rfft!( domain, level.Φ,        level.Φ_hat)
+    ddx!(  domain, level.Φ_hat,    level.tmp_spec)           # ∂Φ/∂X
+    ddx!(  domain, level.tmp_spec, level.tmp_spec)        # ∂²Φ/∂X²
     irfft!(domain, level.tmp_spec, level.Φ_xx)
 
     # ∂²Φ/∂Y²:
-    rfft!(domain, level.Φ, level.Φ_hat)
-    ddy!(domain, level.Φ_hat, level.tmp_spec)          # ∂Φ/∂Y
-    ddy!(domain, level.tmp_spec, level.tmp_spec)       # ∂²Φ/∂Y²
+    rfft!( domain, level.Φ,        level.Φ_hat)
+    ddy!(  domain, level.Φ_hat,    level.tmp_spec)          # ∂Φ/∂Y
+    ddy!(  domain, level.tmp_spec, level.tmp_spec)       # ∂²Φ/∂Y²
     irfft!(domain, level.tmp_spec, level.Φ_yy)
     
     # Compute DΦ = (∂²Φ/∂X²)(∂²Φ/∂Y²) - (∂²Φ/∂X∂Y)²
