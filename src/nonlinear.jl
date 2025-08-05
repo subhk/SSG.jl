@@ -27,14 +27,14 @@ function compute_jacobian!(db_dt::PencilArray{T, 2},
                           fields::Fields{T}, 
                           domain::Domain) where T
     
-    # getting streamfunction at the surface
-    extract_surface_to_2d!(fields.φₛ, Φ, domain)    
+    # # getting streamfunction at the surface
+    # extract_surface_to_2d!(fields.φₛ, Φ, domain)    
 
-    # Use the mutating jacobian! function from transforms.jl
-    jacobian!(db_dt, fields.φₛ, bₛ, domain, 
-            fields.tmpc, fields.tmpc2, 
-            fields.tmp2, fields.tmp3, 
-            fields.tmpc)
+    #
+    jacobian_2d!(db_dt, φ, bₛ, domain, 
+                    fields.tmpc, fields.tmpc2, 
+                    fields.tmp, fields.tmp2, 
+                    fields.tmpc)
     
     # Apply negative sign for advection: ∂b/∂t = -J(ψ,b)
     db_dt.data .*= -1
