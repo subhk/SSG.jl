@@ -3,6 +3,8 @@
 # Horizontal directions: spectral (FFT)
 # Vertical direction: finite differences
 
+using PencilFFTs: mul!
+
 """
     rfft!(domain::Domain, realfield, specfield)
 
@@ -312,12 +314,32 @@ J(a, b) = \\frac{∂a}{∂x} \\frac{∂b}{∂y} - \\frac{∂a}{∂y} \\frac{∂b
 
 The result is stored in `output`. Compatible with PencilArrays.
 """
-function jacobian!(output, a, b, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
-    # Compute Jacobian in spectral space
-    jac_spec = jacobianh(a, b, domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
+function jacobian!(output, a, b, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2, jac_spec)
+    # Compute ∂a/∂x
+    rfft!(domain, a, tmp_spec1)
+    ddx!(domain, tmp_spec1, tmp_spec2)
+    irfft!(domain, tmp_spec2, tmp_real1)  # tmp_real1 = ∂a/∂x
     
-    # Transform back to physical space using PencilFFTs
-    irfft!(domain, jac_spec, output)
+    # Compute ∂b/∂y
+    rfft!(domain, b, tmp_spec1)
+    ddy!(domain, tmp_spec1, tmp_spec2)
+    irfft!(domain, tmp_spec2, tmp_real2)  # tmp_real2 = ∂b/∂y
+    
+    # Compute ∂a/∂x * ∂b/∂y
+    output.data .= tmp_real1.data .* tmp_real2.data
+    
+    # Compute ∂a/∂y
+    rfft!(domain, a, tmp_spec1)
+    ddy!(domain, tmp_spec1, tmp_spec2)
+    irfft!(domain, tmp_spec2, tmp_real1)  # tmp_real1 = ∂a/∂y
+    
+    # Compute ∂b/∂x
+    rfft!(domain, b, tmp_spec1)
+    ddx!(domain, tmp_spec1, tmp_spec2)
+    irfft!(domain, tmp_spec2, tmp_real2)  # tmp_real2 = ∂b/∂x
+    
+    # Complete Jacobian: ∂a/∂x * ∂b/∂y - ∂a/∂y * ∂b/∂x
+    output.data .-= tmp_real1.data .* tmp_real2.data
     
     #return output
 end
