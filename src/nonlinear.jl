@@ -23,7 +23,7 @@
 Compute Jacobian J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x
 """
 function compute_jacobian!(db_dt::PencilArray{T, 2}, 
-                          Φ::PencilArray{T, 3}, 
+                          φ::PencilArray{T, 3}, 
                           bₛ::PencilArray{T, 2}, 
                           fields::Fields{T}, 
                           domain::Domain) where T
@@ -34,8 +34,7 @@ function compute_jacobian!(db_dt::PencilArray{T, 2},
     #
     jacobian_2d!(db_dt, φ, bₛ, domain, 
                     fields.tmpc, fields.tmpc2, 
-                    fields.tmp, fields.tmp2, 
-                    fields.tmpc)
+                    fields.tmp,  fields.tmp2)
     
     # Apply negative sign for advection: ∂b/∂t = -J(ψ,b)
     db_dt.data .*= -1
