@@ -133,10 +133,10 @@ end
     copy_field!(dest, src)
 Copy one field to another (must be same type and size).
 """
-function copy_field!(dest, src)
+function copy_field!(dest::PencilArray, src::PencilArray)
     @ensuresamegrid(dest, src)
     dest.data .= src.data
-    return dest
+    #return dest
 end
 
 
@@ -144,10 +144,7 @@ end
     zero_field!(field)
 Set all values in a PencilArray to zero.
 """
-function zero_field!(field::PencilArray)
-    field.data .= 0
-    #return field
-end
+zero_field!(field::PencilArray) = field.data .= zero(eltype(field))
 
 
 """

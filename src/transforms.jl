@@ -3,7 +3,7 @@
 # Horizontal directions: spectral (FFT)
 # Vertical direction: finite differences
 
-using LinearAlgebra: mul!
+using LinearAlgebra: mul!, ldiv!
 
 """
     rfft!(domain::Domain, realfield, specfield)
@@ -11,8 +11,9 @@ using LinearAlgebra: mul!
 Forward real FFT: real space → spectral space (horizontal directions only).
 """
 function rfft!(domain::Domain, realfield, specfield)
+    # realfield::PencilArray in domain.pr, specfield::PencilArray in domain.pc
     mul!(specfield, domain.fplan, realfield)
-    return specfield
+    return nothing #specfield
 end
 
 """
@@ -20,9 +21,10 @@ end
 
 Inverse real FFT: spectral space → real space (horizontal directions only).
 """
-function irfft!(domain::Domain, specfield, realfield)
-    mul!(realfield, domain.iplan, specfield)
-    return realfield
+function irfft!(domain, specfield, realfield)
+    # Use ldiv! to apply inverse transform
+    ldiv!(realfield, domain.iplan, specfield)
+    return nothing #realfield
 end
 
 """

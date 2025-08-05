@@ -1,6 +1,8 @@
 # src/utils.jl
 # Utility functions and macros for SSG solver
 
+using PencilArrays: PencilArray
+
 """
     @ensuresamegrid(a, b)
 Macro to check that two arrays have the same size.
@@ -54,7 +56,7 @@ end
 Create a PencilArray for real-space fields.
 """
 function create_real_field(domain::Domain, ::Type{T}=FT) where T
-    return PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    return PencilArray(domain.pr, T)
 end
 
 """
