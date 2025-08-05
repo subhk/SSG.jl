@@ -1,5 +1,8 @@
 # src/domain.jl
 # 3D Domain setup with vertically bounded domain
+
+using PencilArrays: local_size, size_global, local_range, range_local, Pencil
+
 """
     struct Domain{T, PA, PC, PF, PB}
 
@@ -316,15 +319,38 @@ end
 # DEALIASING FUNCTIONS
 # =============================================================================
 
+# """
+#     dealias!(domain::Domain, field_spec)
+
+# Apply dealiasing to a spectral field by zeroing out aliased wavenumbers.
+# """
+# function dealias!(domain::Domain, field_spec)
+#     _dealias!(field_spec, domain)
+#     return nothing
+# end
+
 """
     dealias!(domain::Domain, field_spec)
 
 Apply dealiasing to a spectral field by zeroing out aliased wavenumbers.
 """
 function dealias!(domain::Domain, field_spec)
-    _dealias!(field_spec, domain)
+    # Get local array from PencilArray
+    field_local = field_spec.data
+    
+    # Get local ranges for this MPI process
+    local_ranges = local_range(domain.pc)
+    
+    # Apply mask to local data
+    mask_local = view(domain.mask, local_ranges[1], local_ranges[2])
+    
+    @inbounds for k in axes(field_local, 3)
+        @views @. field_local[:, :, k] = ifelse(mask_local, field_local[:, :, k], 0)
+    end
+    
     return nothing
 end
+
 
 """
     _dealias!(field_spec, domain::Domain)
