@@ -30,7 +30,7 @@ Periodic in x,y directions; bounded in z direction.
 - `aliased_fraction`: Fraction of wavenumbers that are aliased (e.g., 1/3)
 - `kxalias, kyalias`: Ranges of aliased wavenumber indices
 """
-struct Domain{T, PR, PC, PFP}
+struct Domain{T, PR, PC, PFP, PR2D, PC2D, PFP2D}
     Nx::Int
     Ny::Int
     Nz::Int
@@ -57,10 +57,17 @@ struct Domain{T, PR, PC, PFP}
     # Pencil descriptors
     pr::PR      # real-space pencil
     pc::PC      # complex/spectral pencil
+
+    # 2D surface field support
+    pr_2d::PR2D      # 2D real-space pencil for surface
+    pc_2d::PC2D      # 2D complex/spectral pencil for surface
     
     # FFT plans (horizontal only)
     fplan::PFP
     iplan::PFP
+
+    fplan_2d::PFP2D  # 2D FFT plans for surface
+    iplan_2d::PFP2D
     
     # Dealiasing parameters
     aliased_fraction::T
@@ -124,6 +131,21 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
         fftw_flags = FFTW.MEASURE
     )
     iplan = fplan  # same plan used for inverse (via ldiv! or \)
+
+    pr_2d = Pencil((domain.Nx, domain.Ny), domain.pr.comm)
+    
+    # For spectral 2D: (Nx, Ny÷2+1) 
+    Nyc = domain.Ny ÷ 2 + 1
+    pc_2d = Pencil((domain.Nx, Nyc), domain.pc.comm)
+    
+    # Create 2D FFT plans
+    fplan_2d = PencilFFTPlan(
+        pr_2d,
+        (Transforms.FFT(),     # FFT on x
+         Transforms.RFFT());   # RFFT on y
+        fftw_flags = FFTW.MEASURE
+    )
+    iplan_2d = fplan_2d
 
     # Coordinate arrays
     dx = Lx / Nx

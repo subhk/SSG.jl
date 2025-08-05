@@ -68,22 +68,43 @@ function compute_tendency!(db_dt::PencilArray{T, 2},
 end
 
 
-"""
-Compute geostrophic velocities from streamfunction
-"""
-function compute_geostrophic_velocities!(fields::Fields{T}, domain::Domain) where T
-    # Transform streamfunction to spectral space
-    rfft!(domain, fields.φ, fields.φhat)
+# """
+# Compute geostrophic velocities from streamfunction
+# """
+# function compute_geostrophic_velocities!(fields::Fields{T}, domain::Domain) where T
+#     # Transform streamfunction to spectral space
+#     rfft!(domain, fields.φ, fields.φhat)
     
-    # Compute u = -∂φ/∂y
-    ddy!(domain, fields.φhat, fields.tmpc)
-    irfft!(domain, fields.tmpc, fields.u)
-    fields.u.data .*= -1
+#     # Compute u = -∂φ/∂y
+#     ddy!(domain, fields.φhat, fields.tmpc)
+#     irfft!(domain, fields.tmpc, fields.u)
+#     fields.u.data .*= -1
     
-    # Compute v = ∂φ/∂x  
-    ddx!(domain, fields.φhat, fields.tmpc)
-    irfft!(domain, fields.tmpc, fields.v)
+#     # Compute v = ∂φ/∂x  
+#     ddx!(domain, fields.φhat, fields.tmpc)
+#     irfft!(domain, fields.tmpc, fields.v)
     
-    return nothing
-end
+#     return nothing
+# end
 
+
+"""
+    compute_geostrophic_velocities_2d!(u, v, ψ, surface_domain::SurfaceDomain, tmp_spec1, tmp_spec2)
+
+Compute 2D geostrophic velocities: u = -∂ψ/∂y, v = ∂ψ/∂x.
+"""
+function compute_geostrophic_velocities_2d!(u, v, ψ, domain::Domain, tmp_spec1, tmp_spec2)
+    # Transform streamfunction to spectral space
+    rfft_2d!(surface_domain, ψ, tmp_spec1)  # ψ̂
+    
+    # Compute u = -∂ψ/∂y
+    ddy_2d!(surface_domain, tmp_spec1, tmp_spec2)  # ∂ψ̂/∂y
+    irfft_2d!(surface_domain, tmp_spec2, u)        # u = ∂ψ/∂y
+    u.data .*= -1  # Apply negative sign
+    
+    # Compute v = ∂ψ/∂x  
+    ddx_2d!(surface_domain, tmp_spec1, tmp_spec2)   # ∂ψ̂/∂x
+    irfft_2d!(surface_domain, tmp_spec2, v)         # v = ∂ψ/∂x
+    
+    return (u, v)
+end

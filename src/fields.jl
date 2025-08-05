@@ -27,7 +27,7 @@ Container for all simulation fields (prognostic, diagnostic, and scratch).
 struct Fields{T, PR, PC}
     # Prognostic fields
     bₛ::PencilArray{T, PR}           # surface buoyancy anomaly
-    φₛ::PencilArray{T, PR}           # 3D streamfunction at the surface
+    φₛ::PencilArray{T, PR}           # 2D streamfunction at the surface
     
 
     # Diagnostic fields
@@ -40,16 +40,16 @@ struct Fields{T, PR, PC}
     b_mg::PencilArray{T, PR}           # Multigrid RHS workspace
     
     # Scratch arrays (real space)
-    R::PencilArray{T, PR}           # residual for MA equation
-    tmp::PencilArray{T, PR}         # general scratch
-    tmp2::PencilArray{T, PR}        # additional scratch
-    tmp3::PencilArray{T, PR}        # additional scratch
+    R::PencilArray{T,    PR}           # residual for MA equation
+    tmp::PencilArray{T,  PR}           # general scratch
+    tmp2::PencilArray{T, PR}           # additional scratch
+    tmp3::PencilArray{T, PR}           # additional scratch
     
     # Spectral arrays
-    bhat::PencilArray{Complex{T},PC}        # spectral buoyancy
-    φhat::PencilArray{Complex{T},PC}        # spectral streamfunction
-    tmpc::PencilArray{Complex{T},PC}        # spectral scratch
-    tmpc2::PencilArray{Complex{T},PC}       # spectral scratch
+    bhat::PencilArray{Complex{T},  PC}        # spectral buoyancy
+    φhat::PencilArray{Complex{T},  PC}        # spectral streamfunction
+    tmpc::PencilArray{Complex{T},  PC}        # spectral scratch
+    tmpc2::PencilArray{Complex{T}, PC}        # spectral scratch
 end
 
 """
