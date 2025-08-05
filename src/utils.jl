@@ -75,7 +75,7 @@ function copy_field!(dest, src)
     dest_local = dest.data
     src_local = src.data
     @. dest_local = src_local
-    return dest
+    #return dest
 end
 
 """
@@ -154,119 +154,6 @@ function gridpoints_2d(domain::Domain)
     return X, Y
 end
 
-
-# src/utils.jl
-# Utility functions for surface semigeostrophic model
-
-# =============================================================================
-# FIELD UTILITY FUNCTIONS
-# =============================================================================
-
-"""
-    create_real_field(domain::Domain, ::Type{T}=FT) where T
-
-Create a PencilArray for real-space fields.
-"""
-function create_real_field(domain::Domain, ::Type{T}=FT) where T
-    return PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-end
-
-"""
-    create_spectral_field(domain::Domain, ::Type{T}=FT) where T
-
-Create a PencilArray for spectral-space fields.
-"""
-function create_spectral_field(domain::Domain, ::Type{T}=FT) where T
-    return PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
-end
-
-"""
-    copy_field!(dest, src)
-
-Copy one PencilArray to another.
-"""
-function copy_field!(dest, src)
-    dest_local = dest.data
-    src_local = src.data
-    @. dest_local = src_local
-    return dest
-end
-
-"""
-    zero_field!(field)
-
-Set all values in a PencilArray to zero.
-"""
-function zero_field!(field)
-    field_local = field.data
-    fill!(field_local, 0)
-    return field
-end
-
-"""
-    norm_field(field; p=2)
-
-Compute the norm of a PencilArray field across all MPI processes.
-"""
-function norm_field(field; p=2)
-    field_local = field.data
-    local_norm = norm(field_local, p)
-    
-    # MPI reduction to get global norm
-    if p == 2
-        global_norm_sq = MPI.Allreduce(local_norm^2, MPI.SUM, field.pencil.comm)
-        return sqrt(global_norm_sq)
-    elseif p == Inf
-        return MPI.Allreduce(local_norm, MPI.MAX, field.pencil.comm)
-    elseif p == 1
-        return MPI.Allreduce(local_norm, MPI.SUM, field.pencil.comm)
-    else
-        global_norm_p = MPI.Allreduce(local_norm^p, MPI.SUM, field.pencil.comm)
-        return global_norm_p^(1/p)
-    end
-end
-
-"""
-    inner_product(field1, field2)
-
-Compute the inner product of two PencilArray fields across all MPI processes.
-"""
-function inner_product(field1, field2)
-    field1_local = field1.data
-    field2_local = field2.data
-    
-    local_dot = dot(field1_local, field2_local)
-    return MPI.Allreduce(local_dot, MPI.SUM, field1.pencil.comm)
-end
-
-# =============================================================================
-# GRID UTILITY FUNCTIONS
-# =============================================================================
-
-"""
-    gridpoints(domain::Domain) -> (X, Y, Z)
-
-Return 3D coordinate arrays for the domain.
-"""
-function gridpoints(domain::Domain)
-    X = [domain.x[i] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
-    Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
-    Z = [domain.z[k] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
-    
-    return X, Y, Z
-end
-
-"""
-    gridpoints_2d(domain::Domain) -> (X, Y)
-
-Return 2D horizontal coordinate arrays for the domain.
-"""
-function gridpoints_2d(domain::Domain)
-    X = [domain.x[i] for i=1:domain.Nx, j=1:domain.Ny]
-    Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny]
-    
-    return X, Y
-end
 
 # =============================================================================
 # SPECTRAL ANALYSIS FUNCTIONS

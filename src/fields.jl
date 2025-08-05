@@ -1,7 +1,7 @@
 # src/fields.jl
 # Field allocation and management
 
-using PencilArray: local_size, PencilArray
+using PencilArrays: local_size, PencilArray
 
 """
     struct Fields{T, PA, PC}

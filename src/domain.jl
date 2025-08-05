@@ -3,6 +3,8 @@
 
 using PencilArrays: local_size, size_global, local_range, range_local, Pencil
 
+const FT = Float64
+
 """
     struct Domain{T, PA, PC, PF, PB}
 
@@ -97,6 +99,8 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
                      stretch_params=nothing,
                      comm=MPI.COMM_WORLD)
     
+    T = typeof(float(Lx))  # Infer type properly
+
     # Initialize MPI if needed
     MPI.Initialized() || MPI.Init()
     
@@ -106,11 +110,11 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     
     # Spectral-space: rFFT reduces y dimension to Ny÷2+1, z remains same
     Nyc = fld(Ny, 2) + 1
-    pc  = Pencil((Nx, Nyc, Nz), comm)
+    pc = Pencil((Nx, Nyc, Nz), comm)
     
     # Create FFT plans using dummy arrays (only for horizontal directions)
-    u_r = PencilArray(pr, zeros(FT, local_size(pr)))
-    û_c = PencilArray(pc, zeros(Complex{FT}, local_size(pc)))
+    u_r = PencilArray(pr, zeros(T, local_size(pr)))
+    û_c = PencilArray(pc, zeros(Complex{T}, local_size(pc)))
     
     # FFT only in horizontal directions (1,2), z remains in physical space
     fplan = PencilFFTs.plan_rfft(u_r, (1, 2))
@@ -135,11 +139,11 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
 
     Krsq, invKrsq = make_wavenumber_arrays(kx, ky, Nx, Nyc)
 
-    aliased_fraction = 1/3
+    aliased_fraction = T(1/3)
     kxalias, kyalias =  get_aliased_wavenumbers(Nx, Nyc, aliased_fraction)
     
-    return Domain{FT, typeof(pr), typeof(pc), typeof(fplan), typeof(iplan)}(
-        Nx, Ny, Nz, Lx, Ly, Lz, 
+    return Domain{T, typeof(pr), typeof(pc), typeof(fplan), typeof(iplan)}(
+        Nx, Ny, Nz, T(Lx), T(Ly), T(Lz), 
         x, y, z, dz, 
         kx, ky, Krsq, invKrsq, 
         mask, z_boundary, z_grid,
@@ -249,9 +253,10 @@ end
 Create wavenumber magnitude arrays for real FFTs.
 """
 function make_wavenumber_arrays(kx, ky, Nx, Nyc)
+    T = eltype(kx)
     # Create 2D arrays for wavenumber magnitudes
-    Krsq = zeros(FT, Nx, Nyc)
-    invKrsq = zeros(FT, Nx, Nyc)
+    Krsq = zeros(T, Nx, Nyc)
+    invKrsq = zeros(T, Nx, Nyc)
     
     for i in 1:Nx, j in 1:Nyc
         Krsq[i, j] = kx[i]^2 + ky[j]^2
@@ -411,12 +416,13 @@ Create a spectral filter for the domain.
 - Filter array matching spectral space dimensions
 """
 function makefilter(domain::Domain; order=4, innerK=2/3, outerK=1, tol=1e-15)
+    T = eltype(domain.Lx)
     # Create normalized wavenumber magnitude
     dx = domain.Lx / domain.Nx
     dy = domain.Ly / domain.Ny
     
     Nx, Nyc = length(domain.kx), length(domain.ky)
-    K = zeros(FT, Nx, Nyc)
+    K = zeros(T, Nx, Nyc)
     
     for i in 1:Nx, j in 1:Nyc
         kx_norm = abs(domain.kx[i] * dx / π)
@@ -577,6 +583,7 @@ end
 Create hyperbolic tangent stretched grid.
 """
 function create_tanh_grid(Nz::Int, Lz, β, surface_concentration::Bool)
+    T = eltype(Lz)
     # Uniform grid in computational space
     ξ = collect(range(0, 1, length=Nz))
     
@@ -589,7 +596,7 @@ function create_tanh_grid(Nz::Int, Lz, β, surface_concentration::Bool)
     end
     
     # Compute grid spacing
-    dz = zeros(FT, Nz)
+    dz = zeros(T, Nz)
     for i in 2:Nz-1
         dz[i] = 0.5 * (z[i+1] - z[i-1])
     end
@@ -605,6 +612,7 @@ end
 Create exponentially stretched grid.
 """
 function create_exponential_grid(Nz::Int, Lz, β, surface_concentration::Bool)
+    T = eltype(Lz)
     ξ = collect(range(0, 1, length=Nz))
     
     if surface_concentration
@@ -616,7 +624,7 @@ function create_exponential_grid(Nz::Int, Lz, β, surface_concentration::Bool)
     end
     
     # Compute spacing
-    dz = zeros(FT, Nz)
+    dz = zeros(T, Nz)
     for i in 2:Nz-1
         dz[i] = 0.5 * (z[i+1] - z[i-1])
     end
@@ -632,13 +640,14 @@ end
 Create hyperbolic sine stretched grid.
 """
 function create_sinh_grid(Nz::Int, Lz, β)
+    T = eltype(Lz)
     ξ = collect(range(-1, 1, length=Nz))
     
     # Symmetric stretching about middle
     z = Lz .* (0.5 .+ sinh.(β .* ξ) ./ (2 * sinh(β)))
     
     # Compute spacing
-    dz = zeros(FT, Nz)
+    dz = zeros(T, Nz)
     for i in 2:Nz-1
         dz[i] = 0.5 * (z[i+1] - z[i-1])
     end
@@ -654,13 +663,14 @@ end
 Create power-law stretched grid.
 """
 function create_power_grid(Nz::Int, Lz, α)
+    T = eltype(Lz)
     ξ = collect(range(0, 1, length=Nz))
     
     # Power law stretching
     z = Lz .* ξ.^α
     
     # Compute spacing
-    dz = zeros(FT, Nz)
+    dz = zeros(T, Nz)
     for i in 2:Nz-1
         dz[i] = 0.5 * (z[i+1] - z[i-1])
     end

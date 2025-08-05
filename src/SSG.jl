@@ -203,9 +203,9 @@ module SSG
     const FT = Float64
 
     # Include files in order
-    include("utils.jl")
     include("domain.jl")
     include("fields.jl")
+    include("utils.jl")
     include("transforms.jl")
     include("params.jl")
     include("filter.jl")
@@ -219,12 +219,12 @@ module SSG
 
     # Exports by file:
 
+    # domain.jl  
+    export Domain, make_domain, gridpoints, gridpoints_2d, dealias!
+
     # utils.jl
     export @ensuresamegrid, twothirds_mask, create_real_field, create_spectral_field,
            copy_field!, zero_field!, norm_field, inner_product
-
-    # domain.jl  
-    export Domain, make_domain, gridpoints, gridpoints_2d, dealias!
 
     # fields.jl
     export Fields, allocate_fields, zero_fields!, field_stats, enhanced_field_stats
