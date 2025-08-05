@@ -11,7 +11,7 @@
 #   ε is an external parameter     (measure of global Rossby number)
 # ============================================================================
 
-using PencilArrays: PencilArray, local_size, local_range
+using PencilArrays: PencilArray, size_local, range_local
 using LinearAlgebra: mul!, ldiv!
 
 """Performance monitoring for multigrid solver"""
@@ -75,31 +75,35 @@ mutable struct SSGLevel{T<:AbstractFloat}
         PC = domain.pc
         
         # Create 3D fields
-        Φ = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-        b = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-        r = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+        Φ = PencilArray(PR, zeros(T, size_local(PR)))
+        b = PencilArray(PR, zeros(T, size_local(PR)))
+        r = PencilArray(PR, zeros(T, size_local(PR)))
         
-        Φ_hat = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
-        b_hat = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
-        r_hat = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+        Φ_hat = PencilArray(PC, zeros(Complex{T}, size_local(PC)))
+        b_hat = PencilArray(PC, zeros(Complex{T}, size_local(PC)))
+        r_hat = PencilArray(PC, zeros(Complex{T}, size_local(PC)))
         
-        Φ_old = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-        tmp_real = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-        tmp_spec = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+        Φ_old    = PencilArray(PR, zeros(T, size_local(PR)))
+
+        tmp_real = PencilArray(PR, zeros(T, size_local(PR)))
+        tmp_spec = PencilArray(PC, zeros(Complex{T}, size_local(PC)))
 
         # Derivative fields
-        Φ_xx = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-        Φ_yy = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-        Φ_zz = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-        Φ_xy = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-        Φ_xxyy = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+        Φ_xx   = PencilArray(PR, zeros(T, size_local(PR)))
+        Φ_yy   = PencilArray(PR, zeros(T, size_local(PR)))
+        Φ_zz   = PencilArray(PR, zeros(T, size_local(PR)))
+        Φ_xy   = PencilArray(PR, zeros(T, size_local(PR)))
+        Φ_xxyy = PencilArray(PR, zeros(T, size_local(PR)))
         
         # Boundary condition (2D field at surface)
         bs_surface = create_surface_field(domain, T)
         
-        new{T}(domain, level, nx_global, ny_global, nz_global,
-               Φ, b, r, Φ_hat, b_hat, r_hat, Φ_old, tmp_real, tmp_spec, 
-               Φ_xx, Φ_yy, Φ_zz, Φ_xy, Φ_xxyy, bs_surface)
+        new{T}(domain, level, 
+               nx_global, ny_global, nz_global,
+               Φ, b, r, Φ_hat, b_hat, r_hat, 
+               Φ_old, tmp_real, tmp_spec, 
+               Φ_xx, Φ_yy, Φ_zz, Φ_xy, Φ_xxyy, 
+               bs_surface)
     end
 end
 
@@ -571,13 +575,13 @@ function ssg_spectral_smoother!(level::SSGLevel{T},
         # Apply spectral preconditioning
         r_hat_local = level.r_hat.data
         Φ_hat_local = level.Φ_hat.data
-        local_ranges = local_range(domain.pc)
+        range_locals = range_local(domain.pc)
         
         @inbounds for k in axes(Φ_hat_local, 3)
-            for (j_local, j_global) in enumerate(local_ranges[2])
+            for (j_local, j_global) in enumerate(range_locals[2])
                 if j_global <= length(domain.ky)
                     ky = domain.ky[j_global]
-                    for (i_local, i_global) in enumerate(local_ranges[1])
+                    for (i_local, i_global) in enumerate(range_locals[1])
                         if i_global <= length(domain.kx)
                             kx = domain.kx[i_global]
                             k_mag_sq = kx^2 + ky^2
@@ -892,7 +896,7 @@ function create_surface_field(domain::Domain, ::Type{T}) where T
     try
         # Try to use 2D pencil if available
         pencil_2d = Pencil((domain.Nx, domain.Ny), domain.pr.comm)
-        return PencilArray(pencil_2d, zeros(T, local_size(pencil_2d)))
+        return PencilArray(pencil_2d, zeros(T, size_local(pencil_2d)))
     catch
         # Fallback: extract surface from 3D field
         surface_size = (size(domain.pr)[1], size(domain.pr)[2])
@@ -939,11 +943,11 @@ function solve_poisson_simple(Φ_initial::PencilArray{T, 3},
     # Solve in spectral space: -k²φ̂ = b̂  =>  φ̂ = -b̂/k²
     bhat_local = bhat.data
     φhat_local = φhat.data
-    local_ranges = local_range(domain.pc)
+    range_locals = range_local(domain.pc)
     
     @inbounds for k in axes(bhat_local, 3)
-        for (j_local, j_global) in enumerate(local_ranges[2])
-            for (i_local, i_global) in enumerate(local_ranges[1])
+        for (j_local, j_global) in enumerate(range_locals[2])
+            for (i_local, i_global) in enumerate(range_locals[1])
                 if i_global <= length(domain.kx) && j_global <= length(domain.ky)
                     kx = domain.kx[i_global]
                     ky = domain.ky[j_global]
@@ -1018,7 +1022,7 @@ function extend_2d_to_3d(field_2d::PencilArray{T, 2},
                         domain::Domain) where T
 
     # Create 3D field
-    field_3d = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    field_3d = PencilArray(domain.pr, zeros(T, size_local(domain.pr)))
     
     # Copy 2D field to all z levels (initial guess)
     field_2d_local = field_2d.data
@@ -1118,20 +1122,20 @@ function demo_ssg_solver()
         domain = make_domain(nx_global, ny_global, nz_global, Lx, Ly, Lz, comm)
         
         # Create initial fields
-        Φ_initial = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-        b_rhs = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+        Φ_initial = PencilArray(domain.pr, zeros(T, size_local(domain.pr)))
+        b_rhs = PencilArray(domain.pr, zeros(T, size_local(domain.pr)))
         
         # Initialize with test data
-        local_ranges = local_range(domain.pr)
+        range_locals = range_local(domain.pr)
         Φ_local = Φ_initial.data
         b_local = b_rhs.data
         
         # Simple test initial conditions
-        for (k_local, k_global) in enumerate(local_ranges[3])
+        for (k_local, k_global) in enumerate(range_locals[3])
             z = (k_global - 1) * Lz / nz_global
-            for (j_local, j_global) in enumerate(local_ranges[2])
+            for (j_local, j_global) in enumerate(range_locals[2])
                 y = (j_global - 1) * Ly / ny_global
-                for (i_local, i_global) in enumerate(local_ranges[1])
+                for (i_local, i_global) in enumerate(range_locals[1])
                     x = (i_global - 1) * Lx / nx_global
                     
                     # Test initial condition
@@ -1238,18 +1242,18 @@ end
 #             end
             
 #             # Create test problem
-#             Φ_initial = PencilArray(domain.pr, zeros(Float64, local_size(domain.pr)))
-#             b_rhs = PencilArray(domain.pr, zeros(Float64, local_size(domain.pr)))
+#             Φ_initial = PencilArray(domain.pr, zeros(Float64, size_local(domain.pr)))
+#             b_rhs = PencilArray(domain.pr, zeros(Float64, size_local(domain.pr)))
             
 #             # Initialize with test function that varies in z
-#             local_ranges = local_range(domain.pr)
+#             range_locals = range_local(domain.pr)
 #             b_local = b_rhs.data
             
-#             for (k_local, k_global) in enumerate(local_ranges[3])
+#             for (k_local, k_global) in enumerate(range_locals[3])
 #                 z = domain.z[k_global]
-#                 for (j_local, j_global) in enumerate(local_ranges[2])
+#                 for (j_local, j_global) in enumerate(range_locals[2])
 #                     y = (j_global - 1) * 2π / domain.Ny
-#                     for (i_local, i_global) in enumerate(local_ranges[1])
+#                     for (i_local, i_global) in enumerate(range_locals[1])
 #                         x = (i_global - 1) * 2π / domain.Nx
                         
 #                         # Test function with vertical variation
@@ -1322,17 +1326,17 @@ end
 #         domain = make_domain(32, 32, 4; Lx=2π, Ly=2π, Lz=1.0, comm=comm)
         
 #         # Create test fields
-#         Φ_initial = PencilArray(domain.pr, zeros(Float64, local_size(domain.pr)))
-#         b_rhs = PencilArray(domain.pr, zeros(Float64, local_size(domain.pr)))
+#         Φ_initial = PencilArray(domain.pr, zeros(Float64, size_local(domain.pr)))
+#         b_rhs = PencilArray(domain.pr, zeros(Float64, size_local(domain.pr)))
         
 #         # Simple RHS: b = sin(x)cos(y)
-#         local_ranges = local_range(domain.pr)
+#         range_locals = range_local(domain.pr)
 #         b_local = b_rhs.data
         
-#         for (k_local, k_global) in enumerate(local_ranges[3])
-#             for (j_local, j_global) in enumerate(local_ranges[2])
+#         for (k_local, k_global) in enumerate(range_locals[3])
+#             for (j_local, j_global) in enumerate(range_locals[2])
 #                 y = (j_global - 1) * 2π / domain.Ny
-#                 for (i_local, i_global) in enumerate(local_ranges[1])
+#                 for (i_local, i_global) in enumerate(range_locals[1])
 #                     x = (i_global - 1) * 2π / domain.Nx
 #                     b_local[i_local, j_local, k_local] = sin(x) * cos(y)
 #                 end
@@ -1375,12 +1379,12 @@ function test_fields_compatibility()
         fields = allocate_fields(domain)
         
         # Initialize surface buoyancy
-        local_ranges = local_range(fields.b.pencil)
+        range_locals = range_local(fields.b.pencil)
         b_local = fields.b.data
         
-        for (j_local, j_global) in enumerate(local_ranges[2])
+        for (j_local, j_global) in enumerate(range_locals[2])
             y = domain.y[j_global]
-            for (i_local, i_global) in enumerate(local_ranges[1])
+            for (i_local, i_global) in enumerate(range_locals[1])
                 x = domain.x[i_global]
                 b_local[i_local, j_local] = sin(x) * cos(y)
             end
