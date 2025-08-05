@@ -189,71 +189,73 @@
 # src/SSG.jl - Main module file
 module SSG
 
-    using MPI
-    using PencilArrays
-    using PencilFFTs
-    using FFTW
-    using LinearAlgebra
-    using Statistics
-    using Printf
-    using Random
-    using JLD2
+       using MPI
+       using PencilArrays
+       using PencilFFTs
+       using FFTW
+       using LinearAlgebra
+       using Statistics
+       using Printf
+       using Random
+       using JLD2
 
-    # Constants
-    const FT = Float64
+       # Constants
+       const FT = Float64
 
-    # Include files in order
-    include("domain.jl")
-    include("fields.jl")
-    include("utils.jl")
-    include("transforms.jl")
-    include("params.jl")
-    include("filter.jl")
-    include("poisson.jl")
-    include("timestep.jl")
-    include("output.jl")
-    include("nonlinear.jl")
-    
-    # Optional files (if they exist)
-    #isfile("nonlinear.jl") && include("nonlinear.jl")
+       # Include files in order
+       include("domain.jl")
+       include("fields.jl")
+       include("utils.jl")
+       include("transforms.jl")
+       include("params.jl")
+       include("filter.jl")
+       include("poisson.jl")
+       include("timestep.jl")
+       include("output.jl")
+       include("nonlinear.jl")
 
-    # Exports by file:
+       # Optional files (if they exist)
+       #isfile("nonlinear.jl") && include("nonlinear.jl")
 
-    # domain.jl  
-    export Domain, make_domain, gridpoints, gridpoints_2d, dealias!
+       # Exports by file:
 
-    # utils.jl
-    export @ensuresamegrid, twothirds_mask, create_real_field, create_spectral_field,
-           copy_field!, zero_field!, norm_field, inner_product
+       # domain.jl  
+       export Domain, make_domain, gridpoints, gridpoints_2d, dealias!
 
-    # fields.jl
-    export Fields, allocate_fields, zero_fields!, field_stats, enhanced_field_stats
+       # utils.jl
+       export @ensuresamegrid, twothirds_mask, create_real_field, create_spectral_field,
+              copy_field!, zero_field!, norm_field, inner_product
 
-    # transforms.jl
-    export rfft!, irfft!, ddx!, ddy!, ddz!, laplacian_h!, jacobian!, jacobianh,
-           parsevalsum, parsevalsum2, compute_energy, compute_enstrophy
+       # fields.jl
+       export Fields, allocate_fields, zero_fields!, field_stats, enhanced_field_stats
 
-    # params.jl
-    export Params, validate_params, has_diffusion, has_hyperdiffusion, has_filter
+       # transforms.jl
+       export rfft!, irfft!, ddx!, ddy!, ddz!, laplacian_h!, jacobian!, jacobianh,
+              parsevalsum, parsevalsum2, compute_energy, compute_enstrophy
 
-    # filter.jl
-    export ExponentialFilter, HyperviscosityFilter, CutoffFilter, 
-           apply_spectral_filter!, create_filter
+       export rfft_2d!, irfft_2d!, ddx_2d!, ddy_2d!, jacobian_2d!
 
-    # poisson.jl
-    export solve_ssg_equation, SSGLevel, solve_monge_ampere_fields!, 
-           solve_poisson_simple
+       # params.jl
+       export Params, validate_params, has_diffusion, has_hyperdiffusion, has_filter
 
-    # timestep.jl
-    export TimeParams, TimeState, SemiGeostrophicProblem, AB2_LowStorage, RK3,
-           timestep!, step_until!, run!
+       # filter.jl
+       export ExponentialFilter, HyperviscosityFilter, CutoffFilter, 
+              apply_spectral_filter!, create_filter
 
-    # output.jl
-    export save_simulation_state_full, load_simulation_state_full, OutputManager
+       # poisson.jl
+       export solve_ssg_equation, SSGLevel, solve_monge_ampere_fields!, 
+              solve_poisson_simple
 
-    # nonlinear.jl (if exists)
-    #if isdefined(SSG, :compute_tendency!)
-    export compute_tendency!, compute_geostrophic_velocities!
+       # timestep.jl
+       export TimeParams, TimeState, SemiGeostrophicProblem, AB2_LowStorage, RK3,
+              timestep!, step_until!, run!
+
+       # output.jl
+       export save_simulation_state_full, load_simulation_state_full, OutputManager
+
+       # nonlinear.jl (if exists)
+       #if isdefined(SSG, :compute_tendency!)
+       export compute_tendency!, compute_geostrophic_velocities!
     
     #end
 
