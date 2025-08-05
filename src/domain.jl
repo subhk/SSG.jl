@@ -119,9 +119,9 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     fplan = PencilFFTPlan(
         pr,
         (Transforms.FFT(),   # complex→complex on x
-         Transforms.RFFT(),  # real→complex on y
-         Transforms.NoTransform());
-        flags = FFTW.MEASURE
+        Transforms.RFFT(),   # real→complex on y
+        Transforms.NoTransform());
+        fftw_flags = FFTW.MEASURE
     )
     iplan = fplan  # same plan used for inverse (via ldiv! or \)
 
