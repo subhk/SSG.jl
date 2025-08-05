@@ -56,11 +56,13 @@ function create_coarse_domain(domain::Domain, factor::Int=2)
     # Construct new Domain with matching options
     return Domain(
         coarse_Nx, coarse_Ny, coarse_Nz;
-        Lx = Lx, Ly = Ly, Lz = Lz,
-        z_boundary   = domain.z_boundary,
-        z_grid       = domain.z_grid,
+        Lx = Lx, 
+        Ly = Ly, 
+        Lz = Lz,
+        z_boundary     = domain.z_boundary,
+        z_grid         = domain.z_grid,
         stretch_params = domain.z_grid == :custom ? (z_coords = domain.z,) : nothing,
-        comm          = comm
+        comm           = comm
     )
     
     #return coarse_domain
@@ -162,12 +164,17 @@ Parameters:
 - `direction`: `:x`, `:y`, or `:z`
 - `factor`: reduction factor in that direction
 """
-function create_semicoarse_domain(domain::Domain{T,PR,PC,PFP},
-                                  direction::Symbol, factor::Int=2) where {T,PR,PC,PFP}
-    Nx, Ny, Nz = domain.Nx, domain.Ny, domain.Nz
+function create_semicoarse_domain(domain::Domain{T, PR, PC, PFP},
+                                  direction::Symbol, 
+                                  factor::Int=2) where {T, PR, PC, PFP}
+
+    Nx = domain.Nx
+    Ny = domain.Ny 
+    Nz = domain.Nz
+
     if direction == :x
         Nx = max(Nx ÷ factor, 5)
-        Nx += isodd(Nx) ? 1 : 0
+        Nx += isodd(Nx) ? 1 : 0    
     elseif direction == :y
         Ny = max(Ny ÷ factor, 5)
         Ny += isodd(Ny) ? 1 : 0
@@ -179,11 +186,13 @@ function create_semicoarse_domain(domain::Domain{T,PR,PC,PFP},
 
     return Domain(
         Nx, Ny, Nz;
-        Lx = domain.Lx, Ly = domain.Ly, Lz = domain.Lz,
-        z_boundary   = domain.z_boundary,
-        z_grid       = domain.z_grid,
+        Lx = domain.Lx, 
+        Ly = domain.Ly, 
+        Lz = domain.Lz,
+        z_boundary     = domain.z_boundary,
+        z_grid         = domain.z_grid,
         stretch_params = domain.z_grid == :custom ? (z_coords = domain.z,) : nothing,
-        comm          = domain.pr.comm
+        comm           = domain.pr.comm
     )
 end
 
