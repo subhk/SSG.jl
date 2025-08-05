@@ -9,7 +9,7 @@ using Statistics
 using JLD2
 
 # Import packages individually to avoid conflicts
-import PencilArrays
+import PencilArrays: PencilArray, size_local, range_local
 import PencilFFTs
 import MPI
 
@@ -304,7 +304,7 @@ function run_simulation!(sim::SingleProcessSimulation{T},
             save_counter += 1
             filename = "state_$(lpad(save_counter, 3, '0')).jld2"
             save_state(sim, filename)
-            println("💾 Saved: $filename (t=$(round(sim.current_time, digits=3)))")
+            println(" Saved: $filename (t=$(round(sim.current_time, digits=3)))")
             next_save_time += save_interval
         end
         
