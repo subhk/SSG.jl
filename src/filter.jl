@@ -3,9 +3,7 @@
 # Supports exponential, hyperviscosity, and custom filter functions
 
 using PencilArrays: local_range
-using PencilFFTs
 using LinearAlgebra: mul!, ldiv!
-using Printf
 
 ###############################################################################
 # SPECTRAL FILTERING FOR NUMERICAL STABILITY

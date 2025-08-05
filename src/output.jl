@@ -3,12 +3,7 @@
 # Supports time-based and step-based output frequencies
 # Includes physical and spectral field output with MPI support
 
-using JLD2
-using MPI
-using PencilArrays
-using PencilFFTs
-using Dates
-using Printf
+using PencilArrays: range_local, size_global
 
 ###############################################################################
 # JLD2 OUTPUT SYSTEM FOR SEMI-GEOSTROPHIC SIMULATIONS
@@ -135,8 +130,8 @@ function gather_spectral_to_root(field::PencilArray{Complex{T}, 2}) where T
         global_data = zeros(Complex{T}, nx_spec, ny_spec)
         
         # Copy local data
-        local_ranges = range_local(field.pencil)
-        global_data[local_ranges[1], local_ranges[2]] = field.data
+        range_locals = range_local(field.pencil)
+        global_data[range_locals[1], range_locals[2]] = field.data
         
         # Receive from other processes
         for src_rank = 1:size-1
@@ -158,9 +153,9 @@ function gather_spectral_to_root(field::PencilArray{Complex{T}, 2}) where T
         return global_data
     else
         # Non-root processes: send spectral data
-        local_ranges = range_local(field.pencil)
-        ranges_info = [local_ranges[1].start, local_ranges[1].stop,
-                      local_ranges[2].start, local_ranges[2].stop]
+        range_locals = range_local(field.pencil)
+        ranges_info = [range_locals[1].start, range_locals[1].stop,
+                      range_locals[2].start, range_locals[2].stop]
         
         # Send range information
         MPI.Send(ranges_info, 0, 100, comm)
@@ -190,8 +185,8 @@ function distribute_spectral_from_root!(field::PencilArray{Complex{T}, 2},
     end
     
     # Extract local portion on all processes
-    local_ranges = range_local(field.pencil)
-    field.data .= global_data[local_ranges[1], local_ranges[2]]
+    range_locals = range_local(field.pencil)
+    field.data .= global_data[range_locals[1], range_locals[2]]
     
     return nothing
 end
@@ -769,8 +764,8 @@ function gather_to_root_improved(field::PencilArray{T, 2}) where T
         global_data = zeros(T, nx_global, ny_global)
         
         # Copy local data
-        local_ranges = range_local(field.pencil)
-        global_data[local_ranges[1], local_ranges[2]] = field.data
+        range_locals = range_local(field.pencil)
+        global_data[range_locals[1], range_locals[2]] = field.data
         
         # Receive from other processes
         for src_rank = 1:nprocs-1
@@ -796,9 +791,9 @@ function gather_to_root_improved(field::PencilArray{T, 2}) where T
         return global_data
     else
         # Non-root processes: send data to root
-        local_ranges = range_local(field.pencil)
-        range_info = [local_ranges[1].start, local_ranges[1].stop,
-                     local_ranges[2].start, local_ranges[2].stop]
+        range_locals = range_local(field.pencil)
+        range_info = [range_locals[1].start, range_locals[1].stop,
+                     range_locals[2].start, range_locals[2].stop]
         
         # Send range information
         MPI.Send(range_info, 0, 200, comm)
@@ -849,8 +844,8 @@ function distribute_from_root_improved!(field::PencilArray{T, 2},
     end
     
     # Extract local portion on all processes
-    local_ranges = range_local(field.pencil)
-    field.data .= global_data[local_ranges[1], local_ranges[2]]
+    range_locals = range_local(field.pencil)
+    field.data .= global_data[range_locals[1], range_locals[2]]
     
     return nothing
 end
