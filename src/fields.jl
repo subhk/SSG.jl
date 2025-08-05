@@ -1,6 +1,8 @@
 # src/fields.jl
 # Field allocation and management
 
+using PencilArray: local_size, PencilArray
+
 """
     struct Fields{T, PA, PC}
 Container for all simulation fields (prognostic, diagnostic, and scratch).

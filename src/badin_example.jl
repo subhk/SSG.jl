@@ -1,329 +1,418 @@
-# examples/initial_conditions_example.jl
-# Surface Semi-Geostrophic initial conditions from paper equation (20):
-#   b̃ₛ(k, t=0) = A * k^(m/4) / (k + k₀)^(m/2)
-# 
-# Usage: mpirun -np 4 julia initial_conditions_example.jl
+# examples/single_process_example.jl
+# Clean single-process SSG simulation without MPI complications
+# Usage: julia single_process_example.jl
 
 using Random
 using Printf
 using LinearAlgebra
-using MPI
-using PencilArrays
-using PencilFFTs
+using Statistics
 using JLD2
 
-include("../src/SSG.jl")
-using .SSG
+# Import packages individually to avoid conflicts
+import PencilArrays
+import PencilFFTs
+import MPI
 
-"""
-    initialize_spectral_buoyancy!(fields, domain, amplitude, k₀, m; 
-                                target_rms_velocity=1.0, seed=12345)
-
-Initialize surface buoyancy with spectral perturbation. MPI-parallel 
-with synchronized random phases.
-"""
-function initialize_spectral_buoyancy!(fields::Fields{T}, domain::Domain, 
-                                      amplitude::T, k₀::T, m::Int;
-                                      target_rms_velocity::T=T(1.0),
-                                      seed::Int=12345) where T
-    
-    comm = fields.bₛ.pencil.comm
-    rank = MPI.Comm_rank(comm)
-    
-    # Zero field and transform to spectral space
-    zero_field!(fields.bₛ)
-    rfft!(domain, fields.bₛ, fields.bhat)
-    
-    # Initialize spectral field on each process's local domain
-    bhat_local = fields.bhat.data
-    local_ranges = local_range(fields.bhat.pencil)
-    
-    @inbounds for k_z in axes(bhat_local, 3)
-        for (j_local, j_global) in enumerate(local_ranges[2])
-            j_global > length(domain.ky) && continue
-            ky = domain.ky[j_global]
-            
-            for (i_local, i_global) in enumerate(local_ranges[1])
-                i_global > length(domain.kx) && continue
-                kx = domain.kx[i_global]
-                
-                k_mag = sqrt(kx^2 + ky^2)
-                k_mag < 1e-14 && continue  # Skip k=0
-                
-                # Equation (20): spectral amplitude
-                spec_amp = amplitude * (k_mag^(m/4)) / ((k_mag + k₀)^(m/2))
-                
-                # Synchronized random phase across processes
-                Random.seed!(seed + 1000*i_global + j_global)
-                phase = 2π * rand(T)
-                
-                bhat_local[i_local, j_local, k_z] = Complex{T}(
-                    spec_amp * cos(phase), spec_amp * sin(phase))
-            end
-        end
-    end
-    
-    # Transform back and solve for streamfunction
-    dealias!(domain, fields.bhat)
-    irfft!(domain, fields.bhat, fields.bₛ)
-    remove_mean!(fields.bₛ)
-    
-    solve_monge_ampere_fields!(fields, domain; tol=T(1e-10), maxiter=20, verbose=false)
-    compute_geostrophic_velocities!(fields, domain)
-    
-    # Scale to target RMS velocity
-    actual_rms = compute_rms_velocity(fields, domain)
-    if actual_rms > 1e-12
-        scaling = target_rms_velocity / actual_rms
-        fields.bₛ.data .*= scaling
-        solve_monge_ampere_fields!(fields, domain; tol=T(1e-10), maxiter=20, verbose=false) 
-        compute_geostrophic_velocities!(fields, domain)
-        
-        rank == 0 && @printf("Scaled RMS velocity: %.3f → %.3f m/s (factor: %.3f)\n", 
-                             actual_rms, compute_rms_velocity(fields, domain), scaling)
-    end
-    
-    MPI.Barrier(comm)
-    return nothing
-end
-
-"""Remove domain mean from field"""
-function remove_mean!(field::PencilArray{T, N}) where {T, N}
-    local_sum = sum(field.data)
-    global_sum = MPI.Allreduce(local_sum, MPI.SUM, field.pencil.comm)
-    global_count = MPI.Allreduce(length(field.data), MPI.SUM, field.pencil.comm)
-    field.data .-= global_sum / global_count
-    return nothing
-end
-
-"""Compute RMS velocity with MPI reduction"""
-function compute_rms_velocity(fields::Fields{T}, domain::Domain) where T
-    local_vel_sq = sum(fields.u.data.^2 + fields.v.data.^2)
-    global_vel_sq = MPI.Allreduce(local_vel_sq, MPI.SUM, fields.u.pencil.comm)
-    global_count = MPI.Allreduce(length(fields.u.data), MPI.SUM, fields.u.pencil.comm)
-    return sqrt(global_vel_sq / global_count)
-end
-
-"""Gather distributed field to root process for saving"""
-function gather_to_root(field::PencilArray{T,N}) where {T,N}
-    comm = field.pencil.comm
-    rank = MPI.Comm_rank(comm)
-    nprocs = MPI.Comm_size(comm)
-    
-    nprocs == 1 && return Array(field.data)
-    
-    global_dims = size_global(field.pencil)
-    
-    if rank == 0
-        global_array = zeros(T, global_dims...)
-        local_ranges = range_local(field.pencil)
-        global_array[local_ranges...] = field.data
-        
-        for src = 1:nprocs-1
-            # Receive range info and data
-            range_info = Vector{Int}(undef, 2*N)
-            MPI.Recv!(range_info, src, 100, comm)
-            
-            ranges = ntuple(N) do i
-                range_info[2*i-1]:range_info[2*i]
-            end
-            
-            remote_size = prod(length.(ranges))
-            remote_data = Vector{T}(undef, remote_size)
-            MPI.Recv!(remote_data, src, 101, comm)
-            
-            global_array[ranges...] = reshape(remote_data, length.(ranges)...)
-        end
-        
-        return global_array
-    else
-        # Send range info and data
-        local_ranges = range_local(field.pencil)
-        range_info = Int[]
-        for r in local_ranges
-            push!(range_info, first(r), last(r))
-        end
-        MPI.Send(range_info, 0, 100, comm)
-        MPI.Send(vec(field.data), 0, 101, comm)
-        return nothing
-    end
-end
-
-"""Save simulation state with MPI gathering at specified time intervals"""
-function save_initial_state(filename::String, fields::Fields, domain::Domain)
-    comm = fields.bₛ.pencil.comm
-    rank = MPI.Comm_rank(comm)
-    
-    # Gather data to root
-    b_global = gather_to_root(fields.bₛ)
-    φ_global = gather_to_root(fields.φ)
-    u_global = gather_to_root(fields.u)
-    v_global = gather_to_root(fields.v)
-    
-    if rank == 0
-        try
-            jldopen(filename, "w") do file
-                file["buoyancy"] = b_global
-                file["streamfunction"] = φ_global
-                file["u_velocity"] = u_global
-                file["v_velocity"] = v_global
-                file["grid"] = (Nx=domain.Nx, Ny=domain.Ny, Nz=domain.Nz,
-                               Lx=domain.Lx, Ly=domain.Ly, Lz=domain.Lz)
-                file["stats"] = (
-                    b_min=minimum(b_global), b_max=maximum(b_global),
-                    u_max=maximum(abs.(u_global)), v_max=maximum(abs.(v_global)),
-                    rms_vel=sqrt(mean(u_global.^2 + v_global.^2))
-                )
-            end
-            println("✓ Saved: $filename")
-        catch e
-            println("❌ Save failed: $e")
-        end
-    end
-    MPI.Barrier(comm)
+# Only load SSG module once
+if !isdefined(Main, :SSG)
+    include("../src/SSG.jl")
+    using .SSG
 end
 
 """
-    run_with_time_based_output(prob, final_time; save_interval=1.0)
-
-Run simulation with time-based output (saves every save_interval time units).
+Simple single-process simulation wrapper
 """
-function run_with_time_based_output(prob, final_time::Real; save_interval::Real=1.0)
-    comm = prob.fields.bₛ.pencil.comm
-    rank = MPI.Comm_rank(comm)
+struct SingleProcessSimulation{T}
+    domain::Domain
+    fields::Fields{T}
     
-    current_time = prob.clock.t
-    next_save_time = save_interval * ceil(current_time / save_interval)
-    save_counter = 0
+    # Simulation parameters
+    dt::T
+    current_time::T
+    step_count::Int
     
-    rank == 0 && println("Starting simulation with time-based saves every $(save_interval) time units")
+    # Statistics tracking
+    energy_history::Vector{T}
+    time_history::Vector{T}
     
-    while current_time < final_time
-        # Determine next target time
-        target_time = min(next_save_time, final_time)
-        
-        # Step to target time
-        step_until!(prob, target_time)
-        current_time = prob.clock.t
-        
-        # Save if we've reached a save time
-        if abs(current_time - next_save_time) < 1e-10
-            save_counter += 1
-            filename = "state_$(save_counter).jld2"
-            
-            if rank == 0
-                println("Saving at t=$(round(current_time, digits=2)) → $(filename)")
-            end
-            
-            save_initial_state(filename, prob.fields, prob.domain)
-            next_save_time += save_interval
-        end
-        
-        # Progress update
-        if rank == 0 && prob.diagnostics !== nothing
-            rms_vel = compute_rms_velocity(prob.fields, prob.domain)
-            println("  t=$(round(current_time, digits=2)), step=$(prob.clock.step), RMS_vel=$(round(rms_vel, digits=3))")
-        end
-    end
-    
-    rank == 0 && println("✅ Simulation complete: saved $save_counter files")
-    return prob
-end
-
-"""Main example function"""
-function run_initial_condition_example()
-    MPI.Initialized() || MPI.Init()
-    comm = MPI.COMM_WORLD
-    rank = MPI.Comm_rank(comm)
-    nprocs = MPI.Comm_size(comm)
-    
-    try
-        # Setup
-        Nx, Ny, Nz = 512, 512, 20
-        Lx = Ly = 6.0  # L/L_D = 6 from paper
-        k₀, m = 14.0, 20  # Paper parameters
-        
-        rank == 0 && println("🌊 SSG Initial Conditions: $(Nx)×$(Ny)×$(Nz) on $nprocs processes")
-        
-        # RUNTIME ESTIMATES (before starting)
-        if rank == 0
-            base_step_time = 0.8  # seconds per step for 512² grid, single process
-            parallel_efficiency = min(0.8, 4.0/sqrt(nprocs))
-            step_time = base_step_time * parallel_efficiency / max(1, nprocs/4)
-            
-            # Full simulation estimate
-            t_end = 25.0  # Full paper simulation
-            n_steps = Int(round(t_end / 0.001))  # dt ≈ 0.001
-            total_hours = n_steps * step_time / 3600
-            n_saves = Int(round(t_end / 2.0))  # Save every 2.0 time units
-            
-            println("\n FULL SIMULATION RUNTIME:")
-            println("   Target: t=0 → $(t_end) ($(n_saves) saves every 2.0 time units)")
-            println("   Expected time: $(round(total_hours, digits=1)) hours")
-            println("   Memory per process: $(round(8 * Nx * Ny * Nz * 10 / nprocs / 1e9, digits=1)) GB")
-            println()
-        end
-        
-        # Create domain and fields
-        domain = make_domain(Nx, Ny, Nz; Lx=Lx, Ly=Ly, Lz=1.0,
-                           z_boundary=:dirichlet, z_grid=:stretched,
-                           stretch_params=(type=:exponential, β=2.0, surface_concentration=true),
-                           comm=comm)
+    function SingleProcessSimulation{T}(Nx, Ny, Nz; Lx=2π, Ly=2π, Lz=1.0) where T
+        # Create domain with single-process communicator
+        domain = Domain(Nx, Ny, Nz; Lx=Lx, Ly=Ly, Lz=Lz, comm=MPI.COMM_SELF)
         fields = allocate_fields(domain)
         
-        # Initialize spectral buoyancy
-        start_time = MPI.Wtime()
-        initialize_spectral_buoyancy!(fields, domain, 1.0, k₀, m; target_rms_velocity=1.0)
-        init_time = MPI.Wtime() - start_time
+        new{T}(domain, fields, T(0.001), T(0.0), 0, T[], T[])
+    end
+end
+
+"""
+Initialize buoyancy field with simple pattern
+"""
+function initialize_buoyancy!(sim::SingleProcessSimulation{T}, 
+                             amplitude::T=T(0.1)) where T
+    
+    println("🌊 Initializing buoyancy field...")
+    
+    # Get direct access to field data (single process)
+    b_data = sim.fields.bₛ.data
+    
+    # Initialize with Taylor-Green-like pattern
+    for k in axes(b_data, 3)
+        z = sim.domain.z[k]
+        for j in axes(b_data, 2)
+            y = sim.domain.y[j]
+            for i in axes(b_data, 1)
+                x = sim.domain.x[i]
+                
+                # Multi-scale pattern
+                val = amplitude * (
+                    sin(2π*x/sim.domain.Lx) * cos(2π*y/sim.domain.Ly) +
+                    0.5 * sin(4π*x/sim.domain.Lx) * sin(4π*y/sim.domain.Ly) +
+                    0.25 * cos(6π*x/sim.domain.Lx) * cos(6π*y/sim.domain.Ly)
+                ) * exp(-2*abs(z - sim.domain.Lz/2))
+                
+                b_data[i, j, k] = val
+            end
+        end
+    end
+    
+    # Remove mean
+    mean_b = mean(b_data)
+    b_data .-= mean_b
+    
+    println("✓ Buoyancy initialized (mean removed: $(round(mean_b, digits=6)))")
+    return nothing
+end
+
+"""
+Solve for streamfunction using simple Poisson equation: ∇²φ = b
+"""
+function solve_streamfunction!(sim::SingleProcessSimulation{T}) where T
+    
+    # Transform buoyancy to spectral space
+    rfft!(sim.domain, sim.fields.bₛ, sim.fields.bhat)
+    
+    # Solve Poisson equation in spectral space
+    bhat_data = sim.fields.bhat.data
+    φhat_data = sim.fields.φhat.data
+    
+    for k in axes(bhat_data, 3)
+        for j in axes(bhat_data, 2)
+            ky = j <= length(sim.domain.ky) ? sim.domain.ky[j] : 0.0
+            for i in axes(bhat_data, 1)
+                kx = i <= length(sim.domain.kx) ? sim.domain.kx[i] : 0.0
+                
+                k2 = kx^2 + ky^2
+                if k2 > 1e-14
+                    φhat_data[i, j, k] = -bhat_data[i, j, k] / k2
+                else
+                    φhat_data[i, j, k] = 0.0
+                end
+            end
+        end
+    end
+    
+    # Transform back to physical space
+    irfft!(sim.domain, sim.fields.φhat, sim.fields.φ)
+    
+    return nothing
+end
+
+"""
+Compute geostrophic velocities: u = -∂φ/∂y, v = ∂φ/∂x
+"""
+function compute_velocities!(sim::SingleProcessSimulation{T}) where T
+    
+    # Transform streamfunction to spectral space
+    rfft!(sim.domain, sim.fields.φ, sim.fields.φhat)
+    
+    φhat_data = sim.fields.φhat.data
+    tmpc_data = sim.fields.tmpc.data
+    
+    # Compute u = -∂φ/∂y
+    for k in axes(φhat_data, 3)
+        for j in axes(φhat_data, 2)
+            ky = j <= length(sim.domain.ky) ? sim.domain.ky[j] : 0.0
+            for i in axes(φhat_data, 1)
+                tmpc_data[i, j, k] = im * ky * φhat_data[i, j, k]
+            end
+        end
+    end
+    
+    irfft!(sim.domain, sim.fields.tmpc, sim.fields.u)
+    sim.fields.u.data .*= -1  # Apply negative sign
+    
+    # Compute v = ∂φ/∂x
+    for k in axes(φhat_data, 3)
+        for j in axes(φhat_data, 2)
+            for i in axes(φhat_data, 1)
+                kx = i <= length(sim.domain.kx) ? sim.domain.kx[i] : 0.0
+                tmpc_data[i, j, k] = im * kx * φhat_data[i, j, k]
+            end
+        end
+    end
+    
+    irfft!(sim.domain, sim.fields.tmpc, sim.fields.v)
+    
+    return nothing
+end
+
+"""
+Compute Jacobian: J(φ, b) = ∂φ/∂x ∂b/∂y - ∂φ/∂y ∂b/∂x
+"""
+function compute_jacobian!(result, φ, b, sim::SingleProcessSimulation{T}) where T
+    
+    # Transform fields to spectral space
+    rfft!(sim.domain, φ, sim.fields.φhat)
+    rfft!(sim.domain, b, sim.fields.bhat)
+    
+    φhat_data = sim.fields.φhat.data
+    bhat_data = sim.fields.bhat.data
+    tmpc_data = sim.fields.tmpc.data
+    tmpc2_data = sim.fields.tmpc2.data
+    
+    # Compute ∂φ/∂x
+    for k in axes(φhat_data, 3)
+        for j in axes(φhat_data, 2)
+            for i in axes(φhat_data, 1)
+                kx = i <= length(sim.domain.kx) ? sim.domain.kx[i] : 0.0
+                tmpc_data[i, j, k] = im * kx * φhat_data[i, j, k]
+            end
+        end
+    end
+    irfft!(sim.domain, sim.fields.tmpc, sim.fields.tmp)  # ∂φ/∂x in physical space
+    
+    # Compute ∂φ/∂y
+    for k in axes(φhat_data, 3)
+        for j in axes(φhat_data, 2)
+            ky = j <= length(sim.domain.ky) ? sim.domain.ky[j] : 0.0
+            for i in axes(φhat_data, 1)
+                tmpc_data[i, j, k] = im * ky * φhat_data[i, j, k]
+            end
+        end
+    end
+    irfft!(sim.domain, sim.fields.tmpc, sim.fields.tmp2)  # ∂φ/∂y in physical space
+    
+    # Compute ∂b/∂x
+    for k in axes(bhat_data, 3)
+        for j in axes(bhat_data, 2)
+            for i in axes(bhat_data, 1)
+                kx = i <= length(sim.domain.kx) ? sim.domain.kx[i] : 0.0
+                tmpc_data[i, j, k] = im * kx * bhat_data[i, j, k]
+            end
+        end
+    end
+    irfft!(sim.domain, sim.fields.tmpc, sim.fields.tmp3)  # ∂b/∂x in physical space
+    
+    # Compute ∂b/∂y
+    for k in axes(bhat_data, 3)
+        for j in axes(bhat_data, 2)
+            ky = j <= length(sim.domain.ky) ? sim.domain.ky[j] : 0.0
+            for i in axes(bhat_data, 1)
+                tmpc2_data[i, j, k] = im * ky * bhat_data[i, j, k]
+            end
+        end
+    end
+    irfft!(sim.domain, sim.fields.tmpc2, result)  # ∂b/∂y in physical space
+    
+    # Compute Jacobian: J = ∂φ/∂x * ∂b/∂y - ∂φ/∂y * ∂b/∂x
+    result_data = result.data
+    φx_data = sim.fields.tmp.data    # ∂φ/∂x
+    φy_data = sim.fields.tmp2.data   # ∂φ/∂y
+    bx_data = sim.fields.tmp3.data   # ∂b/∂x
+    
+    for i in eachindex(result_data)
+        result_data[i] = φx_data[i] * result_data[i] - φy_data[i] * bx_data[i]
+    end
+    
+    return nothing
+end
+
+"""
+Take one time step using forward Euler
+"""
+function time_step!(sim::SingleProcessSimulation{T}) where T
+    
+    # Compute tendency: ∂b/∂t = -J(φ, b)
+    compute_jacobian!(sim.fields.R, sim.fields.φ, sim.fields.bₛ, sim)
+    
+    # Forward Euler step: b^{n+1} = b^n - dt * J(φ, b)
+    sim.fields.bₛ.data .-= sim.dt .* sim.fields.R.data
+    
+    # Solve for new streamfunction and velocities
+    solve_streamfunction!(sim)
+    compute_velocities!(sim)
+    
+    # Update time
+    sim.current_time += sim.dt
+    sim.step_count += 1
+    
+    return nothing
+end
+
+"""
+Compute kinetic energy
+"""
+function compute_energy(sim::SingleProcessSimulation{T}) where T
+    u_data = sim.fields.u.data
+    v_data = sim.fields.v.data
+    return 0.5 * mean(u_data.^2 + v_data.^2)
+end
+
+"""
+Run simulation
+"""
+function run_simulation!(sim::SingleProcessSimulation{T}, 
+                        final_time::T; 
+                        save_interval::T=T(0.5),
+                        output_interval::Int=50) where T
+    
+    println("🚀 Starting simulation...")
+    println("   Final time: $final_time")
+    println("   Time step: $(sim.dt)")
+    println("   Save interval: $save_interval")
+    
+    next_save_time = save_interval
+    save_counter = 0
+    
+    # Save initial state
+    save_state(sim, "initial_state.jld2")
+    
+    while sim.current_time < final_time
+        # Take time step
+        time_step!(sim)
         
-        # Diagnostics (shorter, focused on key results)
-        if rank == 0
-            rms_vel = compute_rms_velocity(fields, domain)
-            println("✓ Initialization complete ($(round(init_time, digits=1))s)")
-            println("  RMS velocity: $(round(rms_vel, digits=3)) m/s ✓")
+        # Record diagnostics
+        if sim.step_count % 10 == 0
+            energy = compute_energy(sim)
+            push!(sim.energy_history, energy)
+            push!(sim.time_history, sim.current_time)
+        end
+        
+        # Output progress
+        if sim.step_count % output_interval == 0
+            energy = compute_energy(sim)
+            b_range = extrema(sim.fields.bₛ.data)
+            u_max = maximum(abs.(sim.fields.u.data))
+            v_max = maximum(abs.(sim.fields.v.data))
+            
+            @printf("Step %4d: t=%.3f, E=%.2e, b∈[%.2e,%.2e], |u|_max=%.2e, |v|_max=%.2e\n",
+                   sim.step_count, sim.current_time, energy, b_range..., u_max, v_max)
         end
         
         # Save state
-        save_initial_state("initial_state.jld2", fields, domain)
-        
-        # Create problem for time integration
-        timestepper = TimeParams{Float64}(0.001; scheme=RK3, adaptive_dt=true)
-        clock = TimeState{Float64, typeof(fields.bₛ)}(0.0, fields)
-        
-        # Set up time-based output frequency
-        save_interval = 1.0  # Save every 1.0 time units
-        output_manager = OutputManager{Float64}("output";
-                                               snapshot_time_freq=save_interval,
-                                               full_state_time_freq=5.0,  # Full state every 5.0 time units
-                                               diagnostics_time_freq=0.1, # Diagnostics every 0.1 time units
-                                               save_spectral_data=true,
-                                               verbose_output=true)
-        
-        prob = SemiGeostrophicProblem{Float64}(fields, domain, timestepper, clock;
-                                             diagnostics=DiagnosticTimeSeries{Float64}(),
-                                             output_settings=(manager=output_manager, 
-                                                            save_interval=save_interval))
-        
-        rank == 0 && println(" Starting full simulation...")
-        rank == 0 && println("   run_with_time_based_output(prob, 25.0; save_interval=2.0)")
-        
-        # Auto-start full simulation
-        run_with_time_based_output(prob, 25.0; save_interval=2.0)
-        
-        return prob, fields, domain
-        
-    catch e
-        rank == 0 && println("❌ Error: $e")
-        MPI.Abort(comm, 1)
-    finally
-        MPI.Barrier(comm)
-        if MPI.Initialized() && !MPI.Finalized() && abspath(PROGRAM_FILE) == @__FILE__
-            MPI.Finalize()
+        if sim.current_time >= next_save_time - sim.dt/2
+            save_counter += 1
+            filename = "state_$(lpad(save_counter, 3, '0')).jld2"
+            save_state(sim, filename)
+            println("💾 Saved: $filename (t=$(round(sim.current_time, digits=3)))")
+            next_save_time += save_interval
         end
+        
+        # Check for instabilities
+        if !all(isfinite.(sim.fields.bₛ.data))
+            println("❌ NaN/Inf detected! Stopping simulation.")
+            break
+        end
+        
+        max_vel = max(maximum(abs.(sim.fields.u.data)), maximum(abs.(sim.fields.v.data)))
+        if max_vel > 10.0
+            println("⚠️  Large velocities detected ($(max_vel)). Consider reducing time step.")
+        end
+    end
+    
+    println("✅ Simulation completed!")
+    println("   Final time: $(round(sim.current_time, digits=3))")
+    println("   Total steps: $(sim.step_count)")
+    
+    return sim
+end
+
+"""
+Save simulation state
+"""
+function save_state(sim::SingleProcessSimulation, filename::String)
+    try
+        jldopen(filename, "w") do file
+            file["time"] = sim.current_time
+            file["step"] = sim.step_count
+            file["dt"] = sim.dt
+            
+            # Fields
+            file["buoyancy"] = Array(sim.fields.bₛ.data)
+            file["streamfunction"] = Array(sim.fields.φ.data)
+            file["u_velocity"] = Array(sim.fields.u.data)
+            file["v_velocity"] = Array(sim.fields.v.data)
+            
+            # Grid info
+            file["grid"] = (
+                Nx=sim.domain.Nx, Ny=sim.domain.Ny, Nz=sim.domain.Nz,
+                Lx=sim.domain.Lx, Ly=sim.domain.Ly, Lz=sim.domain.Lz,
+                x=sim.domain.x, y=sim.domain.y, z=sim.domain.z
+            )
+            
+            # Diagnostics
+            if !isempty(sim.energy_history)
+                file["energy_history"] = sim.energy_history
+                file["time_history"] = sim.time_history
+            end
+            
+            # Statistics
+            energy = compute_energy(sim)
+            b_stats = extrema(sim.fields.bₛ.data)
+            file["diagnostics"] = (
+                energy=energy,
+                buoyancy_min=b_stats[1],
+                buoyancy_max=b_stats[2],
+                rms_velocity=sqrt(mean(sim.fields.u.data.^2 + sim.fields.v.data.^2))
+            )
+        end
+    catch e
+        println("❌ Failed to save $filename: $e")
     end
 end
 
-# # Execute if run directly
-# if abspath(PROGRAM_FILE) == @__FILE__
-#     run_initial_condition_example()
-# end
+"""
+Main function
+"""
+function main()
+    println("🌊 SSG Single-Process Simulation")
+    println("=" ^ 40)
+    
+    # Problem setup
+    T = Float64
+    Nx, Ny, Nz = 128, 128, 8
+    Lx, Ly = 4.0, 4.0
+    
+    println("Grid: $(Nx)×$(Ny)×$(Nz)")
+    println("Domain: [0,$(Lx)] × [0,$(Ly)] × [0,1]")
+    
+    # Create simulation
+    sim = SingleProcessSimulation{T}(Nx, Ny, Nz; Lx=Lx, Ly=Ly, Lz=1.0)
+    
+    # Initialize
+    initialize_buoyancy!(sim, T(0.1))
+    solve_streamfunction!(sim)
+    compute_velocities!(sim)
+    
+    # Initial diagnostics
+    energy = compute_energy(sim)
+    b_range = extrema(sim.fields.bₛ.data)
+    println("✓ Initial energy: $(round(energy, digits=6))")
+    println("✓ Buoyancy range: [$(round(b_range[1], digits=4)), $(round(b_range[2], digits=4))]")
+    
+    # Run simulation
+    run_simulation!(sim, T(5.0); save_interval=T(1.0), output_interval=100)
+    
+    return sim
+end
+
+# Run if executed directly
+if abspath(PROGRAM_FILE) == @__FILE__
+    # Make sure MPI is initialized for single process
+    if !MPI.Initialized()
+        MPI.Init()
+        atexit(() -> MPI.Finalized() || MPI.Finalize())
+    end
+    
+    main()
+end
