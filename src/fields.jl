@@ -64,8 +64,9 @@ Allocate all field arrays for the given domain.
 """
 function allocate_fields(domain::Domain{T}) where T
     # Real-space fields
-    bₛ   = PencilArray{T}(undef, domain.pr)
-    φₛ   = PencilArray{T}(undef, domain.pr)
+    bₛ   = PencilArray{T}(undef, domain.pr_2d)
+    φₛ   = PencilArray{T}(undef, domain.pr_2d)
+
     φ    = PencilArray{T}(undef, domain.pr)
 
     u    = PencilArray{T}(undef, domain.pr)
