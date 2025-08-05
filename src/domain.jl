@@ -2,12 +2,13 @@
 # 3D Domain setup with vertically bounded domain
 
 using PencilArrays: size_local, size_global, range_local, Pencil
+using PencilFFTs: PencilFFTPlan, Transforms
 using AbstractFFTs: fftfreq, rfftfreq
 
 const FT = Float64
 
 """
-    struct Domain{T, PA, PC, PF, PB}
+    struct Domain{T, PR, PC, PFP}
 
 Holds 3D grid information, wavenumbers, FFT plans, and pencil descriptors.
 Periodic in x,y directions; bounded in z direction.
@@ -108,11 +109,11 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     
     # Create pencil descriptors for 3D arrays
     # Real-space: full (Nx, Ny, Nz) array
-    pr  = Pencil((Nx, Ny, Nz); comm)
+    pr  = Pencil((Nx, Ny, Nz), comm)
     
     # Spectral-space: rFFT reduces y dimension to Ny÷2+1, z remains same
     Nyc = fld(Ny, 2) + 1
-    pc  = Pencil((Nx, Nyc, Nz); comm)
+    pc  = Pencil((Nx, Nyc, Nz), comm)
     
     # FFT plans: FFT on x, RFFT on y, no transform on z
     fplan = PencilFFTPlan(
@@ -161,8 +162,9 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     aliased_fraction = T(1/3)
     kxalias, kyalias =  get_aliased_wavenumbers(Nx, Nyc, aliased_fraction)
     
-    return Domain{T, typeof(pr), typeof(pc), typeof(fplan), typeof(iplan)}(
-        Nx, Ny, Nz, T(Lx), T(Ly), T(Lz), 
+    return Domain{T, typeof(pr), typeof(pc), typeof(fplan)}(
+        Nx, Ny, Nz, 
+        T(Lx), T(Ly), T(Lz), 
         x, y, z, dz, 
         kx, ky, Krsq, invKrsq, 
         mask, z_boundary, z_grid,
