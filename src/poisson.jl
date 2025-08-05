@@ -148,13 +148,13 @@ function compute_3d_laplacian!(level::SSGLevel{T}, result::PencilArray{T, 3}) wh
     
     # Compute ∂²Φ/∂X²
     ddx!(  domain,  level.Φ_hat,    level.tmp_spec)     # ∂Φ/∂X
-    ddx!(  domain,  level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂X²
+    ddx!(  domain,  level.tmp_spec, level.tmp_spec)     # ∂²Φ/∂X²
     irfft!(domain,  level.tmp_spec, level.Φ_xx)
     
     # Compute ∂²Φ/∂Y²
-    rfft!( domain, level.Φ,        level.Φ_hat)  # Refresh spectral field
+    rfft!( domain, level.Φ,        level.Φ_hat)        # Refresh spectral field
     ddy!(  domain, level.Φ_hat,    level.tmp_spec)     # ∂Φ/∂Y
-    ddy!(  domain, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂Y²
+    ddy!(  domain, level.tmp_spec, level.tmp_spec)     # ∂²Φ/∂Y²
     irfft!(domain, level.tmp_spec, level.Φ_yy)
     
     # Compute ∂²Φ/∂Z² using finite differences
@@ -174,7 +174,7 @@ function compute_3d_laplacian!(level::SSGLevel{T}, result::PencilArray{T, 3}) wh
         end
     end
     
-    return result
+    return nothing #result
 end
 
 """
@@ -219,7 +219,7 @@ function compute_d_operator!(level::SSGLevel{T}, result::PencilArray{T, 3}) wher
         end
     end
     
-    return result
+    return nothing #result
 end
 
 """

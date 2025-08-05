@@ -95,16 +95,16 @@ Compute 2D geostrophic velocities: u = -∂ψ/∂y, v = ∂ψ/∂x.
 """
 function compute_geostrophic_velocities_2d!(u, v, ψ, domain::Domain, tmp_spec1, tmp_spec2)
     # Transform streamfunction to spectral space
-    rfft_2d!(surface_domain, ψ, tmp_spec1)  # ψ̂
+    rfft_2d!(domain, ψ, tmp_spec1)  # ψ̂
     
     # Compute u = -∂ψ/∂y
-    ddy_2d!(surface_domain, tmp_spec1, tmp_spec2)  # ∂ψ̂/∂y
-    irfft_2d!(surface_domain, tmp_spec2, u)        # u = ∂ψ/∂y
+    ddy_2d!( domain,  tmp_spec1, tmp_spec2)   # ∂ψ̂/∂y
+    irfft_2d!(domain, tmp_spec2, u)           # u = ∂ψ/∂y
     u.data .*= -1  # Apply negative sign
     
     # Compute v = ∂ψ/∂x  
-    ddx_2d!(surface_domain, tmp_spec1, tmp_spec2)   # ∂ψ̂/∂x
-    irfft_2d!(surface_domain, tmp_spec2, v)         # v = ∂ψ/∂x
+    ddx_2d!(  domain, tmp_spec1, tmp_spec2)   # ∂ψ̂/∂x
+    irfft_2d!(domain, tmp_spec2, v)           # v = ∂ψ/∂x
     
     return (u, v)
 end
