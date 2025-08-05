@@ -11,6 +11,9 @@
 #   ε is an external parameter     (measure of global Rossby number)
 # ============================================================================
 
+using PencilArrays: PencilArray, local_size, local_range
+using LinearAlgebra: mul!, ldiv!
+
 """Performance monitoring for multigrid solver"""
 mutable struct PerformanceMonitor
     smoother_time::Float64
@@ -67,6 +70,9 @@ mutable struct SSGLevel{T<:AbstractFloat}
         nx_global = domain.Nx
         ny_global = domain.Ny
         nz_global = domain.Nz
+
+        PR = domain.pr
+        PC = domain.pc
         
         # Create 3D fields
         Φ = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
@@ -137,14 +143,14 @@ function compute_3d_laplacian!(level::SSGLevel{T}, result::PencilArray{T, 3}) wh
     rfft!(domain, level.Φ, level.Φ_hat)
     
     # Compute ∂²Φ/∂X²
-    ddx!(domain, level.Φ_hat, level.tmp_spec)     # ∂Φ/∂X
-    ddx!(domain, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂X²
-    irfft!(domain, level.tmp_spec, level.Φ_xx)
+    ddx!(  domain,  level.Φ_hat,    level.tmp_spec)     # ∂Φ/∂X
+    ddx!(  domain,  level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂X²
+    irfft!(domain,  level.tmp_spec, level.Φ_xx)
     
     # Compute ∂²Φ/∂Y²
-    rfft!(domain, level.Φ, level.Φ_hat)  # Refresh spectral field
-    ddy!(domain, level.Φ_hat, level.tmp_spec)     # ∂Φ/∂Y
-    ddy!(domain, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂Y²
+    rfft!( domain, level.Φ,        level.Φ_hat)  # Refresh spectral field
+    ddy!(  domain, level.Φ_hat,    level.tmp_spec)     # ∂Φ/∂Y
+    ddy!(  domain, level.tmp_spec, level.tmp_spec)  # ∂²Φ/∂Y²
     irfft!(domain, level.tmp_spec, level.Φ_yy)
     
     # Compute ∂²Φ/∂Z² using finite differences
