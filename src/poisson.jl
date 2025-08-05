@@ -11,7 +11,7 @@
 #   ε is an external parameter     (measure of global Rossby number)
 # ============================================================================
 
-using PencilArrays: PencilArray, size_local, range_local
+using PencilArrays: size_local, range_local
 using LinearAlgebra: mul!, ldiv!
 
 """Performance monitoring for multigrid solver"""
