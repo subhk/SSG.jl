@@ -46,10 +46,10 @@ struct Fields{T, PR, PC}
     tmp3::PencilArray{T, PR}        # additional scratch
     
     # Spectral arrays
-    bhat::PC        # spectral buoyancy
-    φhat::PC        # spectral streamfunction
-    tmpc::PC        # spectral scratch
-    tmpc2::PC       # spectral scratch
+    bhat::PencilArray{Complex{T},PC}        # spectral buoyancy
+    φhat::PencilArray{Complex{T},PC}        # spectral streamfunction
+    tmpc::PencilArray{Complex{T},PC}        # spectral scratch
+    tmpc2::PencilArray{Complex{T},PC}       # spectral scratch
 end
 
 """
@@ -64,26 +64,26 @@ Allocate all field arrays for the given domain.
 """
 function allocate_fields(domain::Domain{T}) where T
     # Real-space fields
-    bₛ   = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-    φₛ   = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-    φ    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    bₛ   = PencilArray{T}(undef, domain.pr)
+    φₛ   = PencilArray{T}(undef, domain.pr)
+    φ    = PencilArray{T}(undef, domain.pr)
 
-    u    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-    v    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    u    = PencilArray{T}(undef, domain.pr)
+    v    = PencilArray{T}(undef, domain.pr)
     
-    R    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-    tmp  = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-    tmp2 = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-    tmp3 = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    R    = PencilArray{T}(undef, domain.pr)
+    tmp  = PencilArray{T}(undef, domain.pr)
+    tmp2 = PencilArray{T}(undef, domain.pr)
+    tmp3 = PencilArray{T}(undef, domain.pr)
     
-    φ_mg = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
-    b_mg = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    φ_mg = PencilArray{T}(undef, domain.pr)
+    b_mg = PencilArray{T}(undef, domain.pr)
 
     # Spectral fields
-    bhat  = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
-    φhat  = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
-    tmpc  = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
-    tmpc2 = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+    bhat  = PencilArray{Complex{T}}(undef, domain.pc)
+    φhat  = PencilArray{Complex{T}}(undef, domain.pc)
+    tmpc  = PencilArray{Complex{T}}(undef, domain.pc)
+    tmpc2 = PencilArray{Complex{T}}(undef, domain.pc)
     
     return Fields{T, typeof(b), typeof(bhat)}(
         bₛ, φₛ, φ, u, v, 
@@ -94,34 +94,18 @@ function allocate_fields(domain::Domain{T}) where T
     )
 end
 
+
 """
     zero_fields!(fields::Fields)
+
 Set all fields to zero.
 """
 function zero_fields!(fields::Fields)
-    fields.bₛ.data    .= 0.0
-    fields.φₛ.data    .= 0.0
-
-    fields.φ.data     .= 0.0
-    fields.u.data     .= 0.0
-    fields.v.data     .= 0.0
-    
-    fields.φ_mg.data  .= 0.0
-    fields.b_mg.data  .= 0.0
-    
-    fields.R.data     .= 0.0
-    
-    fields.tmp.data   .= 0.0
-    fields.tmp2.data  .= 0.0
-    fields.tmp3.data  .= 0.0
-    
-    fields.bhat.data  .= 0.0
-    fields.φhat.data  .= 0.0
-    
-    fields.tmpc.data  .= 0.0
-    fields.tmpc2.data .= 0.0
-
-    #return fields
+    for f in fieldnames(Fields)
+        arr = getfield(fields, f)
+        arr.data .= zero(eltype(arr))
+    end
+    return fields
 end
 
 
