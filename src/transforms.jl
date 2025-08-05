@@ -3,7 +3,7 @@
 # Horizontal directions: spectral (FFT)
 # Vertical direction: finite differences
 
-using PencilFFTs: mul!
+using LinearAlgebra: mul!
 
 """
     rfft!(domain::Domain, realfield, specfield)

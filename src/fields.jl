@@ -24,26 +24,26 @@ Container for all simulation fields (prognostic, diagnostic, and scratch).
 - `bhat, φhat`: Spectral versions of b and φ
 - `tmpc`: Spectral scratch array
 """
-struct Fields{T, PA, PC}
+struct Fields{T, PR, PC}
     # Prognostic fields
-    bₛ::PA           # surface buoyancy anomaly
-    φₛ::PA           # 3D streamfunction at the surface
+    bₛ::PencilArray{T, PR}           # surface buoyancy anomaly
+    φₛ::PencilArray{T, PR}           # 3D streamfunction at the surface
     
 
     # Diagnostic fields
-    φ::PA           # 3D streamfunction
-    u::PA           # geostrophic x-velocity (3D)
-    v::PA           # geostrophic y-velocity (3D)
+    φ::PencilArray{T, PR}           # 3D streamfunction
+    u::PencilArray{T, PR}           # geostrophic x-velocity (3D)
+    v::PencilArray{T, PR}           # geostrophic y-velocity (3D)
 
     # Multigrid workspace
-    φ_mg::PA           # Multigrid solution workspace
-    b_mg::PA           # Multigrid RHS workspace
+    φ_mg::PencilArray{T, PR}           # Multigrid solution workspace
+    b_mg::PencilArray{T, PR}           # Multigrid RHS workspace
     
     # Scratch arrays (real space)
-    R::PA           # residual for MA equation
-    tmp::PA         # general scratch
-    tmp2::PA        # additional scratch
-    tmp3::PA        # additional scratch
+    R::PencilArray{T, PR}           # residual for MA equation
+    tmp::PencilArray{T, PR}         # general scratch
+    tmp2::PencilArray{T, PR}        # additional scratch
+    tmp3::PencilArray{T, PR}        # additional scratch
     
     # Spectral arrays
     bhat::PC        # spectral buoyancy
@@ -67,8 +67,10 @@ function allocate_fields(domain::Domain{T}) where T
     bₛ   = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     φₛ   = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     φ    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+
     u    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     v    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
+    
     R    = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     tmp  = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
     tmp2 = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
@@ -78,9 +80,9 @@ function allocate_fields(domain::Domain{T}) where T
     b_mg = PencilArray(domain.pr, zeros(T, local_size(domain.pr)))
 
     # Spectral fields
-    bhat = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
-    φhat = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
-    tmpc = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+    bhat  = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+    φhat  = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
+    tmpc  = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
     tmpc2 = PencilArray(domain.pc, zeros(Complex{T}, local_size(domain.pc)))
     
     return Fields{T, typeof(b), typeof(bhat)}(

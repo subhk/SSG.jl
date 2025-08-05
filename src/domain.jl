@@ -2,6 +2,7 @@
 # 3D Domain setup with vertically bounded domain
 
 using PencilArrays: local_size, size_global, local_range, range_local, Pencil
+using AbstractFFTs: fftfreq, rfftfreq
 
 const FT = Float64
 
@@ -28,7 +29,7 @@ Periodic in x,y directions; bounded in z direction.
 - `aliased_fraction`: Fraction of wavenumbers that are aliased (e.g., 1/3)
 - `kxalias, kyalias`: Ranges of aliased wavenumber indices
 """
-struct Domain{T, PA, PC, PF, PB}
+struct Domain{T, PR, PC, PFP}
     Nx::Int
     Ny::Int
     Nz::Int
@@ -48,16 +49,17 @@ struct Domain{T, PA, PC, PF, PB}
     invKrsq::Matrix{T}     # 1/(kr² + ky²)
 
     mask::BitMatrix
+
     z_boundary::Symbol
     z_grid::Symbol
     
     # Pencil descriptors
-    pr::PA      # real-space pencil
+    pr::PR      # real-space pencil
     pc::PC      # complex/spectral pencil
     
     # FFT plans (horizontal only)
-    fplan::PF
-    iplan::PB
+    fplan::PFP
+    iplan::PFP
     
     # Dealiasing parameters
     aliased_fraction::T
@@ -106,33 +108,54 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     
     # Create pencil descriptors for 3D arrays
     # Real-space: full (Nx, Ny, Nz) array
-    pr  = Pencil((Nx, Ny, Nz), comm)
+    pr  = Pencil((Nx, Ny, Nz); comm)
     
     # Spectral-space: rFFT reduces y dimension to Ny÷2+1, z remains same
     Nyc = fld(Ny, 2) + 1
-    pc = Pencil((Nx, Nyc, Nz), comm)
+    pc  = Pencil((Nx, Nyc, Nz); comm)
     
-    # Create FFT plans using dummy arrays (only for horizontal directions)
-    u_r = PencilArray(pr, zeros(T, local_size(pr)))
-    û_c = PencilArray(pc, zeros(Complex{T}, local_size(pc)))
+    # # Create FFT plans using dummy arrays (only for horizontal directions)
+    # u_r = PencilArray(pr, zeros(T, local_size(pr)))
+    # û_c = PencilArray(pc, zeros(Complex{T}, local_size(pc)))
     
-    # FFT only in horizontal directions (1,2), z remains in physical space
-    fplan = PencilFFTs.plan_rfft(u_r, (1, 2))
-    iplan = PencilFFTs.plan_irfft(û_c, (1, 2), Ny)
-    
+    # FFT plans: FFT on x, RFFT on y, no transform on z
+    fplan = PencilFFTPlan(
+        pr,
+        (Transforms.FFT(),   # complex→complex on x
+         Transforms.RFFT(),  # real→complex on y
+         Transforms.NoTransform());
+        flags = FFTW.MEASURE
+    )
+    iplan = fplan  # same plan used for inverse (via ldiv! or \)
+
     # Coordinate arrays
     dx = Lx / Nx
     dy = Ly / Ny
     x = dx .* (0:(Nx-1))
     y = dy .* (0:(Ny-1))
     
+    # sampling rates (reciprocal of spacing)
+    fs_x = 1/dx
+    fs_y = 1/dy
+
+    # full (signed) frequencies in x → angular wavenumbers kx
+    # AbstractFFTs.fftfreq(n, fs) returns [0, 1, …, n÷2, −n÷2+1, …, −1] * (fs/n) 
+    kx = 2π .* fftfreq(Nx, fs_x)
+
+    # full (signed) frequencies in y (if you ever need both positive & negative)
+    ky_full = 2π .* fftfreq(Ny, fs_y)
+
+    # one‐sided frequencies in y for an RFFT → angular wavenumbers ky
+    # AbstractFFTs.rfftfreq(n, fs) returns [0, 1, …, n÷2] * (fs/n) 
+    ky = 2π .* rfftfreq(Ny, fs_y)
+
     # Vertical coordinate based on grid type
     z, dz = make_vertical_grid(Nz, Lz, z_grid, z_boundary, stretch_params)
     
-    # Horizontal wavenumber arrays (periodic)
-    kx      = [(i <= Nx÷2 ? i : i - Nx) * (2π/Lx) for i in 0:(Nx-1)]
-    ky_full = [(j <= Ny÷2 ? j : j - Ny) * (2π/Ly) for j in 0:(Ny-1)]
-    ky      = ky_full[1:Nyc] # Truncated for rFFT
+    # # Horizontal wavenumber arrays (periodic)
+    # kx      = [(i <= Nx÷2 ? i : i - Nx) * (2π/Lx) for i in 0:(Nx-1)]
+    # ky_full = [(j <= Ny÷2 ? j : j - Ny) * (2π/Ly) for j in 0:(Ny-1)]
+    # ky      = ky_full[1:Nyc] # Truncated for rFFT
     
     # Dealiasing mask (only for horizontal directions)
     mask = twothirds_mask(Nx, Nyc)
