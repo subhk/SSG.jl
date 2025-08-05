@@ -1,7 +1,7 @@
 # src/utils.jl
 # Utility functions and macros for SSG solver
 
-using PencilArrays: PencilArray
+using PencilArrays: PencilArray, range_local
 
 """
     @ensuresamegrid(a, b)
@@ -172,7 +172,7 @@ count the contribution from certain k-modes twice to account for conjugate symme
 function parsevalsum2(uh, domain::Domain)
     # Get local array from PencilArray
     uh_local = uh.data
-    local_ranges = local_range(uh.pencil)
+    range_locals = range_local(uh.pencil)
     
     # Initialize local sum
     local_sum = 0.0
@@ -183,19 +183,19 @@ function parsevalsum2(uh, domain::Domain)
         # Sum over all z levels
         for k in axes(uh_local, 3)
             # k = 0 modes (count once)
-            if 1 in local_ranges[1]
-                i_local = findfirst(x -> x == 1, local_ranges[1])
+            if 1 in range_locals[1]
+                i_local = findfirst(x -> x == 1, range_locals[1])
                 local_sum += sum(abs2, @view uh_local[i_local, :, k])
             end
             
             # k = nx/2 modes (count once)
-            if domain.Nx÷2 + 1 in local_ranges[1]
-                i_local = findfirst(x -> x == domain.Nx÷2 + 1, local_ranges[1])
+            if domain.Nx÷2 + 1 in range_locals[1]
+                i_local = findfirst(x -> x == domain.Nx÷2 + 1, range_locals[1])
                 local_sum += sum(abs2, @view uh_local[i_local, :, k])
             end
             
             # 0 < k < nx/2 modes (count twice for conjugate symmetry)
-            for (i_local, i_global) in enumerate(local_ranges[1])
+            for (i_local, i_global) in enumerate(range_locals[1])
                 if 1 < i_global < domain.Nx÷2 + 1
                     local_sum += 2 * sum(abs2, @view uh_local[i_local, :, k])
                 end
@@ -230,7 +230,7 @@ conjugate symmetry by counting certain k-modes twice.
 function parsevalsum(uh, domain::Domain)
     # Get local array from PencilArray
     uh_local = uh.data
-    local_ranges = local_range(uh.pencil)
+    range_locals = range_local(uh.pencil)
     
     # Initialize local sum
     local_sum = 0.0 + 0.0im
@@ -241,19 +241,19 @@ function parsevalsum(uh, domain::Domain)
         # Sum over all z levels
         for k in axes(uh_local, 3)
             # k = 0 modes (count once)
-            if 1 in local_ranges[1]
-                i_local = findfirst(x -> x == 1, local_ranges[1])
+            if 1 in range_locals[1]
+                i_local = findfirst(x -> x == 1, range_locals[1])
                 local_sum += sum(@view uh_local[i_local, :, k])
             end
             
             # k = nx/2 modes (count once)
-            if domain.Nx÷2 + 1 in local_ranges[1]
-                i_local = findfirst(x -> x == domain.Nx÷2 + 1, local_ranges[1])
+            if domain.Nx÷2 + 1 in range_locals[1]
+                i_local = findfirst(x -> x == domain.Nx÷2 + 1, range_locals[1])
                 local_sum += sum(@view uh_local[i_local, :, k])
             end
             
             # 0 < k < nx/2 modes (count twice for conjugate symmetry)
-            for (i_local, i_global) in enumerate(local_ranges[1])
+            for (i_local, i_global) in enumerate(range_locals[1])
                 if 1 < i_global < domain.Nx÷2 + 1
                     local_sum += 2 * sum(@view uh_local[i_local, :, k])
                 end
@@ -504,7 +504,7 @@ Compute spectral diagnostics including energy in different wavenumber bands.
 """
 function compute_spectral_diagnostics(field_spec, domain::Domain)
     field_local = field_spec.data
-    local_ranges = local_range(field_spec.pencil)
+    range_locals = range_local(field_spec.pencil)
     
     # Initialize energy counters for different scales
     large_scale_energy = 0.0   # Low wavenumbers
@@ -515,8 +515,8 @@ function compute_spectral_diagnostics(field_spec, domain::Domain)
     k_cutoff = min(domain.Nx, length(domain.ky)) ÷ 3
     
     for k in axes(field_local, 3)
-        for (j_local, j_global) in enumerate(local_ranges[2])
-            for (i_local, i_global) in enumerate(local_ranges[1])
+        for (j_local, j_global) in enumerate(range_locals[2])
+            for (i_local, i_global) in enumerate(range_locals[1])
                 energy_density = abs2(field_local[i_local, j_local, k])
                 
                 # Apply conjugate symmetry factor for real FFT

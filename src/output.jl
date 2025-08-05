@@ -3,7 +3,7 @@
 # Supports time-based and step-based output frequencies
 # Includes physical and spectral field output with MPI support
 
-using PencilArrays: range_local, size_global #, size_local
+using PencilArrays: range_local, size_global 
 
 ###############################################################################
 # JLD2 OUTPUT SYSTEM FOR SEMI-GEOSTROPHIC SIMULATIONS

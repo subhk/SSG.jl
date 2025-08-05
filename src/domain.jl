@@ -114,10 +114,6 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     Nyc = fld(Ny, 2) + 1
     pc  = Pencil((Nx, Nyc, Nz); comm)
     
-    # # Create FFT plans using dummy arrays (only for horizontal directions)
-    # u_r = PencilArray(pr, zeros(T, local_size(pr)))
-    # û_c = PencilArray(pc, zeros(Complex{T}, local_size(pc)))
-    
     # FFT plans: FFT on x, RFFT on y, no transform on z
     fplan = PencilFFTPlan(
         pr,
