@@ -65,7 +65,7 @@ end
 
 
 """
-    compute_surface_geostrophic_velocities_2d!(u, v, ψ, surface_domain::SurfaceDomain, tmp_spec1, tmp_spec2)
+    compute_surface_geostrophic_velocities!(fields::Fields{T}, domain::Domain) where T
 
 Compute 2D surface geostrophic velocities: u = -∂ψ/∂y, v = ∂ψ/∂x.
 """
