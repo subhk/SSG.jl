@@ -998,7 +998,8 @@ function solve_monge_ampere_fields!(fields::Fields{T},
                                    ε::T=T(0.1)) where T
     
     # Create temporary 3D fields by extending 2D surface fields
-    Φ_3d = extend_2d_to_3d(fields.φ, domain)
+    #Φ_3d = extend_2d_to_3d(fields.φ, domain)
+    
     b_3d = extend_2d_to_3d(fields.bₛ, domain)
     
     # Solve 3D SSG equation (A1)
