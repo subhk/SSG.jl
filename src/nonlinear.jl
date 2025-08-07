@@ -32,9 +32,9 @@ function compute_jacobian!(db_dt::PencilArray{T, 2},
     # extract_surface_to_2d!(fields.φₛ, Φ, domain)    
 
     #
-    jacobian_2d!(db_dt, φ, bₛ, domain, 
-                    fields.tmpc, fields.tmpc2, 
-                    fields.tmp,  fields.tmp2)
+    jacobian_2d!(db_dt, φₛ, bₛ, domain, 
+                fields.tmpc, fields.tmpc2, 
+                fields.tmp,  fields.tmp2)
     
     # Apply negative sign for advection: ∂b/∂t = -J(ψ,b)
     db_dt.data .*= -1
