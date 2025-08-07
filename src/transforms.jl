@@ -444,39 +444,34 @@ end
 Compute 2D Jacobian J(a,b) = ∂a/∂x ∂b/∂y - ∂a/∂y ∂b/∂x using PencilFFTs.
 """
 function jacobian_2d!(output, a, b, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
-    # Transform fields to spectral space
-    rfft_2d!(domain, a, tmp_spec1)  # â
-    rfft_2d!(domain, b, tmp_spec2)  # b̂
+    # Transform to spectral space
+    rfft_2d!(domain, a, tmp_spec1)
     
     # Compute ∂a/∂x
-    ddx_2d!(domain,   tmp_spec1, tmp_spec1)  # Reuse tmp_spec1 for ∂â/∂x
-    irfft_2d!(domain, tmp_spec1, tmp_real1)  # ∂a/∂x in physical space
-    
-    # Compute ∂a/∂y (need to reload â)
-    rfft_2d!(domain, a, tmp_spec1)            # Reload â
-    ddy_2d!(domain,   tmp_spec1, tmp_spec1)   # ∂â/∂y
-    irfft_2d!(domain, tmp_spec1, tmp_real2)   # ∂a/∂y in physical space
-    
-    # Compute ∂b/∂x
-    ddx_2d!(domain,   tmp_spec2, tmp_spec1)    # ∂b̂/∂x
-    irfft_2d!(domain, tmp_spec1, output)       # ∂b/∂x in physical space (temporary)
+    ddx_2d!(domain, tmp_spec1, tmp_spec2)
+    irfft_2d!(domain, tmp_spec2, tmp_real1)  # ∂a/∂x
     
     # Compute ∂b/∂y
-    rfft_2d!(domain, b, tmp_spec2)              # Reload b̂
-    ddy_2d!(domain,   tmp_spec2, tmp_spec2)     # ∂b̂/∂y
-    irfft_2d!(domain, tmp_spec2, tmp_spec1)     # ∂b/∂y in physical space (reuse tmp_spec1)
+    rfft_2d!(domain, b, tmp_spec1)
+    ddy_2d!(domain, tmp_spec1, tmp_spec2)
+    irfft_2d!(domain, tmp_spec2, tmp_real2)  # ∂b/∂y
     
-    # Compute Jacobian: J = ∂a/∂x * ∂b/∂y - ∂a/∂y * ∂b/∂x
-    output_data = output.data
-    ax_data = tmp_real1.data      # ∂a/∂x
-    ay_data = tmp_real2.data      # ∂a/∂y
-    bx_data = output.data         # ∂b/∂x (already in output)
-    by_data = tmp_spec1.data      # ∂b/∂y (reusing tmp_spec1 as real array)
+    # First term: ∂a/∂x * ∂b/∂y
+    output.data .= tmp_real1.data .* tmp_real2.data
     
-    for i in eachindex(output_data)
-        output_data[i] = ax_data[i] * by_data[i] - ay_data[i] * bx_data[i]
-    end
+    # Compute ∂a/∂y
+    rfft_2d!(domain, a, tmp_spec1)
+    ddy_2d!(domain, tmp_spec1, tmp_spec2)
+    irfft_2d!(domain, tmp_spec2, tmp_real1)  # ∂a/∂y
     
+    # Compute ∂b/∂x
+    rfft_2d!(domain, b, tmp_spec1)
+    ddx_2d!(domain, tmp_spec1, tmp_spec2)
+    irfft_2d!(domain, tmp_spec2, tmp_real2)  # ∂b/∂x
+    
+    # Complete Jacobian: J = ∂a/∂x * ∂b/∂y - ∂a/∂y * ∂b/∂x
+    output.data .-= tmp_real1.data .* tmp_real2.data   
+     
     return nothing
 end
 
