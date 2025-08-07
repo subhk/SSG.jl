@@ -56,7 +56,7 @@ function compute_tendency!(db_dt::PencilArray{T, 2},
                           params::TimeParams{T}) where T
     
     # Compute Jacobian
-    compute_jacobian!(db_dt, fields.φ, fields.bₛ, fields, domain)
+    compute_jacobian!(db_dt, fields.φₛ, fields.bₛ, fields, domain)
     
     # # Apply dealiasing
     # rfft!(domain, db_dt, fields.tmpc)
@@ -88,22 +88,24 @@ end
 
 
 """
-    compute_geostrophic_velocities_2d!(u, v, ψ, surface_domain::SurfaceDomain, tmp_spec1, tmp_spec2)
+    compute_surface_geostrophic_velocities_2d!(u, v, ψ, surface_domain::SurfaceDomain, tmp_spec1, tmp_spec2)
 
-Compute 2D geostrophic velocities: u = -∂ψ/∂y, v = ∂ψ/∂x.
+Compute 2D surface geostrophic velocities: u = -∂ψ/∂y, v = ∂ψ/∂x.
 """
-function compute_geostrophic_velocities_2d!(u, v, ψ, domain::Domain, tmp_spec1, tmp_spec2)
-    # Transform streamfunction to spectral space
-    rfft_2d!(domain, ψ, tmp_spec1)  # ψ̂
+function compute_surface_geostrophic_velocities!(fields::Fields{T}, 
+                                        domain::Domain) where T
+                                        
+    # Use 2D transforms for surface fields
+    rfft_2d!(domain, fields.φₛ, fields.φhat)
     
-    # Compute u = -∂ψ/∂y
-    ddy_2d!( domain,  tmp_spec1, tmp_spec2)   # ∂ψ̂/∂y
-    irfft_2d!(domain, tmp_spec2, u)           # u = ∂ψ/∂y
-    u.data .*= -1  # Apply negative sign
+    # Compute u = -∂φ/∂y (2D)
+    ddy_2d!(domain, fields.φhat, fields.tmpc)
+    irfft_2d!(domain, fields.tmpc, fields.u)
+    fields.u.data .*= -1
     
-    # Compute v = ∂ψ/∂x  
-    ddx_2d!(  domain, tmp_spec1, tmp_spec2)   # ∂ψ̂/∂x
-    irfft_2d!(domain, tmp_spec2, v)           # v = ∂ψ/∂x
+    # Compute v = ∂φ/∂x (2D)
+    ddx_2d!(domain, fields.φhat, fields.tmpc)
+    irfft_2d!(domain, fields.tmpc, fields.v)
     
-    return (u, v)
+    return nothing
 end
