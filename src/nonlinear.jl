@@ -20,30 +20,6 @@
 ###############################################################################
 
 """
-Compute Jacobian J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x
-"""
-function compute_jacobian!(db_dt::PencilArray{T, 2}, 
-                          φₛ::PencilArray{T, 2}, 
-                          bₛ::PencilArray{T, 2}, 
-                          fields::Fields{T}, 
-                          domain::Domain) where T
-    
-    # # getting streamfunction at the surface
-    # extract_surface_to_2d!(fields.φₛ, Φ, domain)    
-
-    #
-    jacobian_2d!(db_dt, φₛ, bₛ, domain, 
-                fields.tmpc, fields.tmpc2, 
-                fields.tmp,  fields.tmp2)
-    
-    # Apply negative sign for advection: ∂b/∂t = -J(ψ,b)
-    db_dt.data .*= -1
-    
-    return db_dt
-end
-
-
-"""
 Compute buoyancy tendency for surface semi-geostrophic equations
 Only evolves SURFACE buoyancy - streamfunction is diagnostic
 ```math
@@ -67,24 +43,25 @@ function compute_tendency!(db_dt::PencilArray{T, 2},
 end
 
 
-# """
-# Compute geostrophic velocities from streamfunction
-# """
-# function compute_geostrophic_velocities!(fields::Fields{T}, domain::Domain) where T
-#     # Transform streamfunction to spectral space
-#     rfft!(domain, fields.φ, fields.φhat)
+"""
+Compute Jacobian J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x
+"""
+function compute_jacobian!(db_dt::PencilArray{T, 2}, 
+                          φₛ::PencilArray{T, 2}, 
+                          bₛ::PencilArray{T, 2}, 
+                          fields::Fields{T}, 
+                          domain::Domain) where T
     
-#     # Compute u = -∂φ/∂y
-#     ddy!(domain, fields.φhat, fields.tmpc)
-#     irfft!(domain, fields.tmpc, fields.u)
-#     fields.u.data .*= -1
+    #
+    jacobian_2d!(db_dt, φₛ, bₛ, domain, 
+                fields.tmpc_2d, fields.tmpc2_2d, 
+                fields.tmp,  fields.tmp2)
     
-#     # Compute v = ∂φ/∂x  
-#     ddx!(domain, fields.φhat, fields.tmpc)
-#     irfft!(domain, fields.tmpc, fields.v)
+    # Apply negative sign for advection: ∂b/∂t = -J(ψ,b)
+    db_dt.data .*= -1
     
-#     return nothing
-# end
+    return db_dt
+end
 
 
 """
@@ -100,12 +77,12 @@ function compute_surface_geostrophic_velocities!(fields::Fields{T},
     
     # Compute u = -∂φ/∂y (2D)
     ddy_2d!(domain, fields.φshat, fields.tmpc_2d)
-    irfft_2d!(domain, fields.tmpc, fields.u)
+    irfft_2d!(domain, fields.tmpc_2d, fields.u)
     fields.u.data .*= -1
     
     # Compute v = ∂φ/∂x (2D)
-    ddx_2d!(domain, fields.φhat, fields.tmpc)
-    irfft_2d!(domain, fields.tmpc, fields.v)
+    ddx_2d!(domain, fields.φshat, fields.tmpc_2d)
+    irfft_2d!(domain, fields.tmpc_2d, fields.v)
     
     return nothing
 end

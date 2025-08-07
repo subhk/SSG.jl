@@ -26,36 +26,36 @@ Container for all simulation fields (prognostic, diagnostic, and scratch).
 """
 struct Fields{T, PR2D, PR3D, PC2D, PC3D}
     # Prognostic fields (2D surface)
-    bₛ::PencilArray{T, 2, PR2D}      # surface buoyancy anomaly (2D)
-    φₛ::PencilArray{T, 2, PR2D}      # surface streamfunction (2D)
+    bₛ::PencilArray{T, 2, PR2D}                     # surface buoyancy anomaly (2D)
+    φₛ::PencilArray{T, 2, PR2D}                     # surface streamfunction (2D)
     
     # Diagnostic fields (3D for solver)
-    φ::PencilArray{T, 3, PR3D}       # 3D streamfunction for solver
+    φ::PencilArray{T, 3, PR3D}                      # 3D streamfunction for solver
 
-    u::PencilArray{T, 2, PR2D}       # surface u-velocity (2D)
-    v::PencilArray{T, 2, PR2D}       # surface v-velocity (2D)
+    u::PencilArray{T, 2, PR2D}                      # surface u-velocity (2D)
+    v::PencilArray{T, 2, PR2D}                      # surface v-velocity (2D)
     
     # Multigrid workspace (3D)
-    φ_mg::PencilArray{T, 3, PR3D}    # Multigrid solution workspace
-    b_mg::PencilArray{T, 3, PR3D}    # Multigrid RHS workspace
+    φ_mg::PencilArray{T, 3, PR3D}                   # Multigrid solution workspace
+    b_mg::PencilArray{T, 3, PR3D}                   # Multigrid RHS workspace
     
     # Scratch arrays (2D for surface)
-    R::PencilArray{T, 2, PR2D}       # residual for MA equation (2D)
-    tmp::PencilArray{T, 2, PR2D}     # general scratch (2D)
-    tmp2::PencilArray{T, 2, PR2D}    # additional scratch (2D)
-    tmp3::PencilArray{T, 2, PR2D}    # additional scratch (2D)
+    R::PencilArray{T, 2, PR2D}                      # residual for MA equation (2D)
+    tmp::PencilArray{T, 2, PR2D}                    # general scratch (2D)
+    tmp2::PencilArray{T, 2, PR2D}                   # additional scratch (2D)
+    tmp3::PencilArray{T, 2, PR2D}                   # additional scratch (2D)
     
     # Spectral arrays (2D)
-    bshat::PencilArray{Complex{T}, 2, PC2D}   # spectral surface buoyancy
-    φshat::PencilArray{Complex{T}, 2, PC2D}   # spectral surface streamfunction
+    bshat::PencilArray{Complex{T}, 2, PC2D}         # spectral surface buoyancy
+    φshat::PencilArray{Complex{T}, 2, PC2D}         # spectral surface streamfunction
 
-    φhat::PencilArray{Complex{T},  3, PC3D}   # spectral surface streamfunction
+    φhat::PencilArray{Complex{T},  3, PC3D}         # spectral surface streamfunction
 
-    tmpc_2d::PencilArray{Complex{T}, 2, PC2D}   # spectral scratch
-    tmpc1_2d::PencilArray{Complex{T}, 2, PC2D}  # spectral scratch
+    tmpc_2d::PencilArray{Complex{T},  2, PC2D}      # spectral scratch
+    tmpc1_2d::PencilArray{Complex{T}, 2, PC2D}      # spectral scratch
 
-    tmpc_3d::PencilArray{Complex{T},  3, PC3D}   # spectral scratch
-    tmpc1_3d::PencilArray{Complex{T}, 3, PC3D}  # spectral scratch
+    tmpc_3d::PencilArray{Complex{T},  3, PC3D}      # spectral scratch
+    tmpc1_3d::PencilArray{Complex{T}, 3, PC3D}      # spectral scratch
 end
 
 """
