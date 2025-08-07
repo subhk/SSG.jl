@@ -1082,69 +1082,69 @@ end
 # COMPREHENSIVE EXAMPLE USAGE
 # ============================================================================
 
-"""
-Complete example showing all output capabilities
-"""
-function demo_complete_jld2_workflow()
-    println("  Complete JLD2 Output Workflow Demo")
-    println("=" ^ 45)
+# """
+# Complete example showing all output capabilities
+# """
+# function demo_complete_jld2_workflow()
+#     println("  Complete JLD2 Output Workflow Demo")
+#     println("=" ^ 45)
     
-    # This would be your actual simulation setup
-    # dom = Domain(512, 512, 2π, 2π, MPI.COMM_WORLD)
+#     # This would be your actual simulation setup
+#     # dom = Domain(512, 512, 2π, 2π, MPI.COMM_WORLD)
     
-    # Create advanced output manager
-    # output_manager = AdvancedOutputManager{Float64}("production_run";
-    #     # Time-based frequencies
-    #     snapshot_time_freq=0.1,      # Every 0.1 time units
-    #     spectral_time_freq=0.5,      # Every 0.5 time units  
-    #     diagnostics_time_freq=0.05,  # Every 0.05 time units
-    #     full_state_time_freq=2.0,    # Every 2.0 time units
-    #     
-    #     # Options
-    #     save_spectral_data=true,
-    #     compress_files=true,
-    #     verbose_output=true)
+#     # Create advanced output manager
+#     # output_manager = AdvancedOutputManager{Float64}("production_run";
+#     #     # Time-based frequencies
+#     #     snapshot_time_freq=0.1,      # Every 0.1 time units
+#     #     spectral_time_freq=0.5,      # Every 0.5 time units  
+#     #     diagnostics_time_freq=0.05,  # Every 0.05 time units
+#     #     full_state_time_freq=2.0,    # Every 2.0 time units
+#     #     
+#     #     # Options
+#     #     save_spectral_data=true,
+#     #     compress_files=true,
+#     #     verbose_output=true)
     
-    # Initialize problem
-    # prob = SemiGeostrophicProblem(dom; scheme=RK3, dt=0.005, adaptive_dt=true)
-    # set_initial_conditions!(prob, initialize_taylor_green!; amplitude=2.0)
-    # set_initial_conditions!(prob, add_random_noise!; noise_amplitude=0.2)
+#     # Initialize problem
+#     # prob = SemiGeostrophicProblem(dom; scheme=RK3, dt=0.005, adaptive_dt=true)
+#     # set_initial_conditions!(prob, initialize_taylor_green!; amplitude=2.0)
+#     # set_initial_conditions!(prob, add_random_noise!; noise_amplitude=0.2)
     
-    # Save initial state
-    # save_simulation_state_full("initial_state.jld2", prob; 
-    #     save_spectral=true, save_metadata=true, compress=true)
+#     # Save initial state
+#     # save_simulation_state_full("initial_state.jld2", prob; 
+#     #     save_spectral=true, save_metadata=true, compress=true)
     
-    # Main simulation loop with output
-    # target_times = 0.1:0.1:10.0
-    # for t_target in target_times
-    #     step_until!(prob, t_target)
-    #     process_all_outputs!(output_manager, prob)
-    #     
-    #     # Optional: save checkpoint every 5 time units
-    #     if t_target % 5.0 ≈ 0.0
-    #         checkpoint_file = "checkpoint_t$(t_target).jld2"
-    #         save_simulation_state_full(checkpoint_file, prob)
-    #     end
-    # end
+#     # Main simulation loop with output
+#     # target_times = 0.1:0.1:10.0
+#     # for t_target in target_times
+#     #     step_until!(prob, t_target)
+#     #     process_all_outputs!(output_manager, prob)
+#     #     
+#     #     # Optional: save checkpoint every 5 time units
+#     #     if t_target % 5.0 ≈ 0.0
+#     #         checkpoint_file = "checkpoint_t$(t_target).jld2"
+#     #         save_simulation_state_full(checkpoint_file, prob)
+#     #     end
+#     # end
     
-    # Create output summary
-    # create_output_manifest("production_run")
-    # process_output_series("production_run")
+#     # Create output summary
+#     # create_output_manifest("production_run")
+#     # process_output_series("production_run")
     
-    println("\nComplete workflow features:")
-    println("   Time-based output frequencies")
-    println("   Physical and spectral field storage")
-    println("   Automatic checkpoint/restart")
-    println("   Comprehensive metadata preservation")
-    println("   MPI-aware distributed data gathering")
-    println("   Compressed storage for efficiency")
-    println("   Cross-platform data compatibility")
-    println("   Batch processing and analysis tools")
-    println("   Output manifest for reproducibility")
-    println("   Complete validation and error checking")
+#     println("\nComplete workflow features:")
+#     println("   Time-based output frequencies")
+#     println("   Physical and spectral field storage")
+#     println("   Automatic checkpoint/restart")
+#     println("   Comprehensive metadata preservation")
+#     println("   MPI-aware distributed data gathering")
+#     println("   Compressed storage for efficiency")
+#     println("   Cross-platform data compatibility")
+#     println("   Batch processing and analysis tools")
+#     println("   Output manifest for reproducibility")
+#     println("   Complete validation and error checking")
     
-    return true
-end
+#     return true
+# end
 
 # # Run demos if executed directly
 # if abspath(PROGRAM_FILE) == @__FILE__
