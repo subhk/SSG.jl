@@ -24,32 +24,31 @@ Container for all simulation fields (prognostic, diagnostic, and scratch).
 - `bhat, φhat`: Spectral versions of b and φ
 - `tmpc`: Spectral scratch array
 """
-struct Fields{T, PR, PC}
-    # Prognostic fields
-    bₛ::PencilArray{T, PR}           # surface buoyancy anomaly
-    φₛ::PencilArray{T, PR}           # 2D streamfunction at the surface
+struct Fields{T, PR2D, PR3D, PC2D, PC3D}
+    # Prognostic fields (2D surface)
+    bₛ::PencilArray{T, 2, PR2D}      # surface buoyancy anomaly (2D)
+    φₛ::PencilArray{T, 2, PR2D}      # surface streamfunction (2D)
     
-
-    # Diagnostic fields
-    φ::PencilArray{T, PR}           # 3D streamfunction
-    u::PencilArray{T, PR}           # geostrophic x-velocity (3D)
-    v::PencilArray{T, PR}           # geostrophic y-velocity (3D)
-
-    # Multigrid workspace
-    φ_mg::PencilArray{T, PR}           # Multigrid solution workspace
-    b_mg::PencilArray{T, PR}           # Multigrid RHS workspace
+    # Diagnostic fields (3D for solver)
+    φ::PencilArray{T, 3, PR3D}       # 3D streamfunction for solver
+    u::PencilArray{T, 2, PR2D}       # surface u-velocity (2D)
+    v::PencilArray{T, 2, PR2D}       # surface v-velocity (2D)
     
-    # Scratch arrays (real space)
-    R::PencilArray{T,    PR}           # residual for MA equation
-    tmp::PencilArray{T,  PR}           # general scratch
-    tmp2::PencilArray{T, PR}           # additional scratch
-    tmp3::PencilArray{T, PR}           # additional scratch
+    # Multigrid workspace (3D)
+    φ_mg::PencilArray{T, 3, PR3D}    # Multigrid solution workspace
+    b_mg::PencilArray{T, 3, PR3D}    # Multigrid RHS workspace
     
-    # Spectral arrays
-    bhat::PencilArray{Complex{T},  PC}        # spectral buoyancy
-    φhat::PencilArray{Complex{T},  PC}        # spectral streamfunction
-    tmpc::PencilArray{Complex{T},  PC}        # spectral scratch
-    tmpc2::PencilArray{Complex{T}, PC}        # spectral scratch
+    # Scratch arrays (2D for surface)
+    R::PencilArray{T, 2, PR2D}       # residual for MA equation (2D)
+    tmp::PencilArray{T, 2, PR2D}     # general scratch (2D)
+    tmp2::PencilArray{T, 2, PR2D}    # additional scratch (2D)
+    tmp3::PencilArray{T, 2, PR2D}    # additional scratch (2D)
+    
+    # Spectral arrays (2D)
+    bhat::PencilArray{Complex{T}, 2, PC2D}   # spectral buoyancy
+    φhat::PencilArray{Complex{T}, 2, PC2D}   # spectral streamfunction
+    tmpc::PencilArray{Complex{T}, 2, PC2D}   # spectral scratch
+    tmpc2::PencilArray{Complex{T}, 2, PC2D}  # spectral scratch
 end
 
 """
