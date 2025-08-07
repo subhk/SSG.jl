@@ -31,6 +31,7 @@ struct Fields{T, PR2D, PR3D, PC2D, PC3D}
     
     # Diagnostic fields (3D for solver)
     φ::PencilArray{T, 3, PR3D}       # 3D streamfunction for solver
+
     u::PencilArray{T, 2, PR2D}       # surface u-velocity (2D)
     v::PencilArray{T, 2, PR2D}       # surface v-velocity (2D)
     
@@ -45,10 +46,16 @@ struct Fields{T, PR2D, PR3D, PC2D, PC3D}
     tmp3::PencilArray{T, 2, PR2D}    # additional scratch (2D)
     
     # Spectral arrays (2D)
-    bhat::PencilArray{Complex{T}, 2, PC2D}   # spectral buoyancy
-    φhat::PencilArray{Complex{T}, 2, PC2D}   # spectral streamfunction
-    tmpc::PencilArray{Complex{T}, 2, PC2D}   # spectral scratch
-    tmpc2::PencilArray{Complex{T}, 2, PC2D}  # spectral scratch
+    bshat::PencilArray{Complex{T}, 2, PC2D}   # spectral surface buoyancy
+    φshat::PencilArray{Complex{T}, 2, PC2D}   # spectral surface streamfunction
+
+    φhat::PencilArray{Complex{T},  3, PC3D}   # spectral surface streamfunction
+
+    tmpc_2d::PencilArray{Complex{T}, 2, PC2D}   # spectral scratch
+    tmpc1_2d::PencilArray{Complex{T}, 2, PC2D}  # spectral scratch
+
+    tmpc_3d::PencilArray{Complex{T},  3, PC3D}   # spectral scratch
+    tmpc1_3d::PencilArray{Complex{T}, 3, PC3D}  # spectral scratch
 end
 
 """
@@ -63,39 +70,46 @@ Allocate all field arrays for the given domain.
 """
 function allocate_fields(domain::Domain{T}) where T
     # 2D fields for surface
-    bₛ   = PencilArray{T}(undef, domain.pr_2d)
-    φₛ   = PencilArray{T}(undef, domain.pr_2d)
+    bₛ   = PencilArray{T}(undef, domain.pr2d)
+    φₛ   = PencilArray{T}(undef, domain.pr2d)
     
     # 3D field for solver
-    φ    = PencilArray{T}(undef, domain.pr)
+    φ    = PencilArray{T}(undef, domain.pr3d)
     
     # 2D velocity fields
-    u    = PencilArray{T}(undef, domain.pr_2d)
-    v    = PencilArray{T}(undef, domain.pr_2d)
-    
-    # 2D scratch arrays
-    R    = PencilArray{T}(undef, domain.pr_2d)
-    tmp  = PencilArray{T}(undef, domain.pr_2d)
-    tmp2 = PencilArray{T}(undef, domain.pr_2d)
-    tmp3 = PencilArray{T}(undef, domain.pr_2d)
+    u    = PencilArray{T}(undef, domain.pr2d)
+    v    = PencilArray{T}(undef, domain.pr2d)
     
     # 3D arrays for multigrid
-    φ_mg = PencilArray{T}(undef, domain.pr)
-    b_mg = PencilArray{T}(undef, domain.pr)
+    φ_mg = PencilArray{T}(undef, domain.pr3d)
+    b_mg = PencilArray{T}(undef, domain.pr3d)
+
+    # 2D scratch arrays
+    R    = PencilArray{T}(undef, domain.pr2d)
+    tmp  = PencilArray{T}(undef, domain.pr2d)
+    tmp2 = PencilArray{T}(undef, domain.pr2d)
+    tmp3 = PencilArray{T}(undef, domain.pr2d)
     
     # 2D Spectral fields
-    bhat  = PencilArray{Complex{T}}(undef, domain.pc_2d)
-    φhat  = PencilArray{Complex{T}}(undef, domain.pc_2d)
-    tmpc  = PencilArray{Complex{T}}(undef, domain.pc_2d)
-    tmpc2 = PencilArray{Complex{T}}(undef, domain.pc_2d)
+    bshat  = PencilArray{Complex{T}}(undef, domain.pc2d)
+    φshat  = PencilArray{Complex{T}}(undef, domain.pc2d)
+
+    φhat   = PencilArray{Complex{T}}(undef, domain.pc3d)
+
+    tmpc_2d  = PencilArray{Complex{T}}(undef, domain.pc2d)
+    tmpc2_2d = PencilArray{Complex{T}}(undef, domain.pc2d)
+
+    tmpc_3d  = PencilArray{Complex{T}}(undef, domain.pc3d)
+    tmpc2_3d = PencilArray{Complex{T}}(undef, domain.pc3d)
     
-    return Fields{T, typeof(domain.pr_2d), typeof(domain.pr), 
-                  typeof(domain.pc_2d), typeof(domain.pc)}(
+    return Fields{T, typeof(domain.pr2d), typeof(domain.pr3d), 
+                  typeof(domain.pc2d), typeof(domain.pc3d)}(
         bₛ, φₛ, φ, u, v, 
-        φ_mg, b_mg, R, 
-        tmp, tmp2, tmp3, 
-        bhat, φhat, 
-        tmpc, tmpc2
+        φ_mg, b_mg, 
+        R, tmp, tmp2, tmp3,
+        bshat, φshat, φhat, 
+        tmpc_2d, tmpc2_2d,
+        tmpc_3d, tmpc2_3d,
     )
 end
 
