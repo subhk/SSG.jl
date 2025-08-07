@@ -401,11 +401,19 @@ function save_spectral_snapshot(filename::String, prob::SemiGeostrophicProblem{T
     return filename
 end
 
+
 """
-Compute radially averaged energy spectrum
+Compute radially averaged energy spectrum for 2D or 3D spectral data
 """
-function compute_energy_spectrum(φhat::Array{Complex{T}, 2}, domain::Domain) where T
-    nx, ny = size(φhat)
+function compute_energy_spectrum(φhat::Array{Complex{T}, N}, 
+                            domain::Domain; 
+                            is_2d::Bool=false) where {T, N}
+    if is_2d
+        nx, ny = size(φhat)
+        nz = 1
+    else
+        nx, ny, nz = size(φhat)
+    end
     
     # Create wavenumber arrays
     kx = rfftfreq(domain.Nx, 2π*domain.Nx/domain.Lx)
@@ -417,15 +425,34 @@ function compute_energy_spectrum(φhat::Array{Complex{T}, 2}, domain::Domain) wh
     energy_spectrum = zeros(T, length(k_bins))
     
     # Compute energy spectrum
-    for (j, ky_val) in enumerate(ky)
-        for (i, kx_val) in enumerate(kx)
-            k_mag = sqrt(kx_val^2 + ky_val^2)
-            k_bin = round(Int, k_mag)
-            
-            if k_bin <= k_max
-                # Energy density: 0.5 * |∇φ|² = 0.5 * k² * |φ̂|²
-                energy_density = 0.5 * k_mag^2 * abs2(φhat[i,j])
-                energy_spectrum[k_bin+1] += energy_density
+    if is_2d
+        # 2D case
+        for (j, ky_val) in enumerate(ky)
+            for (i, kx_val) in enumerate(kx)
+                k_mag = sqrt(kx_val^2 + ky_val^2)
+                k_bin = round(Int, k_mag)
+                
+                if k_bin <= k_max
+                    # Energy density: 0.5 * |∇φ|² = 0.5 * k² * |φ̂|²
+                    energy_density = 0.5 * k_mag^2 * abs2(φhat[i,j])
+                    energy_spectrum[k_bin+1] += energy_density
+                end
+            end
+        end
+    else
+        # 3D case - sum over all z levels
+        for k in 1:nz
+            for (j, ky_val) in enumerate(ky)
+                for (i, kx_val) in enumerate(kx)
+                    k_mag = sqrt(kx_val^2 + ky_val^2)
+                    k_bin = round(Int, k_mag)
+                    
+                    if k_bin <= k_max
+                        # Energy density: 0.5 * |∇φ|² = 0.5 * k² * |φ̂|²
+                        energy_density = 0.5 * k_mag^2 * abs2(φhat[i,j,k])
+                        energy_spectrum[k_bin+1] += energy_density
+                    end
+                end
             end
         end
     end
