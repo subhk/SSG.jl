@@ -812,6 +812,43 @@ function distribute_from_root!(field::PencilArray{T, 2},
     return nothing
 end
 
+
+"""
+Distribute 3D data from root to all processes
+"""
+function distribute_from_root!(field::PencilArray{T, 3}, 
+                               global_data::Union{Array{T, 3}, Nothing}) where T
+    comm = field.pencil.comm
+    rank = MPI.Comm_rank(comm)
+    
+    # Get expected global dimensions
+    nx_global, ny_global, nz_global = size_global(field.pencil)
+    
+    if rank == 0
+        # Validate input on root
+        if global_data === nothing
+            error("Root process must provide global_data")
+        end
+        if size(global_data) != (nx_global, ny_global, nz_global)
+            error("Global data size $(size(global_data)) doesn't match expected ($nx_global, $ny_global, $nz_global)")
+        end
+        
+        # Broadcast the global data
+        MPI.Bcast!(global_data, 0, comm)
+    else
+        # Receive broadcast
+        global_data = zeros(T, nx_global, ny_global, nz_global)
+        MPI.Bcast!(global_data, 0, comm)
+    end
+    
+    # Extract local portion on all processes
+    range_locals = range_local(field.pencil)
+    field.data .= global_data[range_locals[1], range_locals[2], range_locals[3]]
+    
+    return nothing
+end
+
+
 # =========================
 # RESTART FUNCTIONALITY
 # =========================
