@@ -23,7 +23,7 @@
 Compute Jacobian J(ψ,b) = ∂ψ/∂x ∂b/∂y - ∂ψ/∂y ∂b/∂x
 """
 function compute_jacobian!(db_dt::PencilArray{T, 2}, 
-                          φ::PencilArray{T, 3}, 
+                          φₛ::PencilArray{T, 2}, 
                           bₛ::PencilArray{T, 2}, 
                           fields::Fields{T}, 
                           domain::Domain) where T
