@@ -895,7 +895,7 @@ function create_surface_field(domain::Domain, ::Type{T}) where T
     # Create 2D pencil for surface boundary conditions
     try
         # Try to use 2D pencil if available
-        pencil_2d = Pencil((domain.Nx, domain.Ny), domain.pr.comm)
+        pencil_2d = Pencil((domain.Nx, domain.Ny), domain.pr2d.comm)
         return PencilArray(pencil_2d, zeros(T, size_local(pencil_2d)))
     catch
         # Fallback: extract surface from 3D field
@@ -1022,7 +1022,7 @@ function extend_2d_to_3d(field_2d::PencilArray{T, 2},
                         domain::Domain) where T
 
     # Create 3D field
-    field_3d = PencilArray(domain.pr, zeros(T, size_local(domain.pr)))
+    field_3d = PencilArray(domain.pr3d, zeros(T, size_local(domain.pr3d)))
     
     # Copy 2D field to all z levels (initial guess)
     field_2d_local = field_2d.data
@@ -1068,7 +1068,7 @@ function compute_ma_residual_fields!(fields::Fields{T},
     # Create temporary SSG level for residual computation
     temp_level = SSGLevel{T}(domain, 1)
     copy_field!(temp_level.Φ, Φ_3d)
-    set_surface_bc_from_buoyancy!(temp_level, extend_2d_to_3d(fields.b, domain))
+    set_surface_bc_from_buoyancy!(temp_level, extend_2d_to_3d(fields.bₛ, domain))
     
     # Compute SSG residual
     compute_ssg_residual!(temp_level, ε)
@@ -1084,109 +1084,109 @@ end
 # DEMO AND TESTING FUNCTIONS
 # =============================================================================
 
-"""
-Demo function for SSG equation solver
-"""
-function demo_ssg_solver()
-    # Initialize MPI
-    MPI.Init()
-    comm = MPI.COMM_WORLD
-    rank = MPI.Comm_rank(comm)
+# """
+# Demo function for SSG equation solver
+# """
+# function demo_ssg_solver()
+#     # Initialize MPI
+#     MPI.Init()
+#     comm = MPI.COMM_WORLD
+#     rank = MPI.Comm_rank(comm)
     
-    if rank == 0
-        println("🌊 SSG Equation Solver Demo")
-        println("=" ^ 30)
-        println("Solving: ∇²Φ = εDΦ")
-        println("where DΦ = ∂⁴Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²")
-        println("Boundary conditions:")
-        println("  ∂Φ/∂Z = b̃s  at Z = 0 (surface)")
-        println("  ∂Φ/∂Z = 0   at Z = -1 (bottom)")
-        println()
-    end
+#     if rank == 0
+#         println("🌊 SSG Equation Solver Demo")
+#         println("=" ^ 30)
+#         println("Solving: ∇²Φ = εDΦ")
+#         println("where DΦ = ∂⁴Φ/∂X²∂Y² - (∂²Φ/∂X∂Y)²")
+#         println("Boundary conditions:")
+#         println("  ∂Φ/∂Z = b̃s  at Z = 0 (surface)")
+#         println("  ∂Φ/∂Z = 0   at Z = -1 (bottom)")
+#         println()
+#     end
     
-    try
-        # Problem setup
-        nx_global, ny_global, nz_global = 64, 64, 8
-        Lx, Ly, Lz = 2π, 2π, 1.0
-        T = Float64
-        ε = 0.1  # External parameter
+#     try
+#         # Problem setup
+#         nx_global, ny_global, nz_global = 64, 64, 8
+#         Lx, Ly, Lz = 2π, 2π, 1.0
+#         T = Float64
+#         ε = 0.1  # External parameter
         
-        if rank == 0
-            println("Problem size: $(nx_global)×$(ny_global)×$(nz_global)")
-            println("Domain: [0,$(Lx)] × [0,$(Ly)] × [-1,0]")
-            println("ε parameter: $(ε)")
-            println()
-        end
+#         if rank == 0
+#             println("Problem size: $(nx_global)×$(ny_global)×$(nz_global)")
+#             println("Domain: [0,$(Lx)] × [0,$(Ly)] × [-1,0]")
+#             println("ε parameter: $(ε)")
+#             println()
+#         end
         
-        # Create domain
-        domain = make_domain(nx_global, ny_global, nz_global, Lx, Ly, Lz, comm)
+#         # Create domain
+#         domain = make_domain(nx_global, ny_global, nz_global, Lx, Ly, Lz, comm)
         
-        # Create initial fields
-        Φ_initial = PencilArray(domain.pr, zeros(T, size_local(domain.pr)))
-        b_rhs = PencilArray(domain.pr, zeros(T, size_local(domain.pr)))
+#         # Create initial fields
+#         Φ_initial = PencilArray(domain.pr, zeros(T, size_local(domain.pr)))
+#         b_rhs = PencilArray(domain.pr, zeros(T, size_local(domain.pr)))
         
-        # Initialize with test data
-        range_locals = range_local(domain.pr)
-        Φ_local = Φ_initial.data
-        b_local = b_rhs.data
+#         # Initialize with test data
+#         range_locals = range_local(domain.pr)
+#         Φ_local = Φ_initial.data
+#         b_local = b_rhs.data
         
-        # Simple test initial conditions
-        for (k_local, k_global) in enumerate(range_locals[3])
-            z = (k_global - 1) * Lz / nz_global
-            for (j_local, j_global) in enumerate(range_locals[2])
-                y = (j_global - 1) * Ly / ny_global
-                for (i_local, i_global) in enumerate(range_locals[1])
-                    x = (i_global - 1) * Lx / nx_global
+#         # Simple test initial conditions
+#         for (k_local, k_global) in enumerate(range_locals[3])
+#             z = (k_global - 1) * Lz / nz_global
+#             for (j_local, j_global) in enumerate(range_locals[2])
+#                 y = (j_global - 1) * Ly / ny_global
+#                 for (i_local, i_global) in enumerate(range_locals[1])
+#                     x = (i_global - 1) * Lx / nx_global
                     
-                    # Test initial condition
-                    Φ_local[i_local, j_local, k_local] = 0.01 * sin(2π*x/Lx) * cos(2π*y/Ly) * (z + 1)
-                    b_local[i_local, j_local, k_local] = 0.1 * sin(2π*x/Lx) * sin(2π*y/Ly)
-                end
-            end
-        end
+#                     # Test initial condition
+#                     Φ_local[i_local, j_local, k_local] = 0.01 * sin(2π*x/Lx) * cos(2π*y/Ly) * (z + 1)
+#                     b_local[i_local, j_local, k_local] = 0.1 * sin(2π*x/Lx) * sin(2π*y/Ly)
+#                 end
+#             end
+#         end
         
-        if rank == 0
-            println("Testing SSG equation solver...")
-        end
+#         if rank == 0
+#             println("Testing SSG equation solver...")
+#         end
         
-        start_time = time()
-        solution, diag = solve_ssg_equation(Φ_initial, b_rhs, ε, domain;
-                                          tol=1e-6,
-                                          verbose=(rank == 0),
-                                          smoother=:adaptive)
-        solve_time = time() - start_time
+#         start_time = time()
+#         solution, diag = solve_ssg_equation(Φ_initial, b_rhs, ε, domain;
+#                                           tol=1e-6,
+#                                           verbose=(rank == 0),
+#                                           smoother=:adaptive)
+#         solve_time = time() - start_time
         
-        if rank == 0
-            println("✓ Converged: $(diag.converged)")
-            println("  Iterations: $(diag.iterations)")
-            println("  Final residual: $(diag.final_residual)")
-            println("  ε parameter: $(diag.ε_parameter)")
-            println("  Total time: $(solve_time:.3f)s")
-            println()
+#         if rank == 0
+#             println("✓ Converged: $(diag.converged)")
+#             println("  Iterations: $(diag.iterations)")
+#             println("  Final residual: $(diag.final_residual)")
+#             println("  ε parameter: $(diag.ε_parameter)")
+#             println("  Total time: $(solve_time:.3f)s")
+#             println()
             
-            if diag.converged
-                println("✅ SSG equation solver working correctly!")
-                println("  • 3D Laplacian computed with spectral accuracy")
-                println("  • Nonlinear operator DΦ implemented")
-                println("  • Boundary conditions applied")
-                println("  • Non-uniform grid support")
-                println("  • Multigrid acceleration functional")
-            else
-                println("⚠️  Solver did not converge - may need parameter tuning")
-            end
-        end
+#             if diag.converged
+#                 println("✅ SSG equation solver working correctly!")
+#                 println("  • 3D Laplacian computed with spectral accuracy")
+#                 println("  • Nonlinear operator DΦ implemented")
+#                 println("  • Boundary conditions applied")
+#                 println("  • Non-uniform grid support")
+#                 println("  • Multigrid acceleration functional")
+#             else
+#                 println("⚠️  Solver did not converge - may need parameter tuning")
+#             end
+#         end
         
-        return solution, diag
+#         return solution, diag
         
-    catch e
-        if rank == 0
-            println("❌ Error in SSG solver demo: $e")
-        end
-        rethrow(e)
-    finally
-        MPI.Finalize()
-    end
-end
+#     catch e
+#         if rank == 0
+#             println("❌ Error in SSG solver demo: $e")
+#         end
+#         rethrow(e)
+#     finally
+#         MPI.Finalize()
+#     end
+# end
 
 # """
 # Demo function for testing non-uniform grid SSG solver
