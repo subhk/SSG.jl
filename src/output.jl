@@ -1,4 +1,4 @@
-# src/jld2_output.jl
+# src/output.jl
 # Comprehensive JLD2 output system for semi-geostrophic simulations
 # Supports time-based and step-based output frequencies
 # Includes physical and spectral field output with MPI support
@@ -24,13 +24,11 @@ using PencilArrays: range_local, size_global
 # 2. Full State: Complete simulation state for restart
 # 3. Spectral Data: Fourier coefficients for spectral analysis
 # 4. Diagnostics: Time series of integrated quantities
-#
 ###############################################################################
 
-# ============================================================================
+# ===============================
 # OUTPUT FREQUENCY MANAGEMENT
-# ============================================================================
-
+# ===============================
 """
 Output frequency specification (time-based or step-based)
 """
@@ -663,10 +661,9 @@ function demo_mixed_frequencies()
 end
 
 
-# ============================================================================
-# COMPREHENSIVE DATA GATHERING (IMPROVED MPI IMPLEMENTATION)
-# ============================================================================
-
+# ================================
+# COMPREHENSIVE DATA GATHERING 
+# ================================
 """
 Gather distributed 2D data to root process
 """
@@ -780,13 +777,13 @@ function gather_to_root(field::PencilArray{T, 3}) where T
 end
 
 """
-Improved distribution from root with better error checking
+Distribute 2D data from root to all processes
 """
 function distribute_from_root!(field::PencilArray{T, 2}, 
-                                       global_data::Union{Array{T, 2}, Nothing}) where T
+                            global_data::Union{Array{T, 2}, Nothing}) where T
+
     comm = field.pencil.comm
     rank = MPI.Comm_rank(comm)
-    nprocs = MPI.Comm_size(comm)
     
     # Get expected global dimensions
     nx_global, ny_global = size_global(field.pencil)
@@ -800,15 +797,6 @@ function distribute_from_root!(field::PencilArray{T, 2},
             error("Global data size $(size(global_data)) doesn't match expected ($nx_global, $ny_global)")
         end
         
-        # Send to other processes
-        for dest_rank = 1:nprocs-1
-            # We need to get the range for dest_rank - this is pencil-specific
-            # For now, use broadcast approach which is simpler but less memory efficient
-        end
-    end
-    
-    # Use broadcast for robust distribution
-    if rank == 0
         # Broadcast the global data
         MPI.Bcast!(global_data, 0, comm)
     else
