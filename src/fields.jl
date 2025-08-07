@@ -32,16 +32,16 @@ struct Fields{T, PR2D, PR3D, PC2D, PC3D}
     # Diagnostic fields (3D for solver)
     φ::PencilArray{T, 3, PR3D}                      # 3D streamfunction for solver
 
-    u::PencilArray{T, 2, PR2D}                      # surface u-velocity (2D)
-    v::PencilArray{T, 2, PR2D}                      # surface v-velocity (2D)
+    u::PencilArray{T, 3, PR3D}                      # surface u-velocity (2D)
+    v::PencilArray{T, 3, PR3D}                      # surface v-velocity (2D)
     
     # Multigrid workspace (3D)
     φ_mg::PencilArray{T, 3, PR3D}                   # Multigrid solution workspace
     b_mg::PencilArray{T, 3, PR3D}                   # Multigrid RHS workspace
     
     # Scratch arrays (2D for surface)
-    R::PencilArray{T, 2, PR2D}                      # residual for MA equation (2D)
-    tmp::PencilArray{T, 2, PR2D}                    # general scratch (2D)
+    R::PencilArray{T,    2, PR2D}                   # residual for MA equation (2D)
+    tmp::PencilArray{T,  2, PR2D}                   # general scratch (2D)
     tmp2::PencilArray{T, 2, PR2D}                   # additional scratch (2D)
     tmp3::PencilArray{T, 2, PR2D}                   # additional scratch (2D)
     
@@ -76,9 +76,9 @@ function allocate_fields(domain::Domain{T}) where T
     # 3D field for solver
     φ    = PencilArray{T}(undef, domain.pr3d)
     
-    # 2D velocity fields
-    u    = PencilArray{T}(undef, domain.pr2d)
-    v    = PencilArray{T}(undef, domain.pr2d)
+    # 3D velocity fields
+    u    = PencilArray{T}(undef, domain.pr3d)
+    v    = PencilArray{T}(undef, domain.pr3d)
     
     # 3D arrays for multigrid
     φ_mg = PencilArray{T}(undef, domain.pr3d)
@@ -142,11 +142,13 @@ function ensure_same_grid(dest::PencilArray, src::PencilArray)
     return true
 end
 
+
 macro ensuresamegrid(dest, src)
     return quote
         ensure_same_grid($(esc(dest)), $(esc(src)))
     end
 end
+
 
 """
     copy_field!(dest, src)
@@ -210,6 +212,7 @@ function field_stats(field::PencilArray{T}) where T
         count = global_count
     )
 end
+
 
 """
     enhanced_field_stats(fields::Fields) -> Dict

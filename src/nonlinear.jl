@@ -56,25 +56,25 @@ function compute_jacobian!(db_dt::PencilArray{T, 2},
 end
 
 
-"""
-    compute_surface_geostrophic_velocities!(fields::Fields{T}, domain::Domain) where T
+# """
+#     compute_surface_geostrophic_velocities!(fields::Fields{T}, domain::Domain) where T
 
-Compute 2D surface geostrophic velocities: u = -∂ψ/∂y, v = ∂ψ/∂x.
-"""
-function compute_surface_geostrophic_velocities!(fields::Fields{T}, 
-                                        domain::Domain) where T
+# Compute 2D surface geostrophic velocities: u = -∂ψ/∂y, v = ∂ψ/∂x.
+# """
+# function compute_surface_geostrophic_velocities!(fields::Fields{T}, 
+#                                         domain::Domain) where T
 
-    # Use 2D transforms for surface fields
-    rfft_2d!(domain, fields.φₛ, fields.φshat)
+#     # Use 2D transforms for surface fields
+#     rfft_2d!(domain, fields.φₛ, fields.φshat)
     
-    # Compute u = -∂φ/∂y (2D)
-    ddy_2d!(domain, fields.φshat, fields.tmpc_2d)
-    irfft_2d!(domain, fields.tmpc_2d, fields.u)
-    fields.u.data .*= -1
+#     # Compute u = -∂φ/∂y (2D)
+#     ddy_2d!(domain, fields.φshat, fields.tmpc_2d)
+#     irfft_2d!(domain, fields.tmpc_2d, fields.u)
+#     fields.u.data .*= -1
     
-    # Compute v = ∂φ/∂x (2D)
-    ddx_2d!(domain, fields.φshat, fields.tmpc_2d)
-    irfft_2d!(domain, fields.tmpc_2d, fields.v)
+#     # Compute v = ∂φ/∂x (2D)
+#     ddx_2d!(domain, fields.φshat, fields.tmpc_2d)
+#     irfft_2d!(domain, fields.tmpc_2d, fields.v)
     
-    return nothing
-end
+#     return nothing
+# end
