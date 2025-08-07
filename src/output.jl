@@ -638,45 +638,6 @@ function process_all_outputs!(manager::OutputManager{T},
 end
 
 
-# """
-# Example: Set up time-based output every 0.5 simulation time units
-# """
-# function demo_time_based_output()
-#     println(" Time-Based Output Demo")
-#     println("=" ^ 30)
-    
-#     # Example domain setup
-#     # dom = Domain(256, 256, 2π, 2π, MPI.COMM_WORLD)
-    
-#     # Create output manager with time-based frequencies
-#     # output_manager = OutputManager{Float64}("simulation_run";
-#     #     snapshot_time_freq=0.5,      # Every 0.5 time units
-#     #     full_state_time_freq=2.0,    # Every 2.0 time units  
-#     #     spectral_time_freq=1.0,      # Every 1.0 time units
-#     #     diagnostics_time_freq=0.1,   # Every 0.1 time units
-#     #     save_spectral_data=true,
-#     #     verbose_output=true)
-    
-#     # Example integration with time-based output
-#     # prob = SemiGeostrophicProblem(dom; scheme=RK3, dt=0.01)
-#     # set_initial_conditions!(prob, initialize_taylor_green!)
-    
-#     # for t_target in 0.5:0.5:10.0
-#     #     step_until!(prob, t_target)
-#     #     process_all_outputs!(output_manager, prob)
-#     # end
-    
-#     println("Time-based output features:")
-#     println("  Output every Δt simulation time (independent of time step)")
-#     println("  Adaptive time stepping compatible")
-#     println("  Configurable minimum/maximum time between saves")
-#     println("  Automatic file naming with time stamps")
-#     println("  Complete spectral field preservation")
-#     println("  Derived spectral quantities (energy/enstrophy spectra)")
-    
-#     return true
-# end
-
 """
 Example: Mixed time and step-based frequencies
 """
@@ -702,49 +663,6 @@ function demo_mixed_frequencies()
     return true
 end
 
-"""
-Example: Loading and analyzing saved spectral data
-"""
-function demo_spectral_analysis()
-    println(" Spectral Data Analysis Demo")
-    println("=" ^ 35)
-    
-    # Example: Load spectral snapshot
-    # jldopen("spectral_0001_t5.0000.jld2", "r") do file
-    #     bhat = file["buoyancy_hat"]
-    #     φhat = file["streamfunction_hat"]
-    #     energy_spec = file["energy_spectrum"]
-    #     enstrophy_spec = file["enstrophy_spectrum"]
-    #     kx = file["kx"]
-    #     ky = file["ky"]
-    #     
-    #     # Analysis
-    #     total_energy = sum(energy_spec)
-    #     total_enstrophy = sum(enstrophy_spec)
-    #     peak_energy_wavenumber = argmax(energy_spec) - 1
-    #     
-    #     println("Total energy: $total_energy")
-    #     println("Total enstrophy: $total_enstrophy")
-    #     println("Peak energy at k = $peak_energy_wavenumber")
-    #     
-    #     # Spectral analysis
-    #     k_cutoff = length(energy_spec) ÷ 3
-    #     large_scale_energy = sum(energy_spec[1:k_cutoff])
-    #     small_scale_energy = sum(energy_spec[k_cutoff+1:end])
-    #     
-    #     println("Large scale energy fraction: $(large_scale_energy/total_energy)")
-    # end
-    
-    println("Spectral analysis capabilities:")
-    println("   Complete Fourier coefficients (real + imaginary)")
-    println("   Pre-computed energy and enstrophy spectra")
-    println("   Wavenumber arrays for proper scaling")
-    println("   Cross-platform compatibility (Julia, Python, MATLAB)")
-    println("   Compressed storage for large datasets")
-    println("   Time series of spectral evolution")
-    
-    return true
-end
 
 # ============================================================================
 # COMPREHENSIVE DATA GATHERING (IMPROVED MPI IMPLEMENTATION)
@@ -850,10 +768,9 @@ function distribute_from_root_improved!(field::PencilArray{T, 2},
     return nothing
 end
 
-# ============================================================================
+# =========================
 # RESTART FUNCTIONALITY
-# ============================================================================
-
+# =========================
 """
 Load complete simulation state with full validation
 """
@@ -978,10 +895,9 @@ function validate_simulation_state(prob::SemiGeostrophicProblem{T}) where T
     return validation_results
 end
 
-# ============================================================================
+# ==================================
 # BATCH PROCESSING AND UTILITIES
-# ============================================================================
-
+# ==================================
 """
 Process multiple output files for batch analysis
 """
@@ -1078,10 +994,10 @@ function create_output_manifest(output_dir::String)
     return manifest_file
 end
 
-# ============================================================================
-# COMPREHENSIVE EXAMPLE USAGE
-# ============================================================================
 
+# ===================================
+# COMPREHENSIVE EXAMPLE USAGE
+# ===================================
 # """
 # Complete example showing all output capabilities
 # """
@@ -1146,13 +1062,88 @@ end
 #     return true
 # end
 
-# # Run demos if executed directly
-# if abspath(PROGRAM_FILE) == @__FILE__
-#     demo_time_based_output()
-#     println()
-#     demo_mixed_frequencies()
-#     println()
-#     demo_spectral_analysis()
-#     println()
-#     demo_complete_jld2_workflow()
+
+
+# """
+# Example: Loading and analyzing saved spectral data
+# """
+# function demo_spectral_analysis()
+#     println(" Spectral Data Analysis Demo")
+#     println("=" ^ 35)
+    
+#     # Example: Load spectral snapshot
+#     # jldopen("spectral_0001_t5.0000.jld2", "r") do file
+#     #     bhat = file["buoyancy_hat"]
+#     #     φhat = file["streamfunction_hat"]
+#     #     energy_spec = file["energy_spectrum"]
+#     #     enstrophy_spec = file["enstrophy_spectrum"]
+#     #     kx = file["kx"]
+#     #     ky = file["ky"]
+#     #     
+#     #     # Analysis
+#     #     total_energy = sum(energy_spec)
+#     #     total_enstrophy = sum(enstrophy_spec)
+#     #     peak_energy_wavenumber = argmax(energy_spec) - 1
+#     #     
+#     #     println("Total energy: $total_energy")
+#     #     println("Total enstrophy: $total_enstrophy")
+#     #     println("Peak energy at k = $peak_energy_wavenumber")
+#     #     
+#     #     # Spectral analysis
+#     #     k_cutoff = length(energy_spec) ÷ 3
+#     #     large_scale_energy = sum(energy_spec[1:k_cutoff])
+#     #     small_scale_energy = sum(energy_spec[k_cutoff+1:end])
+#     #     
+#     #     println("Large scale energy fraction: $(large_scale_energy/total_energy)")
+#     # end
+    
+#     println("Spectral analysis capabilities:")
+#     println("   Complete Fourier coefficients (real + imaginary)")
+#     println("   Pre-computed energy and enstrophy spectra")
+#     println("   Wavenumber arrays for proper scaling")
+#     println("   Cross-platform compatibility (Julia, Python, MATLAB)")
+#     println("   Compressed storage for large datasets")
+#     println("   Time series of spectral evolution")
+    
+#     return true
+# end
+
+
+# """
+# Example: Set up time-based output every 0.5 simulation time units
+# """
+# function demo_time_based_output()
+#     println(" Time-Based Output Demo")
+#     println("=" ^ 30)
+    
+#     # Example domain setup
+#     # dom = Domain(256, 256, 2π, 2π, MPI.COMM_WORLD)
+    
+#     # Create output manager with time-based frequencies
+#     # output_manager = OutputManager{Float64}("simulation_run";
+#     #     snapshot_time_freq=0.5,      # Every 0.5 time units
+#     #     full_state_time_freq=2.0,    # Every 2.0 time units  
+#     #     spectral_time_freq=1.0,      # Every 1.0 time units
+#     #     diagnostics_time_freq=0.1,   # Every 0.1 time units
+#     #     save_spectral_data=true,
+#     #     verbose_output=true)
+    
+#     # Example integration with time-based output
+#     # prob = SemiGeostrophicProblem(dom; scheme=RK3, dt=0.01)
+#     # set_initial_conditions!(prob, initialize_taylor_green!)
+    
+#     # for t_target in 0.5:0.5:10.0
+#     #     step_until!(prob, t_target)
+#     #     process_all_outputs!(output_manager, prob)
+#     # end
+    
+#     println("Time-based output features:")
+#     println("  Output every Δt simulation time (independent of time step)")
+#     println("  Adaptive time stepping compatible")
+#     println("  Configurable minimum/maximum time between saves")
+#     println("  Automatic file naming with time stamps")
+#     println("  Complete spectral field preservation")
+#     println("  Derived spectral quantities (energy/enstrophy spectra)")
+    
+#     return true
 # end
