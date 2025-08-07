@@ -19,6 +19,7 @@ Set the buoyancy field and update all derived variables for SSG solver.
 - Calculates initial kinetic energy diagnostics
 """
 function set_b!(prob::SemiGeostrophicProblem{T}, b_field, domain::Domain) where T
+
     # Ensure buoyancy field is properly sized
     @ensuresamegrid(prob.fields.bₛ, b_field)
     
@@ -27,12 +28,12 @@ function set_b!(prob::SemiGeostrophicProblem{T}, b_field, domain::Domain) where 
     
     # Zero mean constraint for spectral methods (critical for periodic domains)
     # Transform to spectral space first
-    rfft!(domain, prob.fields.bₛ, prob.fields.bhat)
+    rfft_2d!(domain, prob.fields.bₛ, prob.fields.bhat)
     
     # Set k=0 mode to zero (removes domain average)
     # Handle PencilArray structure and local ranges
     range_locals = range_local(prob.fields.bhat.pencil)
-    bhat_local = prob.fields.bhat.data
+    bhat_local   = prob.fields.bhat.data
     
     # Check if this process owns the k=0 mode
     if 1 in range_locals[1] && 1 in range_locals[2]

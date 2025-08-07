@@ -471,7 +471,7 @@ function jacobian_2d!(output, a, b, domain::Domain, tmp_spec1, tmp_spec2, tmp_re
     
     # Complete Jacobian: J = ∂a/∂x * ∂b/∂y - ∂a/∂y * ∂b/∂x
     output.data .-= tmp_real1.data .* tmp_real2.data   
-     
+
     return nothing
 end
 
@@ -503,15 +503,15 @@ end
 
 Apply 2D dealiasing to surface spectral field.
 """
-function dealias_2d!(surface_domain::SurfaceDomain, field_spec_2d)
+function dealias_2d!(domain::Domain, field_spec_2d)
     # Get local array from PencilArray
     field_local = field_spec_2d.data
     
     # Get local ranges for this MPI process
-    range_locals = range_local(surface_domain.pc_2d)
+    range_locals = range_local(domain.pc_2d)
     
     # Apply mask to local data
-    mask_local = view(surface_domain.mask_2d, range_locals[1], range_locals[2])
+    mask_local = view(domain.mask_2d, range_locals[1], range_locals[2])
     
     @inbounds @views @. field_local = ifelse(mask_local, field_local, 0)
     
