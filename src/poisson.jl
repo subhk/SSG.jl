@@ -899,9 +899,9 @@ function create_surface_field(domain::Domain, ::Type{T}) where T
         return PencilArray(pencil_2d, zeros(T, size_local(pencil_2d)))
     catch
         # Fallback: extract surface from 3D field
-        surface_size = (size(domain.pr)[1], size(domain.pr)[2])
+        surface_size = (size(domain.pr2d)[1], size(domain.pr2d)[2])
         surface_data = zeros(T, surface_size)
-        return PencilArray(domain.pr, surface_data)  # This will need adjustment
+        return PencilArray(domain.pr2d, surface_data)  # This will need adjustment
     end
 end
 
