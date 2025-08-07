@@ -238,13 +238,13 @@ function save_simulation_state_full(filename::String,
     u_global = gather_to_root(prob.fields.u)
     v_global = gather_to_root(prob.fields.v)
     
-    # Gather multigrid workspace if needed
+    # Gather multi-grid workspace if needed
     φ_mg_global = gather_to_root(prob.fields.φ_mg)
     b_mg_global = gather_to_root(prob.fields.b_mg)
     
     # Gather 2D scratch arrays
-    R_global = gather_to_root(prob.fields.R)
-    tmp_global = gather_to_root(prob.fields.tmp)
+    R_global    = gather_to_root(prob.fields.R)
+    tmp_global  = gather_to_root(prob.fields.tmp)
     tmp2_global = gather_to_root(prob.fields.tmp2)
     tmp3_global = gather_to_root(prob.fields.tmp3)
     
@@ -252,14 +252,14 @@ function save_simulation_state_full(filename::String,
     local bshat_global, φshat_global, φhat_global, tmpc_2d_global, tmpc1_2d_global, tmpc_3d_global, tmpc1_3d_global
     if save_spectral
         # 2D spectral fields
-        bshat_global = gather_spectral_to_root(prob.fields.bshat)
-        φshat_global = gather_spectral_to_root(prob.fields.φshat)
-        tmpc_2d_global = gather_spectral_to_root(prob.fields.tmpc_2d)
+        bshat_global    = gather_spectral_to_root(prob.fields.bshat)
+        φshat_global    = gather_spectral_to_root(prob.fields.φshat)
+        tmpc_2d_global  = gather_spectral_to_root(prob.fields.tmpc_2d)
         tmpc1_2d_global = gather_spectral_to_root(prob.fields.tmpc1_2d)
         
         # 3D spectral fields  
-        φhat_global = gather_spectral_to_root(prob.fields.φhat)
-        tmpc_3d_global = gather_spectral_to_root(prob.fields.tmpc_3d)
+        φhat_global     = gather_spectral_to_root(prob.fields.φhat)
+        tmpc_3d_global  = gather_spectral_to_root(prob.fields.tmpc_3d)
         tmpc1_3d_global = gather_spectral_to_root(prob.fields.tmpc1_3d)
     end
     
@@ -562,7 +562,7 @@ end
 # ============================================================================
 
 """
-Advanced output manager with time-based and step-based frequencies
+Output manager with time-based and step-based frequencies
 """
 mutable struct OutputManager{T<:AbstractFloat}
     base_dir::String
@@ -736,32 +736,6 @@ function process_all_outputs!(manager::OutputManager{T},
     end
     
     return nothing
-end
-
-
-"""
-Example: Mixed time and step-based frequencies
-"""
-function demo_mixed_frequencies()
-    println(" Mixed Frequency Output Demo")
-    println("=" ^ 35)
-    
-    # Example: Fast diagnostics, slower full states
-    # output_manager = AdvancedOutputManager{Float64}("mixed_output";
-    #     diagnostics_time_freq=0.05,    # Fast: every 0.05 time units
-    #     snapshot_time_freq=0.5,        # Medium: every 0.5 time units
-    #     spectral_step_freq=1000,       # Step-based: every 1000 steps
-    #     full_state_time_freq=5.0,      # Slow: every 5.0 time units
-    #     save_spectral_data=true)
-    
-    println("Mixed frequency capabilities:")
-    println("  Different frequencies for different output types")
-    println("  Time-based for physics (diagnostics, snapshots)")  
-    println("  Step-based for numerical analysis (spectral)")
-    println("  Flexible configuration per output type")
-    println("  Independent timing for each output stream")
-    
-    return true
 end
 
 
@@ -1384,6 +1358,33 @@ end
 #     println("  Automatic file naming with time stamps")
 #     println("  Complete spectral field preservation")
 #     println("  Derived spectral quantities (energy/enstrophy spectra)")
+    
+#     return true
+# end
+
+
+
+# """
+# Example: Mixed time and step-based frequencies
+# """
+# function demo_mixed_frequencies()
+#     println(" Mixed Frequency Output Demo")
+#     println("=" ^ 35)
+    
+#     # Example: Fast diagnostics, slower full states
+#     # output_manager = AdvancedOutputManager{Float64}("mixed_output";
+#     #     diagnostics_time_freq=0.05,    # Fast: every 0.05 time units
+#     #     snapshot_time_freq=0.5,        # Medium: every 0.5 time units
+#     #     spectral_step_freq=1000,       # Step-based: every 1000 steps
+#     #     full_state_time_freq=5.0,      # Slow: every 5.0 time units
+#     #     save_spectral_data=true)
+    
+#     println("Mixed frequency capabilities:")
+#     println("  Different frequencies for different output types")
+#     println("  Time-based for physics (diagnostics, snapshots)")  
+#     println("  Step-based for numerical analysis (spectral)")
+#     println("  Flexible configuration per output type")
+#     println("  Independent timing for each output stream")
     
 #     return true
 # end
