@@ -42,24 +42,24 @@ end
 """
 Time integration state for multi-step methods
 """
-mutable struct TimeState{T, PA}
+mutable struct TimeState{T, PA2D}
     t::T                     # current time
-    step::Int               # current step number
+    step::Int                # current step number
     
     # For Adams-Bashforth (stores previous tendency)
-    db_dt_old::PA           # previous time derivative of buoyancy
+    db_dt_old::PA2D           # previous time derivative of buoyancy
     
     # For Runge-Kutta (intermediate stages)
-    b_stage::PA             # intermediate buoyancy for RK stages
-    k1::PA                  # RK stage derivatives
-    k2::PA
-    k3::PA
+    b_stage::PA2D             # intermediate buoyancy for RK stages
+    k1::PA2D                  # RK stage derivatives
+    k2::PA2D
+    k3::PA2D
     
     # Diagnostic
     dt_actual::T            # actual dt used (for adaptive stepping)
     cfl_max::T              # maximum CFL number
     
-    function TimeState{T, PA}(initial_time::T, fields::Fields{T}) where {T, PA}
+    function TimeState{T, PA2D}(initial_time::T, fields::Fields{T}) where {T, PA2D}
         t = initial_time
         step = 0
         
@@ -81,7 +81,7 @@ mutable struct TimeState{T, PA}
         dt_actual = T(0)
         cfl_max = T(0)
         
-        new{T, PA}(t, step, db_dt_old, b_stage, k1, k2, k3, dt_actual, cfl_max)
+        new{T, PA2D}(t, step, db_dt_old, b_stage, k1, k2, k3, dt_actual, cfl_max)
     end
 end
 
