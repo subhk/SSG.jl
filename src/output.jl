@@ -957,7 +957,7 @@ end
 # RESTART FUNCTIONALITY
 # =========================
 """
-Load complete simulation state with full validation
+Load complete simulation state with full validation (supports 3D)
 """
 function load_simulation_state_full(filename::String, domain::Domain{T};
                                    load_spectral::Bool=true,
@@ -1016,26 +1016,79 @@ function load_simulation_state_full(filename::String, domain::Domain{T};
             filter_strength=filter_strength,
             enable_diagnostics=load_diagnostics)
         
-        # Load physical fields
-        b_global = file["fields/physical/buoyancy"]
-        φ_global = file["fields/physical/streamfunction"]
+        # Load 2D surface fields
+        bₛ_global = file["fields/surface/buoyancy"]
+        φₛ_global = file["fields/surface/streamfunction"]
         
-        distribute_from_root!(prob.fields.bₛ, b_global)
-        distribute_from_root!(prob.fields.φ,  φ_global)
+        distribute_from_root!(prob.fields.bₛ, bₛ_global)
+        distribute_from_root!(prob.fields.φₛ, φₛ_global)
+        
+        # Load 3D fields
+        φ_global = file["fields/3d/streamfunction"]
+        u_global = file["fields/3d/u_velocity"]
+        v_global = file["fields/3d/v_velocity"]
+        
+        distribute_from_root!(prob.fields.φ, φ_global)
+        distribute_from_root!(prob.fields.u, u_global)
+        distribute_from_root!(prob.fields.v, v_global)
         
         # Load spectral fields if available and requested
-        if load_spectral && haskey(file, "fields/spectral/buoyancy_complex")
-            bhat_global = file["fields/spectral/buoyancy_complex"]
-            φhat_global = file["fields/spectral/streamfunction_complex"]
+        if load_spectral && haskey(file, "fields/spectral/2d/buoyancy_real")
+            # 2D spectral fields
+            bshat_real      = file["fields/spectral/2d/buoyancy_real"]
+            bshat_imag      = file["fields/spectral/2d/buoyancy_imag"]
+            bshat_global    = complex.(bshat_real, bshat_imag)
             
-            distribute_spectral_from_root!(prob.fields.bhat, bhat_global)
-            distribute_spectral_from_root!(prob.fields.φhat, φhat_global)
+            φshat_real      = file["fields/spectral/2d/streamfunction_real"]
+            φshat_imag      = file["fields/spectral/2d/streamfunction_imag"]
+            φshat_global    = complex.(φshat_real, φshat_imag)
+            
+            distribute_spectral_from_root!(prob.fields.bshat, bshat_global)
+            distribute_spectral_from_root!(prob.fields.φshat, φshat_global)
+            
+            # Load 2D spectral scratch arrays if available
+            if haskey(file, "fields/spectral/2d/tmp_complex_real")
+                tmpc_2d_real    = file["fields/spectral/2d/tmp_complex_real"]
+                tmpc_2d_imag    = file["fields/spectral/2d/tmp_complex_imag"]
+                tmpc_2d_global  = complex.(tmpc_2d_real, tmpc_2d_imag)
+                distribute_spectral_from_root!(prob.fields.tmpc_2d, tmpc_2d_global)
+            end
+            
+            if haskey(file, "fields/spectral/2d/tmp1_complex_real")
+                tmpc1_2d_real   = file["fields/spectral/2d/tmp1_complex_real"]
+                tmpc1_2d_imag   = file["fields/spectral/2d/tmp1_complex_imag"]
+                tmpc1_2d_global = complex.(tmpc1_2d_real, tmpc1_2d_imag)
+                distribute_spectral_from_root!(prob.fields.tmpc1_2d, tmpc1_2d_global)
+            end
+            
+            # 3D spectral fields
+            if haskey(file, "fields/spectral/3d/streamfunction_real")
+                φhat_real   = file["fields/spectral/3d/streamfunction_real"]
+                φhat_imag   = file["fields/spectral/3d/streamfunction_imag"]
+                φhat_global = complex.(φhat_real, φhat_imag)
+                distribute_spectral_from_root!(prob.fields.φhat, φhat_global)
+            end
+            
+            # Load 3D spectral scratch arrays if available
+            if haskey(file, "fields/spectral/3d/tmp_complex_real")
+                tmpc_3d_real    = file["fields/spectral/3d/tmp_complex_real"]
+                tmpc_3d_imag    = file["fields/spectral/3d/tmp_complex_imag"]
+                tmpc_3d_global  = complex.(tmpc_3d_real, tmpc_3d_imag)
+                distribute_spectral_from_root!(prob.fields.tmpc_3d, tmpc_3d_global)
+            end
+            
+            if haskey(file, "fields/spectral/3d/tmp1_complex_real")
+                tmpc1_3d_real   = file["fields/spectral/3d/tmp1_complex_real"]
+                tmpc1_3d_imag   = file["fields/spectral/3d/tmp1_complex_imag"]
+                tmpc1_3d_global = complex.(tmpc1_3d_real, tmpc1_3d_imag)
+                distribute_spectral_from_root!(prob.fields.tmpc1_3d, tmpc1_3d_global)
+            end
         end
         
         # Update clock state
-        prob.clock.t = time
-        prob.clock.step = step
-        prob.clock.dt_actual = dt
+        prob.clock.t            = time
+        prob.clock.step         = step
+        prob.clock.dt_actual    = dt
         
         # Load diagnostics if available and requested
         if load_diagnostics && prob.diagnostics !== nothing && haskey(file, "diagnostics/times")
@@ -1050,6 +1103,7 @@ function load_simulation_state_full(filename::String, domain::Domain{T};
     
     return prob
 end
+
 
 """
 Validate loaded simulation state
