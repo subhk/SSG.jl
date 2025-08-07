@@ -45,10 +45,10 @@ function set_b!(prob::SemiGeostrophicProblem{T}, b_field, domain::Domain) where 
     end
     
     # Apply dealiasing in spectral space
-    dealias!(domain, prob.fields.bhat)
+    dealias_2d!(domain, prob.fields.bhat)
     
     # Transform back to physical space
-    irfft!(domain, prob.fields.bhat, prob.fields.bₛ)
+    irfft_2d!(domain, prob.fields.bhat, prob.fields.bₛ)
     
     # Solve Monge-Ampère equation: det(D²φ) = b
     solve_monge_ampere_fields!(prob.fields, domain; 
