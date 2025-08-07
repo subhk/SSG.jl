@@ -55,16 +55,16 @@ struct Domain{T, PR3D, PC3D, PFP3D, PR2D, PC2D, PFP2D}
     z_grid::Symbol
     
     # 3D Pencil descriptors
-    pr::PR3D      # real-space pencil
-    pc::PC3D      # complex/spectral pencil
+    pr3d::PR3D      # real-space pencil
+    pc3d::PC3D      # complex/spectral pencil
     
     # FFT plans (horizontal only)
     fplan::PFP3D
     iplan::PFP3D
 
     # 2D surface field support
-    pr_2d::PR2D      # 2D real-space pencil for surface
-    pc_2d::PC2D      # 2D complex/spectral pencil for surface
+    pr2d::PR2D      # 2D real-space pencil for surface
+    pc2d::PC2D      # 2D complex/spectral pencil for surface
 
     fplan_2d::PFP2D  # 2D FFT plans for surface
     iplan_2d::PFP2D
@@ -188,8 +188,8 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
             x, y, z, dz, 
             kx, ky, Krsq, invKrsq, 
             mask, z_boundary, z_grid,
-            pr, pc, fplan, iplan,
-            pr_2d, pc_2d, fplan_2d, iplan_2d,
+            pr3d, pc3d, fplan, iplan,
+            pr2d, pc2d, fplan_2d, iplan_2d,
             aliased_fraction, kxalias, kyalias
     )
 end
