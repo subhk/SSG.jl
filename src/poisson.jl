@@ -8,7 +8,7 @@
 # Where:
 #   ∇² = ∂²/∂X² + ∂²/∂Y² + ∂²/∂Z²  (3D Laplacian in geostrophic coordinates)
 #   DΦ = (∂²Φ/∂X²)(∂²Φ/∂Y²) - (∂²Φ/∂X∂Y)²  (nonlinear differential operator)
-#   ε is an external parameter     (measure of global Rossby number)
+#   ε is an external parameter     (measure of the global Rossby number)
 # ============================================================================
 
 using PencilArrays: size_local, range_local
@@ -71,29 +71,29 @@ mutable struct SSGLevel{T<:AbstractFloat}
         ny_global = domain.Ny
         nz_global = domain.Nz
 
-        PR = domain.pr
-        PC = domain.pc
+        PR3D = domain.pr3d
+        PC3D = domain.pc3d
         
         # Create 3D fields
-        Φ = PencilArray(PR, zeros(T, size_local(PR)))
-        b = PencilArray(PR, zeros(T, size_local(PR)))
-        r = PencilArray(PR, zeros(T, size_local(PR)))
+        Φ = PencilArray(PR3D, zeros(T, size_local(PR3D)))
+        b = PencilArray(PR3D, zeros(T, size_local(PR3D)))
+        r = PencilArray(PR3D, zeros(T, size_local(PR3D)))
         
-        Φ_hat = PencilArray(PC, zeros(Complex{T}, size_local(PC)))
-        b_hat = PencilArray(PC, zeros(Complex{T}, size_local(PC)))
-        r_hat = PencilArray(PC, zeros(Complex{T}, size_local(PC)))
+        Φ_hat = PencilArray(PC3D, zeros(Complex{T}, size_local(PC3D)))
+        b_hat = PencilArray(PC3D, zeros(Complex{T}, size_local(PC3D)))
+        r_hat = PencilArray(PR3D, zeros(Complex{T}, size_local(PC3D)))
         
-        Φ_old    = PencilArray(PR, zeros(T, size_local(PR)))
+        Φ_old    = PencilArray(PR3D, zeros(T, size_local(PR3D)))
 
-        tmp_real = PencilArray(PR, zeros(T, size_local(PR)))
-        tmp_spec = PencilArray(PC, zeros(Complex{T}, size_local(PC)))
+        tmp_real = PencilArray(PR3D, zeros(T, size_local(PR3D)))
+        tmp_spec = PencilArray(PR3D, zeros(Complex{T}, size_local(PR3D)))
 
         # Derivative fields
-        Φ_xx   = PencilArray(PR, zeros(T, size_local(PR)))
-        Φ_yy   = PencilArray(PR, zeros(T, size_local(PR)))
-        Φ_zz   = PencilArray(PR, zeros(T, size_local(PR)))
-        Φ_xy   = PencilArray(PR, zeros(T, size_local(PR)))
-        Φ_xxyy = PencilArray(PR, zeros(T, size_local(PR)))
+        Φ_xx   = PencilArray(PR3D, zeros(T, size_local(PR3D)))
+        Φ_yy   = PencilArray(PR3D, zeros(T, size_local(PR3D)))
+        Φ_zz   = PencilArray(PR3D, zeros(T, size_local(PR3D)))
+        Φ_xy   = PencilArray(PR3D, zeros(T, size_local(PR3D)))
+        Φ_xxyy = PencilArray(PR3D, zeros(T, size_local(PR3D)))
         
         # Boundary condition (2D field at surface)
         bs_surface = create_surface_field(domain, T)
