@@ -35,9 +35,9 @@ function compute_tendency!(db_dt::PencilArray{T, 2},
     compute_jacobian!(db_dt, fields.φₛ, fields.bₛ, fields, domain)
     
     # Apply dealiasing
-    rfft_2d!(domain, db_dt, fields.tmpc)
-    dealias_2d!(domain, fields.tmpc)
-    irfft_2d!(domain, fields.tmpc, db_dt)
+    rfft_2d!(domain, db_dt, fields.tmpc_2d)
+    dealias_2d!(domain, fields.tmpc_2d)
+    irfft_2d!(domain, fields.tmpc_2d, db_dt)
     
     return db_dt
 end
