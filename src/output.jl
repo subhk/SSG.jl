@@ -159,7 +159,7 @@ function gather_spectral_to_root(field::PencilArray{Complex{T}, 2}) where T
             
             # Receive complex data
             local_size = (i_end - i_start + 1) * (j_end - j_start + 1)
-            recv_data = Vector{Complex{T}}(undef, local_size)
+            recv_data  = Vector{Complex{T}}(undef, local_size)
             MPI.Recv!(recv_data, src_rank, 101, comm)
             
             # Place in global array
@@ -179,6 +179,60 @@ function gather_spectral_to_root(field::PencilArray{Complex{T}, 2}) where T
         
         # Send complex data
         MPI.Send(vec(field.data), 0, 101, comm)
+        
+        return nothing
+    end
+end
+
+
+function gather_spectral_to_root(field::PencilArray{Complex{T}, 3}) where T
+    comm   = field.pencil.comm
+    rank   = MPI.Comm_rank(comm)
+    nprocs = MPI.Comm_size(comm)
+    
+    if rank == 0
+        # Root process: collect all 3D spectral data
+        nx_spec, ny_spec, nz_spec = size_global(field.pencil)
+        global_data = zeros(Complex{T}, nx_spec, ny_spec, nz_spec)
+        
+        # Copy local data
+        range_locals = range_local(field.pencil)
+        global_data[range_locals[1], range_locals[2], range_locals[3]] = field.data
+        
+        # Receive from other processes
+        for src_rank = 1:nprocs-1
+            # Receive range information (6 integers for 3D)
+            ranges_info = Vector{Int}(undef, 6)
+            MPI.Recv!(ranges_info, src_rank, 400, comm)
+            i_start, i_end, j_start, j_end, k_start, k_end = ranges_info
+            
+            # Receive complex data
+            ni_local = i_end - i_start + 1
+            nj_local = j_end - j_start + 1
+            nk_local = k_end - k_start + 1
+
+            local_size = ni_local * nj_local * nk_local
+            recv_data = Vector{Complex{T}}(undef, local_size)
+            MPI.Recv!(recv_data, src_rank, 401, comm)
+            
+            # Place in global array
+            recv_array = reshape(recv_data, (ni_local, nj_local, nk_local))
+            global_data[i_start:i_end, j_start:j_end, k_start:k_end] = recv_array
+        end
+        
+        return global_data
+    else
+        # Non-root processes: send 3D spectral data
+        range_locals = range_local(field.pencil)
+        ranges_info = [range_locals[1].start, range_locals[1].stop,
+                      range_locals[2].start, range_locals[2].stop,
+                      range_locals[3].start, range_locals[3].stop]
+        
+        # Send range information
+        MPI.Send(ranges_info, 0, 400, comm)
+        
+        # Send complex data
+        MPI.Send(vec(field.data), 0, 401, comm)
         
         return nothing
     end
