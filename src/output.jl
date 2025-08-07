@@ -266,17 +266,17 @@ function save_simulation_state_full(filename::String,
         end
         
         # Physical fields
-        file["fields/physical/buoyancy"] = b_global
+        file["fields/physical/buoyancy"]       = b_global
         file["fields/physical/streamfunction"] = φ_global
-        file["fields/physical/u_velocity"] = u_global
-        file["fields/physical/v_velocity"] = v_global
-        file["fields/physical/ma_residual"] = R_global
+        file["fields/physical/u_velocity"]     = u_global
+        file["fields/physical/v_velocity"]     = v_global
+        file["fields/physical/ma_residual"]    = R_global
         
         # Spectral fields
         if save_spectral
             # Store real and imaginary parts separately for better compression
-            file["fields/spectral/buoyancy_real"] = real(bhat_global)
-            file["fields/spectral/buoyancy_imag"] = imag(bhat_global)
+            file["fields/spectral/buoyancy_real"]       = real(bshat_global)
+            file["fields/spectral/buoyancy_imag"]       = imag(bshat_global)
             file["fields/spectral/streamfunction_real"] = real(φhat_global)
             file["fields/spectral/streamfunction_imag"] = imag(φhat_global)
             
@@ -286,42 +286,42 @@ function save_simulation_state_full(filename::String,
         end
         
         # Time integration parameters
-        file["timestepper/scheme"] = string(prob.timestepper.scheme)
-        file["timestepper/dt"] = prob.timestepper.dt
-        file["timestepper/adaptive_dt"] = prob.timestepper.adaptive_dt
-        file["timestepper/filter_freq"] = prob.timestepper.filter_freq
+        file["timestepper/scheme"]          = string(prob.timestepper.scheme)
+        file["timestepper/dt"]              = prob.timestepper.dt
+        file["timestepper/adaptive_dt"]     = prob.timestepper.adaptive_dt
+        file["timestepper/filter_freq"]     = prob.timestepper.filter_freq
         file["timestepper/filter_strength"] = prob.timestepper.filter_strength
-        file["timestepper/cfl_safety"] = prob.timestepper.cfl_safety
-        file["timestepper/max_dt"] = prob.timestepper.max_dt
-        file["timestepper/min_dt"] = prob.timestepper.min_dt
+        file["timestepper/cfl_safety"]      = prob.timestepper.cfl_safety
+        file["timestepper/max_dt"]          = prob.timestepper.max_dt
+        file["timestepper/min_dt"]          = prob.timestepper.min_dt
         
         # Save diagnostics if available and requested
         if save_diagnostics && prob.diagnostics !== nothing && length(prob.diagnostics.times) > 0
-            file["diagnostics/times"] = prob.diagnostics.times
-            file["diagnostics/kinetic_energy"] = prob.diagnostics.kinetic_energy
-            file["diagnostics/enstrophy"] = prob.diagnostics.enstrophy
-            file["diagnostics/total_buoyancy"] = prob.diagnostics.total_buoyancy
-            file["diagnostics/max_divergence"] = prob.diagnostics.max_divergence
-            file["diagnostics/max_cfl"] = prob.diagnostics.max_cfl
+            file["diagnostics/times"]           = prob.diagnostics.times
+            file["diagnostics/kinetic_energy"]  = prob.diagnostics.kinetic_energy
+            file["diagnostics/enstrophy"]       = prob.diagnostics.enstrophy
+            file["diagnostics/total_buoyancy"]  = prob.diagnostics.total_buoyancy
+            file["diagnostics/max_divergence"]  = prob.diagnostics.max_divergence
+            file["diagnostics/max_cfl"]         = prob.diagnostics.max_cfl
         end
         
         # Comprehensive metadata
         if save_metadata
-            file["metadata/creation_time"] = string(now())
-            file["metadata/julia_version"] = string(VERSION)
-            file["metadata/hostname"] = gethostname()
-            file["metadata/mpi_size"] = MPI.Comm_size(prob.domain.pc.comm)
-            file["metadata/precision"] = string(T)
-            file["metadata/equation_type"] = "surface_semi_geostrophic"
-            file["metadata/description"] = "Surface buoyancy evolution with Monge-Ampère constraint"
-            file["metadata/file_type"] = "complete_simulation_state"
-            file["metadata/has_spectral_data"] = save_spectral
-            file["metadata/has_diagnostics"] = save_diagnostics && prob.diagnostics !== nothing
+            file["metadata/creation_time"]      = string(now())
+            file["metadata/julia_version"]      = string(VERSION)
+            file["metadata/hostname"]           = gethostname()
+            file["metadata/mpi_size"]           = MPI.Comm_size(prob.domain.pc.comm)
+            file["metadata/precision"]          = string(T)
+            file["metadata/equation_type"]      = "surface_semi_geostrophic"
+            file["metadata/description"]        = "Surface buoyancy evolution with Monge-Ampère constraint"
+            file["metadata/file_type"]          = "complete_simulation_state"
+            file["metadata/has_spectral_data"]  = save_spectral
+            file["metadata/has_diagnostics"]    = save_diagnostics && prob.diagnostics !== nothing
             
             # Physics parameters
-            file["metadata/physics/domain_aspect_ratio"] = prob.domain.Lx / prob.domain.Ly
-            file["metadata/physics/grid_spacing_x"] = prob.domain.Lx / prob.domain.Nx
-            file["metadata/physics/grid_spacing_y"] = prob.domain.Ly / prob.domain.Ny
+            file["metadata/physics/domain_aspect_ratio"]    = prob.domain.Lx / prob.domain.Ly
+            file["metadata/physics/grid_spacing_x"]         = prob.domain.Lx / prob.domain.Nx
+            file["metadata/physics/grid_spacing_y"]         = prob.domain.Ly / prob.domain.Ny
         end
     end
     
@@ -341,18 +341,18 @@ function save_spectral_snapshot(filename::String, prob::SemiGeostrophicProblem{T
     mkpath(dirname(filename))
     
     # Ensure spectral fields are up to date
-    rfft!(prob.domain, prob.fields.bₛ, prob.fields.bhat)
-    rfft!(prob.domain, prob.fields.φ,  prob.fields.φhat)
+    rfft_2d!(prob.domain, prob.fields.bₛ, prob.fields.bshat)
+    rfft!(   prob.domain, prob.fields.φ,  prob.fields.φhat)
     
     # Gather spectral data
-    bhat_global = gather_spectral_to_root(prob.fields.bhat)
-    φhat_global = gather_spectral_to_root(prob.fields.φhat)
+    bshat_global = gather_spectral_to_root(prob.fields.bshat)
+    φhat_global  = gather_spectral_to_root(prob.fields.φhat)
     
     # Compute derived spectral quantities if requested
     local energy_spectrum, enstrophy_spectrum
     if include_derived_spectra
-        energy_spectrum = compute_energy_spectrum(φhat_global, prob.domain)
-        enstrophy_spectrum = compute_enstrophy_spectrum(φhat_global, prob.domain)
+        energy_spectrum     = compute_energy_spectrum(φhat_global, prob.domain)
+        enstrophy_spectrum  = compute_enstrophy_spectrum(φhat_global, prob.domain)
     end
     
     jldopen(filename, "w") do file
@@ -375,18 +375,18 @@ function save_spectral_snapshot(filename::String, prob::SemiGeostrophicProblem{T
         file["kr"] = collect(rfftfreq(prob.domain.Nx, 2π*prob.domain.Nx/prob.domain.Lx))
         
         # Spectral fields (as complex numbers)
-        file["buoyancy_hat"] = bhat_global
-        file["streamfunction_hat"] = φhat_global
+        file["buoyancy_hat"]        = bshat_global
+        file["streamfunction_hat"]  = φhat_global
         
         # Derived spectra
         if include_derived_spectra
-            file["energy_spectrum"] = energy_spectrum
-            file["enstrophy_spectrum"] = enstrophy_spectrum
+            file["energy_spectrum"]     = energy_spectrum
+            file["enstrophy_spectrum"]  = enstrophy_spectrum
         end
         
         # Metadata
-        file["file_type"] = "spectral_snapshot"
-        file["creation_time"] = string(now())
+        file["file_type"]       = "spectral_snapshot"
+        file["creation_time"]   = string(now())
     end
     
     return filename
