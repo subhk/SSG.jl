@@ -152,7 +152,8 @@ function solve_monge_ampere_fields!(fields::Fields{T},
                                    domain::Domain;
                                    tol::T=T(1e-10),
                                    maxiter::Int=20,
-                                   verbose::Bool=false) where T
+                                   verbose::Bool=false,
+                                   ε::T=T(0,1)) where T
 
     solution, diagnostics = solve_ssg_equation(fields.φ, 
                                       fields.b, 
