@@ -460,11 +460,19 @@ function compute_energy_spectrum(φhat::Array{Complex{T}, N},
     return energy_spectrum
 end
 
+
 """
-Compute radially averaged enstrophy spectrum
+Compute radially averaged enstrophy spectrum for 2D or 3D spectral data
 """
-function compute_enstrophy_spectrum(φhat::Array{Complex{T}, 2}, domain::Domain) where T
-    nx, ny = size(φhat)
+function compute_enstrophy_spectrum(φhat::Array{Complex{T}, N}, 
+                                domain::Domain; 
+                                is_2d::Bool=false) where {T, N}
+    if is_2d
+        nx, ny = size(φhat)
+        nz = 1
+    else
+        nx, ny, nz = size(φhat)
+    end
     
     # Create wavenumber arrays
     kx = rfftfreq(domain.Nx, 2π*domain.Nx/domain.Lx)
@@ -476,21 +484,41 @@ function compute_enstrophy_spectrum(φhat::Array{Complex{T}, 2}, domain::Domain)
     enstrophy_spectrum = zeros(T, length(k_bins))
     
     # Compute enstrophy spectrum
-    for (j, ky_val) in enumerate(ky)
-        for (i, kx_val) in enumerate(kx)
-            k_mag = sqrt(kx_val^2 + ky_val^2)
-            k_bin = round(Int, k_mag)
-            
-            if k_bin <= k_max
-                # Enstrophy density: 0.5 * |ω|² = 0.5 * k⁴ * |φ̂|²
-                enstrophy_density = 0.5 * k_mag^4 * abs2(φhat[i,j])
-                enstrophy_spectrum[k_bin+1] += enstrophy_density
+    if is_2d
+        # 2D case
+        for (j, ky_val) in enumerate(ky)
+            for (i, kx_val) in enumerate(kx)
+                k_mag = sqrt(kx_val^2 + ky_val^2)
+                k_bin = round(Int, k_mag)
+                
+                if k_bin <= k_max
+                    # Enstrophy density: 0.5 * |ω|² = 0.5 * k⁴ * |φ̂|²
+                    enstrophy_density = 0.5 * k_mag^4 * abs2(φhat[i,j])
+                    enstrophy_spectrum[k_bin+1] += enstrophy_density
+                end
+            end
+        end
+    else
+        # 3D case - sum over all z levels
+        for k in 1:nz
+            for (j, ky_val) in enumerate(ky)
+                for (i, kx_val) in enumerate(kx)
+                    k_mag = sqrt(kx_val^2 + ky_val^2)
+                    k_bin = round(Int, k_mag)
+                    
+                    if k_bin <= k_max
+                        # Enstrophy density: 0.5 * |ω|² = 0.5 * k⁴ * |φ̂|²
+                        enstrophy_density = 0.5 * k_mag^4 * abs2(φhat[i,j,k])
+                        enstrophy_spectrum[k_bin+1] += enstrophy_density
+                    end
+                end
             end
         end
     end
     
     return enstrophy_spectrum
 end
+
 
 # ============================================================================
 # TIME-BASED OUTPUT MANAGER
