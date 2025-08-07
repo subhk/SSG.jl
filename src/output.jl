@@ -668,7 +668,7 @@ end
 # ============================================================================
 
 """
-Improved MPI data gathering with explicit range communication
+Gather distributed 2D data to root process
 """
 function gather_to_root(field::PencilArray{T, 2}) where T
     comm   = field.pencil.comm
@@ -717,6 +717,63 @@ function gather_to_root(field::PencilArray{T, 2}) where T
         
         # Send data
         MPI.Send(vec(field.data), 0, 201, comm)
+        
+        return nothing
+    end
+end
+
+"""
+Gather distributed 3D data to root process
+"""
+function gather_to_root(field::PencilArray{T, 3}) where T
+    comm   = field.pencil.comm
+    rank   = MPI.Comm_rank(comm)
+    nprocs = MPI.Comm_size(comm)
+    
+    if rank == 0
+        # Root process: collect all data
+        nx_global, ny_global, nz_global = size_global(field.pencil)
+        global_data = zeros(T, nx_global, ny_global, nz_global)
+        
+        # Copy local data
+        range_locals = range_local(field.pencil)
+        global_data[range_locals[1], range_locals[2], range_locals[3]] = field.data
+        
+        # Receive from other processes
+        for src_rank = 1:nprocs-1
+            # Receive range information first (6 integers for 3D)
+            range_buffer = Vector{Int}(undef, 6)
+            MPI.Recv!(range_buffer, src_rank, 300, comm)
+            i_start, i_end, j_start, j_end, k_start, k_end = range_buffer
+            
+            # Calculate expected data size
+            ni_local = i_end - i_start + 1
+            nj_local = j_end - j_start + 1
+            nk_local = k_end - k_start + 1
+            expected_size = ni_local * nj_local * nk_local
+            
+            # Receive the actual data
+            data_buffer = Vector{T}(undef, expected_size)
+            MPI.Recv!(data_buffer, src_rank, 301, comm)
+            
+            # Reshape and place in global array
+            local_data = reshape(data_buffer, (ni_local, nj_local, nk_local))
+            global_data[i_start:i_end, j_start:j_end, k_start:k_end] = local_data
+        end
+        
+        return global_data
+    else
+        # Non-root processes: send data to root
+        range_locals = range_local(field.pencil)
+        range_info = [range_locals[1].start, range_locals[1].stop,
+                     range_locals[2].start, range_locals[2].stop,
+                     range_locals[3].start, range_locals[3].stop]
+        
+        # Send range information
+        MPI.Send(range_info, 0, 300, comm)
+        
+        # Send data
+        MPI.Send(vec(field.data), 0, 301, comm)
         
         return nothing
     end
