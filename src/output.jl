@@ -212,14 +212,14 @@ end
 # COMPREHENSIVE OUTPUT FUNCTIONS
 # ===================================
 """
-Save complete simulation state including spectral fields
+Save complete simulation state including spectral fields (now supports 3D)
 """
 function save_simulation_state_full(filename::String, 
-                                prob::SemiGeostrophicProblem{T};
-                                save_spectral::Bool=true,
-                                save_diagnostics::Bool=true,
-                                save_metadata::Bool=true,
-                                compress::Bool=true) where T
+                                   prob::SemiGeostrophicProblem{T};
+                                   save_spectral::Bool=true,
+                                   save_diagnostics::Bool=true,
+                                   save_metadata::Bool=true,
+                                   compress::Bool=true) where T
     
     # Only root process writes the file
     if MPI.Comm_rank(prob.domain.pr3d.comm) != 0
@@ -243,17 +243,24 @@ function save_simulation_state_full(filename::String,
     b_mg_global = gather_to_root(prob.fields.b_mg)
     
     # Gather 2D scratch arrays
-    R_global    = gather_to_root(prob.fields.R)
-    tmp_global  = gather_to_root(prob.fields.tmp)
+    R_global = gather_to_root(prob.fields.R)
+    tmp_global = gather_to_root(prob.fields.tmp)
     tmp2_global = gather_to_root(prob.fields.tmp2)
     tmp3_global = gather_to_root(prob.fields.tmp3)
     
     # Gather spectral data if requested
-    local bshat_global, φshat_global, φhat_global
+    local bshat_global, φshat_global, φhat_global, tmpc_2d_global, tmpc1_2d_global, tmpc_3d_global, tmpc1_3d_global
     if save_spectral
+        # 2D spectral fields
         bshat_global = gather_spectral_to_root(prob.fields.bshat)
         φshat_global = gather_spectral_to_root(prob.fields.φshat)
-        φhat_global  = gather_spectral_to_root(prob.fields.φhat)
+        tmpc_2d_global = gather_spectral_to_root(prob.fields.tmpc_2d)
+        tmpc1_2d_global = gather_spectral_to_root(prob.fields.tmpc1_2d)
+        
+        # 3D spectral fields  
+        φhat_global = gather_spectral_to_root(prob.fields.φhat)
+        tmpc_3d_global = gather_spectral_to_root(prob.fields.tmpc_3d)
+        tmpc1_3d_global = gather_spectral_to_root(prob.fields.tmpc1_3d)
     end
     
     # Create JLD2 file with comprehensive data
@@ -267,12 +274,14 @@ function save_simulation_state_full(filename::String,
         file["grid/Nx"] = prob.domain.Nx
         file["grid/Ny"] = prob.domain.Ny
         file["grid/Nz"] = prob.domain.Nz
+
         file["grid/Lx"] = prob.domain.Lx
         file["grid/Ly"] = prob.domain.Ly
         file["grid/Lz"] = prob.domain.Lz
-        file["grid/x"] = prob.domain.x  
-        file["grid/y"] = prob.domain.y  
-        file["grid/z"] = prob.domain.z
+
+        file["grid/x"]  = prob.domain.x  
+        file["grid/y"]  = prob.domain.y  
+        file["grid/z"]  = prob.domain.z
         file["grid/dz"] = prob.domain.dz
         
         # Wavenumber arrays
@@ -282,31 +291,39 @@ function save_simulation_state_full(filename::String,
         end
         
         # 2D Surface fields
-        file["fields/surface/buoyancy"] = bₛ_global
-        file["fields/surface/streamfunction"] = φₛ_global
-        file["fields/surface/residual"] = R_global
-        file["fields/surface/tmp"] = tmp_global
-        file["fields/surface/tmp2"] = tmp2_global  
-        file["fields/surface/tmp3"] = tmp3_global
+        file["fields/surface/buoyancy"]         = bₛ_global
+        file["fields/surface/streamfunction"]   = φₛ_global
+        file["fields/surface/residual"]         = R_global
+        file["fields/surface/tmp"]              = tmp_global
+        file["fields/surface/tmp2"]             = tmp2_global  
+        file["fields/surface/tmp3"]             = tmp3_global
         
         # 3D Physical fields
-        file["fields/3d/streamfunction"] = φ_global
-        file["fields/3d/u_velocity"] = u_global
-        file["fields/3d/v_velocity"] = v_global
-        file["fields/3d/phi_mg"] = φ_mg_global
-        file["fields/3d/b_mg"] = b_mg_global
+        file["fields/3d/streamfunction"]    = φ_global
+        file["fields/3d/u_velocity"]        = u_global
+        file["fields/3d/v_velocity"]        = v_global
+        file["fields/3d/phi_mg"]            = φ_mg_global
+        file["fields/3d/b_mg"]              = b_mg_global
         
         # Spectral fields
         if save_spectral
             # 2D spectral fields
-            file["fields/spectral/2d/buoyancy_real"] = real(bshat_global)
-            file["fields/spectral/2d/buoyancy_imag"] = imag(bshat_global)
-            file["fields/spectral/2d/streamfunction_real"] = real(φshat_global)
-            file["fields/spectral/2d/streamfunction_imag"] = imag(φshat_global)
+            file["fields/spectral/2d/buoyancy_real"]        = real(bshat_global)
+            file["fields/spectral/2d/buoyancy_imag"]        = imag(bshat_global)
+            file["fields/spectral/2d/streamfunction_real"]  = real(φshat_global)
+            file["fields/spectral/2d/streamfunction_imag"]  = imag(φshat_global)
+            file["fields/spectral/2d/tmp_complex_real"]     = real(tmpc_2d_global)
+            file["fields/spectral/2d/tmp_complex_imag"]     = imag(tmpc_2d_global)
+            file["fields/spectral/2d/tmp1_complex_real"]    = real(tmpc1_2d_global)
+            file["fields/spectral/2d/tmp1_complex_imag"]    = imag(tmpc1_2d_global)
             
             # 3D spectral fields
-            file["fields/spectral/3d/streamfunction_real"] = real(φhat_global)
-            file["fields/spectral/3d/streamfunction_imag"] = imag(φhat_global)
+            file["fields/spectral/3d/streamfunction_real"]  = real(φhat_global)
+            file["fields/spectral/3d/streamfunction_imag"]  = imag(φhat_global)
+            file["fields/spectral/3d/tmp_complex_real"]     = real(tmpc_3d_global)
+            file["fields/spectral/3d/tmp_complex_imag"]     = imag(tmpc_3d_global)
+            file["fields/spectral/3d/tmp1_complex_real"]    = real(tmpc1_3d_global)
+            file["fields/spectral/3d/tmp1_complex_imag"]    = imag(tmpc1_3d_global)
         end
         
         # Time integration parameters
@@ -348,7 +365,7 @@ function save_simulation_state_full(filename::String,
             file["metadata/physics/grid_spacing_y"]         = prob.domain.Ly / prob.domain.Ny
             file["metadata/physics/grid_spacing_z_min"]     = minimum(prob.domain.dz)
             file["metadata/physics/grid_spacing_z_max"]     = maximum(prob.domain.dz)
-            file["metadata/physics/z_boundary"]            = string(prob.domain.z_boundary)
+            file["metadata/physics/z_boundary"]             = string(prob.domain.z_boundary)
             file["metadata/physics/z_grid"]                 = string(prob.domain.z_grid)
         end
     end
