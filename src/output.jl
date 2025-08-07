@@ -240,28 +240,75 @@ end
 
 
 """
-Distribute spectral data from root to all processes
+Distribute spectral data from root to all processes (supports 3D)
 """
 function distribute_spectral_from_root!(field::PencilArray{Complex{T}, 2}, 
-                                       global_data::Union{Array{Complex{T}, 2}, Nothing}) where T
+                                    global_data::Union{Array{Complex{T}, 2}, Nothing}) where T
+
     comm = field.pencil.comm
     rank = MPI.Comm_rank(comm)
     
-    # Broadcast approach for simplicity
-    if rank == 0 && global_data !== nothing
+    # Get expected global dimensions
+    nx_spec, ny_spec = size_global(field.pencil)
+    
+    if rank == 0
+        # Validate input on root
+        if global_data === nothing
+            error("Root process must provide global_data for 2D spectral field")
+        end
+        if size(global_data) != (nx_spec, ny_spec)
+            error("Global spectral data size $(size(global_data)) doesn't match expected ($nx_spec, $ny_spec)")
+        end
+        
+        # Broadcast the global data
         MPI.Bcast!(global_data, 0, comm)
     else
-        nx_spec, ny_spec = size_global(field.pencil)
+        # Receive broadcast
         global_data = zeros(Complex{T}, nx_spec, ny_spec)
         MPI.Bcast!(global_data, 0, comm)
     end
     
     # Extract local portion on all processes
     range_locals = range_local(field.pencil)
-    field.data .= global_data[range_locals[1], range_locals[2]]
+    field.data  .= global_data[range_locals[1], range_locals[2]]
     
     return nothing
 end
+
+
+function distribute_spectral_from_root!(field::PencilArray{Complex{T}, 3}, 
+                                    global_data::Union{Array{Complex{T}, 3}, Nothing}) where T
+
+    comm = field.pencil.comm
+    rank = MPI.Comm_rank(comm)
+    
+    # Get expected global dimensions
+    nx_spec, ny_spec, nz_spec = size_global(field.pencil)
+    
+    if rank == 0
+        # Validate input on root
+        if global_data === nothing
+            error("Root process must provide global_data for 3D spectral field")
+        end
+        if size(global_data) != (nx_spec, ny_spec, nz_spec)
+            error("Global spectral data size $(size(global_data)) doesn't match expected ($nx_spec, $ny_spec, $nz_spec)")
+        end
+        
+        # Broadcast the global data
+        MPI.Bcast!(global_data, 0, comm)
+    else
+        # Receive broadcast
+        global_data = zeros(Complex{T}, nx_spec, ny_spec, nz_spec)
+        MPI.Bcast!(global_data, 0, comm)
+    end
+    
+    # Extract local portion on all processes
+    range_locals = range_local(field.pencil)
+    field.data  .= global_data[range_locals[1], range_locals[2], range_locals[3]]
+    
+    return nothing
+end
+
 
 # ===================================
 # COMPREHENSIVE OUTPUT FUNCTIONS
