@@ -112,10 +112,9 @@ function should_output(freq::OutputFrequency{T},
     end
 end
 
-# ============================================================================
+# ===========================
 # SPECTRAL DATA HANDLING
-# ============================================================================
-
+# ===========================
 """
 Gather distributed spectral data to root process
 """
@@ -813,13 +812,13 @@ function load_simulation_state_full(filename::String, domain::Domain{T};
         end
         
         # Load timestepper parameters
-        scheme_str = file["timestepper/scheme"]
-        scheme = eval(Symbol(scheme_str))
-        timestepper_dt = file["timestepper/dt"]
-        adaptive_dt = file["timestepper/adaptive_dt"]
-        filter_freq = file["timestepper/filter_freq"]
+        scheme_str      = file["timestepper/scheme"]
+        scheme          = eval(Symbol(scheme_str))
+        timestepper_dt  = file["timestepper/dt"]
+        adaptive_dt     = file["timestepper/adaptive_dt"]
+        filter_freq     = file["timestepper/filter_freq"]
         filter_strength = file["timestepper/filter_strength"]
-        cfl_safety = file["timestepper/cfl_safety"]
+        cfl_safety      = file["timestepper/cfl_safety"]
         
         # Create problem with loaded parameters
         prob = SemiGeostrophicProblem(domain;
