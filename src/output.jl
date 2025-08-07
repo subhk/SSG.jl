@@ -188,51 +188,52 @@ function distribute_spectral_from_root!(field::PencilArray{Complex{T}, 2},
     return nothing
 end
 
-# ============================================================================
+# ===================================
 # COMPREHENSIVE OUTPUT FUNCTIONS
-# ============================================================================
-
+# ===================================
 """
 Save complete simulation state including spectral fields
 """
 function save_simulation_state_full(filename::String, 
-                                   prob::SemiGeostrophicProblem{T};
-                                   save_spectral::Bool=true,
-                                   save_diagnostics::Bool=true,
-                                   save_metadata::Bool=true,
-                                   compress::Bool=true) where T
+                                prob::SemiGeostrophicProblem{T};
+                                save_spectral::Bool=true,
+                                save_diagnostics::Bool=true,
+                                save_metadata::Bool=true,
+                                compress::Bool=true) where T
     
     # Only root process writes the file
-    if MPI.Comm_rank(prob.domain.pc.comm) != 0
+    if MPI.Comm_rank(prob.domain.pr3d.comm) != 0
         return filename
     end
     
     # Ensure directory exists
     mkpath(dirname(filename))
     
-    # Gather distributed physical data to root process
-    b_global = gather_to_root(prob.fields.bₛ)
-    φ_global = gather_to_root(prob.fields.φ)
+    # Gather distributed 2D surface fields
+    bₛ_global = gather_to_root(prob.fields.bₛ)
+    φₛ_global = gather_to_root(prob.fields.φₛ)
     
-    # Compute and gather velocities
-    compute_geostrophic_velocities!(prob.fields)
+    # Gather distributed 3D fields
+    φ_global = gather_to_root(prob.fields.φ)
     u_global = gather_to_root(prob.fields.u)
     v_global = gather_to_root(prob.fields.v)
     
-    # Compute and gather residual
-    compute_ma_residual_fields!(prob.fields)
-    R_global = gather_to_root(prob.fields.R)
+    # Gather multigrid workspace if needed
+    φ_mg_global = gather_to_root(prob.fields.φ_mg)
+    b_mg_global = gather_to_root(prob.fields.b_mg)
+    
+    # Gather 2D scratch arrays
+    R_global    = gather_to_root(prob.fields.R)
+    tmp_global  = gather_to_root(prob.fields.tmp)
+    tmp2_global = gather_to_root(prob.fields.tmp2)
+    tmp3_global = gather_to_root(prob.fields.tmp3)
     
     # Gather spectral data if requested
-    local bhat_global, φhat_global
+    local bshat_global, φshat_global, φhat_global
     if save_spectral
-        # Transform to spectral space if needed
-        rfft!(prob.domain, prob.fields.b, prob.fields.bhat)
-        rfft!(prob.domain, prob.fields.φ, prob.fields.φhat)
-        
-        # Gather spectral fields
-        bhat_global = gather_spectral_to_root(prob.fields.bhat)
-        φhat_global = gather_spectral_to_root(prob.fields.φhat)
+        bshat_global = gather_spectral_to_root(prob.fields.bshat)
+        φshat_global = gather_spectral_to_root(prob.fields.φshat)
+        φhat_global  = gather_spectral_to_root(prob.fields.φhat)
     end
     
     # Create JLD2 file with comprehensive data
@@ -246,40 +247,46 @@ function save_simulation_state_full(filename::String,
         file["grid/Nx"] = prob.domain.Nx
         file["grid/Ny"] = prob.domain.Ny
         file["grid/Nz"] = prob.domain.Nz
-
         file["grid/Lx"] = prob.domain.Lx
         file["grid/Ly"] = prob.domain.Ly
         file["grid/Lz"] = prob.domain.Lz
-
         file["grid/x"] = prob.domain.x  
         file["grid/y"] = prob.domain.y  
         file["grid/z"] = prob.domain.z
-
+        file["grid/dz"] = prob.domain.dz
+        
         # Wavenumber arrays
         if save_spectral
             file["grid/kx"] = collect(prob.domain.kx)
             file["grid/ky"] = collect(prob.domain.ky)
-            file["grid/kr"] = collect(rfftfreq(prob.domain.Nx, 2π*prob.domain.Nx/prob.domain.Lx))
         end
         
-        # Physical fields
-        file["fields/physical/buoyancy"]       = b_global
-        file["fields/physical/streamfunction"] = φ_global
-        file["fields/physical/u_velocity"]     = u_global
-        file["fields/physical/v_velocity"]     = v_global
-        file["fields/physical/ma_residual"]    = R_global
+        # 2D Surface fields
+        file["fields/surface/buoyancy"] = bₛ_global
+        file["fields/surface/streamfunction"] = φₛ_global
+        file["fields/surface/residual"] = R_global
+        file["fields/surface/tmp"] = tmp_global
+        file["fields/surface/tmp2"] = tmp2_global  
+        file["fields/surface/tmp3"] = tmp3_global
+        
+        # 3D Physical fields
+        file["fields/3d/streamfunction"] = φ_global
+        file["fields/3d/u_velocity"] = u_global
+        file["fields/3d/v_velocity"] = v_global
+        file["fields/3d/phi_mg"] = φ_mg_global
+        file["fields/3d/b_mg"] = b_mg_global
         
         # Spectral fields
         if save_spectral
-            # Store real and imaginary parts separately for better compression
-            file["fields/spectral/buoyancy_real"]       = real(bshat_global)
-            file["fields/spectral/buoyancy_imag"]       = imag(bshat_global)
-            file["fields/spectral/streamfunction_real"] = real(φhat_global)
-            file["fields/spectral/streamfunction_imag"] = imag(φhat_global)
+            # 2D spectral fields
+            file["fields/spectral/2d/buoyancy_real"] = real(bshat_global)
+            file["fields/spectral/2d/buoyancy_imag"] = imag(bshat_global)
+            file["fields/spectral/2d/streamfunction_real"] = real(φshat_global)
+            file["fields/spectral/2d/streamfunction_imag"] = imag(φshat_global)
             
-            # # Also store as complex for direct loading
-            # file["fields/spectral/buoyancy_complex"] = bhat_global
-            # file["fields/spectral/streamfunction_complex"] = φhat_global
+            # 3D spectral fields
+            file["fields/spectral/3d/streamfunction_real"] = real(φhat_global)
+            file["fields/spectral/3d/streamfunction_imag"] = imag(φhat_global)
         end
         
         # Time integration parameters
@@ -307,7 +314,7 @@ function save_simulation_state_full(filename::String,
             file["metadata/creation_time"]      = string(now())
             file["metadata/julia_version"]      = string(VERSION)
             file["metadata/hostname"]           = gethostname()
-            file["metadata/mpi_size"]           = MPI.Comm_size(prob.domain.pc.comm)
+            file["metadata/mpi_size"]           = MPI.Comm_size(prob.domain.pr3d.comm)
             file["metadata/precision"]          = string(T)
             file["metadata/equation_type"]      = "surface_semi_geostrophic"
             file["metadata/description"]        = "Surface buoyancy evolution with Monge-Ampère constraint"
@@ -319,11 +326,16 @@ function save_simulation_state_full(filename::String,
             file["metadata/physics/domain_aspect_ratio"]    = prob.domain.Lx / prob.domain.Ly
             file["metadata/physics/grid_spacing_x"]         = prob.domain.Lx / prob.domain.Nx
             file["metadata/physics/grid_spacing_y"]         = prob.domain.Ly / prob.domain.Ny
+            file["metadata/physics/grid_spacing_z_min"]     = minimum(prob.domain.dz)
+            file["metadata/physics/grid_spacing_z_max"]     = maximum(prob.domain.dz)
+            file["metadata/physics/z_boundary"]            = string(prob.domain.z_boundary)
+            file["metadata/physics/z_grid"]                 = string(prob.domain.z_grid)
         end
     end
     
     return filename
 end
+
 
 """
 Save spectral-only snapshot for frequency domain analysis
