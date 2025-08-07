@@ -625,16 +625,16 @@ mutable struct OutputManager{T<:AbstractFloat}
                        OutputFrequency{T}(step_interval=snapshot_step_freq)
                        
         full_state_freq = full_state_time_freq !== nothing ?
-                         OutputFrequency{T}(time_interval=full_state_time_freq) :
-                         OutputFrequency{T}(step_interval=full_state_step_freq)
+                        OutputFrequency{T}(time_interval=full_state_time_freq) :
+                        OutputFrequency{T}(step_interval=full_state_step_freq)
                          
         spectral_freq = spectral_time_freq !== nothing ?
                        OutputFrequency{T}(time_interval=spectral_time_freq) :
                        OutputFrequency{T}(step_interval=spectral_step_freq)
                        
         diagnostics_freq = diagnostics_time_freq !== nothing ?
-                          OutputFrequency{T}(time_interval=diagnostics_time_freq) :
-                          OutputFrequency{T}(step_interval=diagnostics_step_freq)
+                        OutputFrequency{T}(time_interval=diagnostics_time_freq) :
+                        OutputFrequency{T}(step_interval=diagnostics_step_freq)
         
         new{T}(base_dir, snapshot_freq, full_state_freq, spectral_freq, diagnostics_freq,
                T(0), 0, T(0), 0, T(0), 0, T(0), 0,
