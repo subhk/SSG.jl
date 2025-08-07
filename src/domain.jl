@@ -30,7 +30,7 @@ Periodic in x,y directions; bounded in z direction.
 - `aliased_fraction`: Fraction of wavenumbers that are aliased (e.g., 1/3)
 - `kxalias, kyalias`: Ranges of aliased wavenumber indices
 """
-struct Domain{T, PR, PC, PFP, PR2D, PC2D, PFP2D}
+struct Domain{T, PR3D, PC3D, PFP3D, PR2D, PC2D, PFP2D}
     Nx::Int
     Ny::Int
     Nz::Int
@@ -55,12 +55,12 @@ struct Domain{T, PR, PC, PFP, PR2D, PC2D, PFP2D}
     z_grid::Symbol
     
     # 3D Pencil descriptors
-    pr::PR      # real-space pencil
-    pc::PC      # complex/spectral pencil
+    pr::PR3D      # real-space pencil
+    pc::PC3D      # complex/spectral pencil
     
     # FFT plans (horizontal only)
-    fplan::PFP
-    iplan::PFP
+    fplan::PFP3D
+    iplan::PFP3D
 
     # 2D surface field support
     pr_2d::PR2D      # 2D real-space pencil for surface
@@ -116,11 +116,11 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     
     # Create pencil descriptors for 3D arrays
     # Real-space: full (Nx, Ny, Nz) array
-    pr  = Pencil((Nx, Ny, Nz),  comm)
+    pr3d  = Pencil((Nx, Ny, Nz),  comm)
     
     # Spectral-space: rFFT reduces y dimension to Ny÷2+1, z remains same
-    Nyc = fld(Ny, 2) + 1
-    pc  = Pencil((Nx, Nyc, Nz), comm)
+    Nyc   = fld(Ny, 2) + 1
+    pc3d  = Pencil((Nx, Nyc, Nz), comm)
     
     # FFT plans: FFT on x, RFFT on y, no transform on z
     fplan = PencilFFTPlan(
@@ -132,12 +132,12 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     )
     iplan = fplan  # same plan used for inverse (via ldiv! or \)
 
-    pr_2d = Pencil((Nx, Ny),  comm)
-    pc_2d = Pencil((Nx, Nyc), comm)
+    pr2d = Pencil((Nx, Ny),  comm)
+    pc2d = Pencil((Nx, Nyc), comm)
     
     # Create 2D FFT plans
     fplan_2d = PencilFFTPlan(
-        pr_2d,
+        pr2d,
         (Transforms.FFT(),     # FFT on x
          Transforms.RFFT());   # RFFT on y
         fftw_flags = FFTW.MEASURE
@@ -181,8 +181,8 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     aliased_fraction = T(1/3)
     kxalias, kyalias =  get_aliased_wavenumbers(Nx, Nyc, aliased_fraction)
     
-    return Domain{T, typeof(pr), typeof(pc), typeof(fplan), 
-            typeof(pr_2d), typeof(pc_2d), typeof(fplan_2d)}(
+    return Domain{T, typeof(pr3d), typeof(pc3d), typeof(fplan), 
+            typeof(pr2d), typeof(pc2d), typeof(fplan_2d)}(
         Nx, Ny, Nz, 
         T(Lx), T(Ly), T(Lz), 
         x, y, z, dz, 

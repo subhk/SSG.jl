@@ -243,7 +243,7 @@ function save_simulation_state_full(filename::String,
         # Time and integration state
         file["time"] = prob.clock.t
         file["step"] = prob.clock.step
-        file["dt"] = prob.clock.dt_actual > 0 ? prob.clock.dt_actual : prob.timestepper.dt
+        file["dt"]   = prob.clock.dt_actual > 0 ? prob.clock.dt_actual : prob.timestepper.dt
         
         # Grid information
         file["grid/Nx"] = prob.domain.Nx
@@ -254,8 +254,8 @@ function save_simulation_state_full(filename::String,
         file["grid/Ly"] = prob.domain.Ly
         file["grid/Lz"] = prob.domain.Lz
 
-        file["grid/x"] = prob.domain.x  # collect(range(0, prob.domain.Lx, length=prob.domain.Nx+1)[1:end-1])
-        file["grid/y"] = prob.domain.y  # collect(range(0, prob.domain.Ly, length=prob.domain.Ny+1)[1:end-1])
+        file["grid/x"] = prob.domain.x  
+        file["grid/y"] = prob.domain.y  
         file["grid/z"] = prob.domain.z
 
         # Wavenumber arrays
