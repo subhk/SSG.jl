@@ -62,30 +62,35 @@ Allocate all field arrays for the given domain.
 - `Fields`: Allocated field structure
 """
 function allocate_fields(domain::Domain{T}) where T
-    # Real-space fields
+    # 2D fields for surface
     bₛ   = PencilArray{T}(undef, domain.pr_2d)
     φₛ   = PencilArray{T}(undef, domain.pr_2d)
-
+    
+    # 3D field for solver
     φ    = PencilArray{T}(undef, domain.pr)
-
-    u    = PencilArray{T}(undef, domain.pr)
-    v    = PencilArray{T}(undef, domain.pr)
     
-    R    = PencilArray{T}(undef, domain.pr)
-    tmp  = PencilArray{T}(undef, domain.pr)
-    tmp2 = PencilArray{T}(undef, domain.pr)
-    tmp3 = PencilArray{T}(undef, domain.pr)
+    # 2D velocity fields
+    u    = PencilArray{T}(undef, domain.pr_2d)
+    v    = PencilArray{T}(undef, domain.pr_2d)
     
+    # 2D scratch arrays
+    R    = PencilArray{T}(undef, domain.pr_2d)
+    tmp  = PencilArray{T}(undef, domain.pr_2d)
+    tmp2 = PencilArray{T}(undef, domain.pr_2d)
+    tmp3 = PencilArray{T}(undef, domain.pr_2d)
+    
+    # 3D arrays for multigrid
     φ_mg = PencilArray{T}(undef, domain.pr)
     b_mg = PencilArray{T}(undef, domain.pr)
-
-    # Spectral fields
-    bhat  = PencilArray{Complex{T}}(undef, domain.pc)
-    φhat  = PencilArray{Complex{T}}(undef, domain.pc)
-    tmpc  = PencilArray{Complex{T}}(undef, domain.pc)
-    tmpc2 = PencilArray{Complex{T}}(undef, domain.pc)
     
-    return Fields{T, typeof(b), typeof(bhat)}(
+    # 2D Spectral fields
+    bhat  = PencilArray{Complex{T}}(undef, domain.pc_2d)
+    φhat  = PencilArray{Complex{T}}(undef, domain.pc_2d)
+    tmpc  = PencilArray{Complex{T}}(undef, domain.pc_2d)
+    tmpc2 = PencilArray{Complex{T}}(undef, domain.pc_2d)
+    
+    return Fields{T, typeof(domain.pr_2d), typeof(domain.pr), 
+                  typeof(domain.pc_2d), typeof(domain.pc)}(
         bₛ, φₛ, φ, u, v, 
         φ_mg, b_mg, R, 
         tmp, tmp2, tmp3, 
