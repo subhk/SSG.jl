@@ -183,14 +183,14 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     
     return Domain{T, typeof(pr3d), typeof(pc3d), typeof(fplan), 
             typeof(pr2d), typeof(pc2d), typeof(fplan_2d)}(
-        Nx, Ny, Nz, 
-        T(Lx), T(Ly), T(Lz), 
-        x, y, z, dz, 
-        kx, ky, Krsq, invKrsq, 
-        mask, z_boundary, z_grid,
-        pr, pc, fplan, iplan,
-        pr_2d, pc_2d, fplan_2d, iplan_2d,
-        aliased_fraction, kxalias, kyalias
+            Nx, Ny, Nz, 
+            T(Lx), T(Ly), T(Lz), 
+            x, y, z, dz, 
+            kx, ky, Krsq, invKrsq, 
+            mask, z_boundary, z_grid,
+            pr, pc, fplan, iplan,
+            pr_2d, pc_2d, fplan_2d, iplan_2d,
+            aliased_fraction, kxalias, kyalias
     )
 end
 
@@ -297,7 +297,7 @@ Create wavenumber magnitude arrays for real FFTs.
 function make_wavenumber_arrays(kx, ky, Nx, Nyc)
     T = eltype(kx)
     # Create 2D arrays for wavenumber magnitudes
-    Krsq = zeros(T, Nx, Nyc)
+    Krsq    = zeros(T, Nx, Nyc)
     invKrsq = zeros(T, Nx, Nyc)
     
     for i in 1:Nx, j in 1:Nyc
