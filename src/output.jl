@@ -134,12 +134,12 @@ end
 # SPECTRAL DATA HANDLING
 # ===========================
 """
-Gather distributed spectral data to root process
+Gather distributed spectral data to root process (now supports 3D)
 """
 function gather_spectral_to_root(field::PencilArray{Complex{T}, 2}) where T
-    comm = field.pencil.comm
-    rank = MPI.Comm_rank(comm)
-    size = MPI.Comm_size(comm)
+    comm   = field.pencil.comm
+    rank   = MPI.Comm_rank(comm)
+    nprocs = MPI.Comm_size(comm)
     
     if rank == 0
         # Root process: collect all spectral data
@@ -151,7 +151,7 @@ function gather_spectral_to_root(field::PencilArray{Complex{T}, 2}) where T
         global_data[range_locals[1], range_locals[2]] = field.data
         
         # Receive from other processes
-        for src_rank = 1:size-1
+        for src_rank = 1:nprocs-1
             # Receive range information
             ranges_info = Vector{Int}(undef, 4)
             MPI.Recv!(ranges_info, src_rank, 100, comm)
@@ -183,6 +183,7 @@ function gather_spectral_to_root(field::PencilArray{Complex{T}, 2}) where T
         return nothing
     end
 end
+
 
 """
 Distribute spectral data from root to all processes
