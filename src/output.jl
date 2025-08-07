@@ -670,9 +670,9 @@ end
 """
 Improved MPI data gathering with explicit range communication
 """
-function gather_to_root_improved(field::PencilArray{T, 2}) where T
-    comm = field.pencil.comm
-    rank = MPI.Comm_rank(comm)
+function gather_to_root(field::PencilArray{T, 2}) where T
+    comm   = field.pencil.comm
+    rank   = MPI.Comm_rank(comm)
     nprocs = MPI.Comm_size(comm)
     
     if rank == 0
@@ -725,7 +725,7 @@ end
 """
 Improved distribution from root with better error checking
 """
-function distribute_from_root_improved!(field::PencilArray{T, 2}, 
+function distribute_from_root!(field::PencilArray{T, 2}, 
                                        global_data::Union{Array{T, 2}, Nothing}) where T
     comm = field.pencil.comm
     rank = MPI.Comm_rank(comm)
@@ -834,8 +834,8 @@ function load_simulation_state_full(filename::String, domain::Domain{T};
         b_global = file["fields/physical/buoyancy"]
         φ_global = file["fields/physical/streamfunction"]
         
-        distribute_from_root_improved!(prob.fields.bₛ, b_global)
-        distribute_from_root_improved!(prob.fields.φ,  φ_global)
+        distribute_from_root!(prob.fields.bₛ, b_global)
+        distribute_from_root!(prob.fields.φ,  φ_global)
         
         # Load spectral fields if available and requested
         if load_spectral && haskey(file, "fields/spectral/buoyancy_complex")
@@ -853,12 +853,12 @@ function load_simulation_state_full(filename::String, domain::Domain{T};
         
         # Load diagnostics if available and requested
         if load_diagnostics && prob.diagnostics !== nothing && haskey(file, "diagnostics/times")
-            prob.diagnostics.times = file["diagnostics/times"]
+            prob.diagnostics.times          = file["diagnostics/times"]
             prob.diagnostics.kinetic_energy = file["diagnostics/kinetic_energy"]
-            prob.diagnostics.enstrophy = file["diagnostics/enstrophy"]
+            prob.diagnostics.enstrophy      = file["diagnostics/enstrophy"]
             prob.diagnostics.total_buoyancy = file["diagnostics/total_buoyancy"]
             prob.diagnostics.max_divergence = file["diagnostics/max_divergence"]
-            prob.diagnostics.max_cfl = file["diagnostics/max_cfl"]
+            prob.diagnostics.max_cfl        = file["diagnostics/max_cfl"]
         end
     end
     
@@ -874,7 +874,7 @@ function validate_simulation_state(prob::SemiGeostrophicProblem{T}) where T
     # Check field statistics
     b_stats = enhanced_field_stats(prob.fields)[:b]
     validation_results["buoyancy_finite"] = isfinite(b_stats.max) && isfinite(b_stats.min)
-    validation_results["buoyancy_range"] = (b_stats.min, b_stats.max)
+    validation_results["buoyancy_range"]  = (b_stats.min, b_stats.max)
     
     # Check conservation if diagnostics available
     if prob.diagnostics !== nothing && length(prob.diagnostics.total_buoyancy) > 1
@@ -886,7 +886,7 @@ function validate_simulation_state(prob::SemiGeostrophicProblem{T}) where T
     # Check time consistency
     validation_results["time_positive"] = prob.clock.t >= 0
     validation_results["step_positive"] = prob.clock.step >= 0
-    validation_results["dt_positive"] = prob.timestepper.dt > 0
+    validation_results["dt_positive"]   = prob.timestepper.dt > 0
     
     # Overall validation
     validation_results["valid"] = all(values(validation_results))
