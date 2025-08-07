@@ -5,9 +5,9 @@
 
 using PencilArrays: range_local, size_global 
 
-###############################################################################
+#####################################################################
 # JLD2 OUTPUT SYSTEM FOR SEMI-GEOSTROPHIC SIMULATIONS
-###############################################################################
+#####################################################################
 #
 # FEATURES:
 # - Time-based and step-based output frequencies
@@ -24,7 +24,27 @@ using PencilArrays: range_local, size_global
 # 2. Full State: Complete simulation state for restart
 # 3. Spectral Data: Fourier coefficients for spectral analysis
 # 4. Diagnostics: Time series of integrated quantities
-###############################################################################
+#
+# spectral data is now organized as:
+# fields/spectral/
+# ├── 2d/
+# │   ├── buoyancy_real, buoyancy_imag
+# │   ├── streamfunction_real, streamfunction_imag  
+# │   ├── tmp_complex_real, tmp_complex_imag
+# │   └── tmp1_complex_real, tmp1_complex_imag
+# └── 3d/
+#     ├── streamfunction_real, streamfunction_imag
+#     ├── tmp_complex_real, tmp_complex_imag
+#     └── tmp1_complex_real, tmp1_complex_imag
+#
+# spectra/
+# ├── 2d/
+# │   ├── energy_spectrum
+# │   └── enstrophy_spectrum
+# └── 3d/
+#     ├── energy_spectrum
+#     └── enstrophy_spectrum
+################################################################
 
 # ===============================
 # OUTPUT FREQUENCY MANAGEMENT
@@ -1141,6 +1161,7 @@ function create_output_manifest(output_dir::String)
     
     return manifest_file
 end
+
 
 
 # ===================================
