@@ -2,7 +2,7 @@
 # Implements equation: ∇²Φ = εDΦ,    (1) 
 # with boundary conditions:
 #   ∂Φ/∂Z = b̃s  at Z = 0             (2a)
-#   ∂Φ/∂Z = 0   at Z = -1            (2b)
+#   ∂Φ/∂Z = 0   at Z = -H            (2b)
 # Supports non-uniform vertical grids
 #
 # Where:
@@ -256,7 +256,9 @@ end
 """
 Apply boundary conditions to the solution and residual
 ∂Φ/∂Z = bs_surface at Z=0 (surface)
-∂Φ/∂Z = 0 at Z=-1 (bottom)
+∂Φ/∂Z = 0 at Z=-H (bottom)
+
+Uses higher-order finite difference approximations for better accuracy.
 """
 function apply_ssg_boundary_conditions!(level::SSGLevel{T}) where T
     Φ_local = level.Φ.data
@@ -269,26 +271,97 @@ function apply_ssg_boundary_conditions!(level::SSGLevel{T}) where T
     @inbounds for j = 1:ny_local
         for i = 1:nx_local
             # Surface boundary (Z = 0): ∂Φ/∂Z = bs_surface[i,j]
-            if nz_local >= 2 && i <= size(bs_local, 1) && j <= size(bs_local, 2)
+            if nz_local >= 3 && i <= size(bs_local, 1) && j <= size(bs_local, 2)
                 k = nz_local
-                # Apply Neumann BC: ∂Φ/∂Z = b̃s
-                # Use one-sided difference: ∂Φ/∂Z ≈ (Φ[k] - Φ[k-1])/dz = b̃s
-                dz_top = length(dz) >= k ? dz[k-1] : 1.0
-                Φ_local[i,j,k] = Φ_local[i,j,k-1] + dz_top * bs_local[i,j]
+                # Apply Neumann BC using higher-order approximation
+                Φ_local[i,j,k] = apply_neumann_surface!(Φ_local, i, j, k, bs_local[i,j], dz, nz_local)
                 r_local[i,j,k] = 0  # Residual is zero at boundary
+            elseif nz_local >= 2 && i <= size(bs_local, 1) && j <= size(bs_local, 2)
+                # Fallback for coarse grids with only 2 points
+                k = nz_local
+                dz_surface = length(dz) >= k-1 ? dz[k-1] : 1.0
+                Φ_local[i,j,k] = Φ_local[i,j,k-1] + dz_surface * bs_local[i,j]
+                r_local[i,j,k] = 0
             end
             
-            # Bottom boundary (Z = -1): ∂Φ/∂Z = 0
-            k = 1
-            if nz_local >= 2
-                # Apply homogeneous Neumann BC: ∂Φ/∂Z = 0
-                # This is enforced by setting the residual to zero
+            # Bottom boundary (Z = -H): ∂Φ/∂Z = 0
+            if nz_local >= 3
+                k = 1
+                # Apply homogeneous Neumann BC using higher-order approximation
+                Φ_local[i,j,k] = apply_neumann_bottom!(Φ_local, i, j, k, nz_local, dz)
                 r_local[i,j,k] = 0  # Residual is zero at boundary
+            elseif nz_local >= 2
+                # Fallback for coarse grids
+                k = 1
+                Φ_local[i,j,k] = Φ_local[i,j,k+1]  # ∂Φ/∂Z ≈ 0
+                r_local[i,j,k] = 0
             end
         end
     end
     
     return nothing
+end
+
+"""
+Apply Neumann boundary condition at surface using higher-order finite difference
+∂Φ/∂Z = bc_value at Z=0 (top boundary)
+Uses second-order accurate backward difference for non-uniform grids
+"""
+function apply_neumann_surface!(Φ_local::Array{T,3}, i::Int, j::Int, k::Int, 
+                                bc_value::T, dz::Vector{T}, nz_local::Int) where T
+    if nz_local < 3
+        # Fallback to first-order
+        dz_k = length(dz) >= k-1 ? dz[k-1] : T(1)
+        return Φ_local[i,j,k-1] + dz_k * bc_value
+    end
+    
+    # For non-uniform grids, use weighted finite difference
+    # Second-order backward difference: ∂u/∂z ≈ (a*u_k + b*u_{k-1} + c*u_{k-2})/h
+    # where coefficients depend on grid spacing
+    
+    h1 = length(dz) >= k-1 ? dz[k-1] : T(1)  # spacing from k-1 to k
+    h2 = length(dz) >= k-2 ? dz[k-2] : h1    # spacing from k-2 to k-1
+    
+    # Coefficients for second-order backward difference on non-uniform grid
+    α = h1 + h2
+    β = h1
+    
+    # Solve for coefficients: ∂u/∂z = (a*u_k + b*u_{k-1} + c*u_{k-2})/normalizer
+    a = (2*h1 + h2) / (h1 * α)
+    b = -α / (h1 * h2)  
+    c = h1 / (h2 * α)
+    
+    # Apply BC: a*Φ_k + b*Φ_{k-1} + c*Φ_{k-2} = bc_value
+    # Solve for Φ_k = (bc_value - b*Φ_{k-1} - c*Φ_{k-2})/a
+    return (bc_value - b*Φ_local[i,j,k-1] - c*Φ_local[i,j,k-2]) / a
+end
+
+"""
+Apply homogeneous Neumann boundary condition at bottom using higher-order finite difference  
+∂Φ/∂Z = 0 at Z=-H (bottom boundary)
+Uses second-order accurate forward difference for non-uniform grids
+"""
+function apply_neumann_bottom!(Φ_local::Array{T,3}, i::Int, j::Int, k::Int, 
+                               nz_local::Int, dz::Vector{T}) where T
+    if nz_local < 3
+        # Fallback to first-order: ∂Φ/∂Z ≈ 0 → Φ_1 ≈ Φ_2
+        return Φ_local[i,j,k+1]
+    end
+    
+    # Second-order forward difference for non-uniform grid
+    h1 = length(dz) >= k ? dz[k] : T(1)      # spacing from k to k+1
+    h2 = length(dz) >= k+1 ? dz[k+1] : h1    # spacing from k+1 to k+2
+    
+    α = h1 + h2
+    
+    # Coefficients for second-order forward difference: ∂u/∂z = (a*u_k + b*u_{k+1} + c*u_{k+2})
+    a = -(2*h1 + h2) / (h1 * α)
+    b = α / (h1 * h2)
+    c = -h1 / (h2 * α)
+    
+    # Apply BC: a*Φ_k + b*Φ_{k+1} + c*Φ_{k+2} = 0
+    # Solve for Φ_k = -(b*Φ_{k+1} + c*Φ_{k+2})/a
+    return -(b*Φ_local[i,j,k+1] + c*Φ_local[i,j,k+2]) / a
 end
 
 
