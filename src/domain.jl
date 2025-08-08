@@ -168,11 +168,6 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     # Vertical coordinate based on grid type
     z, dz = make_vertical_grid(Nz, Lz, z_grid, z_boundary, stretch_params)
     
-    # # Horizontal wavenumber arrays (periodic)
-    # kx      = [(i <= Nx÷2 ? i : i - Nx) * (2π/Lx) for i in 0:(Nx-1)]
-    # ky_full = [(j <= Ny÷2 ? j : j - Ny) * (2π/Ly) for j in 0:(Ny-1)]
-    # ky      = ky_full[1:Nyc] # Truncated for rFFT
-    
     # Dealiasing mask (only for horizontal directions)
     mask = twothirds_mask(Nx, Nyc)
 
