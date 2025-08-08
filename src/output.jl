@@ -30,13 +30,9 @@ using AbstractFFTs: fftfreq, rfftfreq
 # fields/spectral/
 # ├── 2d/
 # │   ├── buoyancy_real, buoyancy_imag
-# │   ├── streamfunction_real, streamfunction_imag  
-# │   ├── tmp_complex_real, tmp_complex_imag
-# │   └── tmp1_complex_real, tmp1_complex_imag
+# │   └── streamfunction_real, streamfunction_imag  
 # └── 3d/
-#     ├── streamfunction_real, streamfunction_imag
-#     ├── tmp_complex_real, tmp_complex_imag
-#     └── tmp1_complex_real, tmp1_complex_imag
+#     └── streamfunction_real, streamfunction_imag
 #
 # spectra/
 # ├── 2d/
@@ -1117,21 +1113,6 @@ function load_simulation_state_full(filename::String, domain::Domain{T};
                 φhat_imag   = file["fields/spectral/3d/streamfunction_imag"]
                 φhat_global = complex.(φhat_real, φhat_imag)
                 distribute_spectral_from_root!(prob.fields.φhat, φhat_global)
-            end
-            
-            # Load 3D spectral scratch arrays if available
-            if haskey(file, "fields/spectral/3d/tmp_complex_real")
-                tmpc_3d_real    = file["fields/spectral/3d/tmp_complex_real"]
-                tmpc_3d_imag    = file["fields/spectral/3d/tmp_complex_imag"]
-                tmpc_3d_global  = complex.(tmpc_3d_real, tmpc_3d_imag)
-                distribute_spectral_from_root!(prob.fields.tmpc_3d, tmpc_3d_global)
-            end
-            
-            if haskey(file, "fields/spectral/3d/tmp1_complex_real")
-                tmpc1_3d_real   = file["fields/spectral/3d/tmp1_complex_real"]
-                tmpc1_3d_imag   = file["fields/spectral/3d/tmp1_complex_imag"]
-                tmpc1_3d_global = complex.(tmpc1_3d_real, tmpc1_3d_imag)
-                distribute_spectral_from_root!(prob.fields.tmpc1_3d, tmpc1_3d_global)
             end
         end
         
