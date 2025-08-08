@@ -4,6 +4,7 @@
 # Includes physical and spectral field output with MPI support
 
 using PencilArrays: range_local, size_global 
+using AbstractFFTs: fftfreq, rfftfreq
 
 #####################################################################
 # JLD2 OUTPUT SYSTEM FOR SEMI-GEOSTROPHIC SIMULATIONS
