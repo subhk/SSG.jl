@@ -518,6 +518,27 @@ function twothirds_mask(Nx::Int, Nyc::Int)
 end
 
 """
+    dealias_2d!(domain::Domain, field_spec_2d)
+
+Apply 2D dealiasing to a 2D spectral field (e.g., surface buoyancy field).
+Uses the horizontal dealiasing mask to zero out aliased wavenumbers.
+"""
+function dealias_2d!(domain::Domain, field_spec_2d)
+    # Get local array from PencilArray
+    field_local = field_spec_2d.data
+    
+    # Get local ranges for this MPI process
+    range_locals = range_local(domain.pc2d)
+    
+    # Apply mask to local data
+    mask_local = view(domain.mask, range_locals[1], range_locals[2])
+    
+    @inbounds @views @. field_local = ifelse(mask_local, field_local, 0)
+    
+    return nothing
+end
+
+"""
     Base.show(io::IO, domain::Domain)
 
 Pretty print 3D domain information.
