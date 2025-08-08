@@ -360,17 +360,6 @@ end
 # =============================================================================
 # DEALIASING FUNCTIONS
 # =============================================================================
-
-# """
-#     dealias!(domain::Domain, field_spec)
-
-# Apply dealiasing to a spectral field by zeroing out aliased wavenumbers.
-# """
-# function dealias!(domain::Domain, field_spec)
-#     _dealias!(field_spec, domain)
-#     return nothing
-# end
-
 """
     dealias!(domain::Domain, field_spec)
 
@@ -381,7 +370,7 @@ function dealias!(domain::Domain, field_spec)
     field_local = field_spec.data
     
     # Get local ranges for this MPI process
-    range_locals = range_local(domain.pc)
+    range_locals = range_local(domain.pc3d)
     
     # Apply mask to local data
     mask_local = view(domain.mask, range_locals[1], range_locals[2])
@@ -404,7 +393,7 @@ function _dealias!(field_spec, domain::Domain)
     field_local = field_spec.data
     
     # Get local ranges for this MPI process
-    range_locals = range_local(domain.pc)
+    range_locals = range_local(domain.pc3d)
     
     # Map global alias ranges to local ranges
     kx_local_alias = intersect_ranges(domain.kxalias, range_locals[1])
