@@ -352,18 +352,14 @@ function save_simulation_state_full(filename::String,
     tmp3_global = gather_to_root(prob.fields.tmp3)
     
     # Gather spectral data if requested
-    local bshat_global, φshat_global, φhat_global, tmpc_2d_global, tmpc1_2d_global, tmpc_3d_global, tmpc1_3d_global
+    local bshat_global, φshat_global, φhat_global
     if save_spectral
         # 2D spectral fields
         bshat_global    = gather_spectral_to_root(prob.fields.bshat)
         φshat_global    = gather_spectral_to_root(prob.fields.φshat)
-        tmpc_2d_global  = gather_spectral_to_root(prob.fields.tmpc_2d)
-        tmpc1_2d_global = gather_spectral_to_root(prob.fields.tmpc1_2d)
         
         # 3D spectral fields  
         φhat_global     = gather_spectral_to_root(prob.fields.φhat)
-        tmpc_3d_global  = gather_spectral_to_root(prob.fields.tmpc_3d)
-        tmpc1_3d_global = gather_spectral_to_root(prob.fields.tmpc1_3d)
     end
     
     # Create JLD2 file with comprehensive data
@@ -415,18 +411,10 @@ function save_simulation_state_full(filename::String,
             file["fields/spectral/2d/buoyancy_imag"]        = imag(bshat_global)
             file["fields/spectral/2d/streamfunction_real"]  = real(φshat_global)
             file["fields/spectral/2d/streamfunction_imag"]  = imag(φshat_global)
-            file["fields/spectral/2d/tmp_complex_real"]     = real(tmpc_2d_global)
-            file["fields/spectral/2d/tmp_complex_imag"]     = imag(tmpc_2d_global)
-            file["fields/spectral/2d/tmp1_complex_real"]    = real(tmpc1_2d_global)
-            file["fields/spectral/2d/tmp1_complex_imag"]    = imag(tmpc1_2d_global)
             
             # 3D spectral fields
             file["fields/spectral/3d/streamfunction_real"]  = real(φhat_global)
             file["fields/spectral/3d/streamfunction_imag"]  = imag(φhat_global)
-            file["fields/spectral/3d/tmp_complex_real"]     = real(tmpc_3d_global)
-            file["fields/spectral/3d/tmp_complex_imag"]     = imag(tmpc_3d_global)
-            file["fields/spectral/3d/tmp1_complex_real"]    = real(tmpc1_3d_global)
-            file["fields/spectral/3d/tmp1_complex_imag"]    = imag(tmpc1_3d_global)
         end
         
         # Time integration parameters
@@ -1122,21 +1110,6 @@ function load_simulation_state_full(filename::String, domain::Domain{T};
             
             distribute_spectral_from_root!(prob.fields.bshat, bshat_global)
             distribute_spectral_from_root!(prob.fields.φshat, φshat_global)
-            
-            # Load 2D spectral scratch arrays if available
-            if haskey(file, "fields/spectral/2d/tmp_complex_real")
-                tmpc_2d_real    = file["fields/spectral/2d/tmp_complex_real"]
-                tmpc_2d_imag    = file["fields/spectral/2d/tmp_complex_imag"]
-                tmpc_2d_global  = complex.(tmpc_2d_real, tmpc_2d_imag)
-                distribute_spectral_from_root!(prob.fields.tmpc_2d, tmpc_2d_global)
-            end
-            
-            if haskey(file, "fields/spectral/2d/tmp1_complex_real")
-                tmpc1_2d_real   = file["fields/spectral/2d/tmp1_complex_real"]
-                tmpc1_2d_imag   = file["fields/spectral/2d/tmp1_complex_imag"]
-                tmpc1_2d_global = complex.(tmpc1_2d_real, tmpc1_2d_imag)
-                distribute_spectral_from_root!(prob.fields.tmpc1_2d, tmpc1_2d_global)
-            end
             
             # 3D spectral fields
             if haskey(file, "fields/spectral/3d/streamfunction_real")
