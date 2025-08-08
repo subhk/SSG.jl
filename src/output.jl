@@ -337,15 +337,7 @@ function save_simulation_state_full(filename::String,
     u_global = gather_to_root(prob.fields.u)
     v_global = gather_to_root(prob.fields.v)
     
-    # Gather multi-grid workspace if needed
-    φ_mg_global = gather_to_root(prob.fields.φ_mg)
-    b_mg_global = gather_to_root(prob.fields.b_mg)
-    
-    # Gather 2D scratch arrays
-    R_global    = gather_to_root(prob.fields.R)
-    tmp_global  = gather_to_root(prob.fields.tmp)
-    tmp2_global = gather_to_root(prob.fields.tmp2)
-    tmp3_global = gather_to_root(prob.fields.tmp3)
+    # Skip gathering temporary/workspace fields to reduce file size
     
     # Gather spectral data if requested
     local bshat_global, φshat_global, φhat_global
@@ -388,17 +380,11 @@ function save_simulation_state_full(filename::String,
         # 2D Surface fields
         file["fields/surface/buoyancy"]         = bₛ_global
         file["fields/surface/streamfunction"]   = φₛ_global
-        file["fields/surface/residual"]         = R_global
-        file["fields/surface/tmp"]              = tmp_global
-        file["fields/surface/tmp2"]             = tmp2_global  
-        file["fields/surface/tmp3"]             = tmp3_global
         
         # 3D Physical fields
         file["fields/3d/streamfunction"]    = φ_global
         file["fields/3d/u_velocity"]        = u_global
         file["fields/3d/v_velocity"]        = v_global
-        file["fields/3d/phi_mg"]            = φ_mg_global
-        file["fields/3d/b_mg"]              = b_mg_global
         
         # Spectral fields
         if save_spectral
