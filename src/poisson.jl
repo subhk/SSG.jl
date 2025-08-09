@@ -81,12 +81,12 @@ mutable struct SSGLevel{T<:AbstractFloat}
         
         Φ_hat = PencilArray(PC3D, zeros(Complex{T}, size_local(PC3D)))
         b_hat = PencilArray(PC3D, zeros(Complex{T}, size_local(PC3D)))
-        r_hat = PencilArray(PR3D, zeros(Complex{T}, size_local(PC3D)))
+        r_hat = PencilArray(PC3D, zeros(Complex{T}, size_local(PC3D)))
         
         Φ_old    = PencilArray(PR3D, zeros(T, size_local(PR3D)))
 
         tmp_real = PencilArray(PR3D, zeros(T, size_local(PR3D)))
-        tmp_spec = PencilArray(PR3D, zeros(Complex{T}, size_local(PR3D)))
+        tmp_spec = PencilArray(PC3D, zeros(Complex{T}, size_local(PC3D)))
 
         # Derivative fields
         Φ_xx   = PencilArray(PR3D, zeros(T, size_local(PR3D)))
