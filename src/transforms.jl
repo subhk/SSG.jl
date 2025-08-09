@@ -106,7 +106,7 @@ end
 Spectral derivative ∂/∂x: multiply by ik_x (all z levels).
 """
 function ddx!(domain::Domain, Â, out̂)
-    range_locals = range_local(domain.pc)
+    range_locals = range_local(domain.pc3d)
     kx_local = view(domain.kx, range_locals[1])
     
     # Get local arrays from PencilArrays
