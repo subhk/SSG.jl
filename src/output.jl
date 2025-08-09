@@ -1020,7 +1020,7 @@ function load_simulation_state_full(filename::String, domain::Domain{T};
         # Load basic information
         time = file["time"]
         step = file["step"]
-        dt = file["dt"]
+        dt   = file["dt"]
         
         # Grid validation
         if validate_grid

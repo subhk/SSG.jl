@@ -103,11 +103,11 @@ For `z_grid = :custom`, provide:
 - `Domain`: Configured 3D domain structure
 """
 function Domain(Nx::Int, Ny::Int, Nz::Int; 
-                     Lx=2π, Ly=2π, Lz=1.0, 
-                     z_boundary=:dirichlet,
-                     z_grid=:uniform,
-                     stretch_params=nothing,
-                     comm=MPI.COMM_WORLD)
+                Lx=2π, Ly=2π, Lz=1.0, 
+                z_boundary=:dirichlet,
+                z_grid=:uniform,
+                stretch_params=nothing,
+                comm=MPI.COMM_WORLD)
     
     T = typeof(float(Lx))  # Infer type properly
 
@@ -125,8 +125,8 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     # FFT plans: FFT on x, RFFT on y, no transform on z
     fplan = PencilFFTPlan(
         pr,
-        (Transforms.FFT(),   # complex→complex on x
-        Transforms.RFFT(),   # real→complex on y
+        (Transforms.FFT(),   # complex → complex on x
+        Transforms.RFFT(),   # real → complex on y
         Transforms.NoTransform());
         fftw_flags = FFTW.MEASURE
     )
