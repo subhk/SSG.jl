@@ -176,18 +176,17 @@ end
     apply_spectral_filter!(fields::Fields, domain::Domain, filter::AbstractSpectralFilter; dt=nothing)
 
 Apply spectral filter to all prognostic fields in Fields structure.
+For surface SSG, this filters the 2D surface buoyancy field.
 """
 function apply_spectral_filter!(fields::Fields{T}, domain::Domain, 
                                filter::AbstractSpectralFilter{T}; 
                                dt::Union{T, Nothing}=nothing) where T
     
-    # Apply filter to buoyancy field
+    # Apply filter to surface buoyancy field (2D)
     apply_filter_to_field!(fields.bₛ, fields.bhat, domain, filter; dt=dt)
     
-    # Apply filter to streamfunction if needed
-    if hasfield(typeof(fields), :φ)
-        apply_filter_to_field!(fields.φ, fields.φhat, domain, filter; dt=dt)
-    end
+    # Apply filter to surface streamfunction if needed (2D)
+    apply_filter_to_field!(fields.φₛ, fields.φshat, domain, filter; dt=dt)
     
     return nothing
 end
@@ -195,21 +194,40 @@ end
 """
     apply_filter_to_field!(field_real, field_spec, domain::Domain, filter::AbstractSpectralFilter; dt=nothing)
 
-Apply spectral filter to a single field.
+Apply spectral filter to a single field with proper 2D/3D handling.
 """
-function apply_filter_to_field!(field_real::PencilArray{T, N}, 
-                               field_spec::PencilArray{Complex{T}, N},
+function apply_filter_to_field!(field_real::PencilArray{T, 2}, 
+                               field_spec::PencilArray{Complex{T}, 2},
                                domain::Domain, 
                                filter::AbstractSpectralFilter{T};
-                               dt::Union{T, Nothing}=nothing) where {T, N}
+                               dt::Union{T, Nothing}=nothing) where {T}
     
-    # Transform to spectral space
+    # Transform to spectral space (2D)
+    rfft_2d!(domain, field_real, field_spec)
+    
+    # Apply filter in spectral space
+    apply_filter_spectral!(field_spec, domain, filter; dt=dt)
+    
+    # Transform back to physical space (2D)
+    irfft_2d!(domain, field_spec, field_real)
+    
+    return nothing
+end
+
+# 3D version for compatibility with other parts of the code
+function apply_filter_to_field!(field_real::PencilArray{T, 3}, 
+                               field_spec::PencilArray{Complex{T}, 3},
+                               domain::Domain, 
+                               filter::AbstractSpectralFilter{T};
+                               dt::Union{T, Nothing}=nothing) where {T}
+    
+    # Transform to spectral space (3D)
     rfft!(domain, field_real, field_spec)
     
     # Apply filter in spectral space
     apply_filter_spectral!(field_spec, domain, filter; dt=dt)
     
-    # Transform back to physical space
+    # Transform back to physical space (3D)
     irfft!(domain, field_spec, field_real)
     
     return nothing
@@ -273,8 +291,9 @@ function apply_exponential_filter!(field_local::AbstractArray{Complex{T}, N},
     k_max_y = π / dy
     k_max = sqrt(k_max_x^2 + k_max_y^2)
     
-    @inbounds for k in axes(field_local, 3)
-        for (j_local, j_global) in enumerate(range_locals[2])
+    if N == 2
+        # 2D fields (surface)
+        @inbounds for (j_local, j_global) in enumerate(range_locals[2])
             ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
             for (i_local, i_global) in enumerate(range_locals[1])
                 kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
@@ -285,7 +304,25 @@ function apply_exponential_filter!(field_local::AbstractArray{Complex{T}, N},
                 
                 # Apply exponential filter
                 transfer = exponential_transfer(k_norm, filter)
-                field_local[i_local, j_local, k] *= transfer
+                field_local[i_local, j_local] *= transfer
+            end
+        end
+    else
+        # 3D fields
+        @inbounds for k in axes(field_local, 3)
+            for (j_local, j_global) in enumerate(range_locals[2])
+                ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
+                for (i_local, i_global) in enumerate(range_locals[1])
+                    kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
+                    
+                    # Compute normalized wavenumber magnitude
+                    k_mag = sqrt(kx^2 + ky^2)
+                    k_norm = k_mag / k_max
+                    
+                    # Apply exponential filter
+                    transfer = exponential_transfer(k_norm, filter)
+                    field_local[i_local, j_local, k] *= transfer
+                end
             end
         end
     end
@@ -301,8 +338,9 @@ function apply_hyperviscosity_filter!(field_local::AbstractArray{Complex{T}, N},
                                      filter::HyperviscosityFilter{T},
                                      dt::T) where {T, N}
     
-    @inbounds for k in axes(field_local, 3)
-        for (j_local, j_global) in enumerate(range_locals[2])
+    if N == 2
+        # 2D fields (surface)
+        @inbounds for (j_local, j_global) in enumerate(range_locals[2])
             ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
             for (i_local, i_global) in enumerate(range_locals[1])
                 kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
@@ -312,7 +350,24 @@ function apply_hyperviscosity_filter!(field_local::AbstractArray{Complex{T}, N},
                 
                 # Apply hyperviscosity filter
                 transfer = hyperviscosity_transfer(k_mag, dt, filter)
-                field_local[i_local, j_local, k] *= transfer
+                field_local[i_local, j_local] *= transfer
+            end
+        end
+    else
+        # 3D fields
+        @inbounds for k in axes(field_local, 3)
+            for (j_local, j_global) in enumerate(range_locals[2])
+                ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
+                for (i_local, i_global) in enumerate(range_locals[1])
+                    kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
+                    
+                    # Compute wavenumber magnitude
+                    k_mag = sqrt(kx^2 + ky^2)
+                    
+                    # Apply hyperviscosity filter
+                    transfer = hyperviscosity_transfer(k_mag, dt, filter)
+                    field_local[i_local, j_local, k] *= transfer
+                end
             end
         end
     end
@@ -334,8 +389,9 @@ function apply_cutoff_filter!(field_local::AbstractArray{Complex{T}, N},
     k_max_y = π / dy
     k_max = sqrt(k_max_x^2 + k_max_y^2)
     
-    @inbounds for k in axes(field_local, 3)
-        for (j_local, j_global) in enumerate(range_locals[2])
+    if N == 2
+        # 2D fields (surface)
+        @inbounds for (j_local, j_global) in enumerate(range_locals[2])
             ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
             for (i_local, i_global) in enumerate(range_locals[1])
                 kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
@@ -346,7 +402,25 @@ function apply_cutoff_filter!(field_local::AbstractArray{Complex{T}, N},
                 
                 # Apply cutoff filter
                 transfer = cutoff_transfer(k_norm, filter)
-                field_local[i_local, j_local, k] *= transfer
+                field_local[i_local, j_local] *= transfer
+            end
+        end
+    else
+        # 3D fields
+        @inbounds for k in axes(field_local, 3)
+            for (j_local, j_global) in enumerate(range_locals[2])
+                ky = j_global <= length(domain.ky) ? domain.ky[j_global] : zero(T)
+                for (i_local, i_global) in enumerate(range_locals[1])
+                    kx = i_global <= length(domain.kx) ? domain.kx[i_global] : zero(T)
+                    
+                    # Compute normalized wavenumber
+                    k_mag = sqrt(kx^2 + ky^2)
+                    k_norm = k_mag / k_max
+                    
+                    # Apply cutoff filter
+                    transfer = cutoff_transfer(k_norm, filter)
+                    field_local[i_local, j_local, k] *= transfer
+                end
             end
         end
     end
