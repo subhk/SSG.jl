@@ -192,7 +192,7 @@ function create_semicoarse_domain(domain::Domain{T, PR, PC, PFP},
         z_boundary     = domain.z_boundary,
         z_grid         = domain.z_grid,
         stretch_params = domain.z_grid == :custom ? (z_coords = domain.z,) : nothing,
-        comm           = domain.pr.comm
+        comm           = domain.pr3d.comm
     )
 end
 
