@@ -26,7 +26,7 @@ Periodic in x,y directions; bounded in z direction.
 - `z_grid`: Vertical grid type (:uniform, :stretched, :custom)
 - `pr`: Real-space pencil descriptor
 - `pc`: Spectral-space pencil descriptor (for horizontal FFTs)
-- `fplan, iplan`: Forward and inverse FFT plans (horizontal only)
+- `fplan`: FFT plan (used for both forward and inverse transforms via mul! and ldiv!)
 - `aliased_fraction`: Fraction of wavenumbers that are aliased (e.g., 1/3)
 - `kxalias, kyalias`: Ranges of aliased wavenumber indices
 """
