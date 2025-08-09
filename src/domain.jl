@@ -60,14 +60,12 @@ struct Domain{T, PR3D, PC3D, PFP3D, PR2D, PC2D, PFP2D}
     
     # FFT plans (horizontal only)
     fplan::PFP3D
-    iplan::PFP3D
 
     # 2D surface field support
     pr2d::PR2D      # 2D real-space pencil for surface
     pc2d::PC2D      # 2D complex/spectral pencil for surface
 
     fplan_2d::PFP2D  # 2D FFT plans for surface
-    iplan_2d::PFP2D
     
     # Dealiasing parameters
     aliased_fraction::T
@@ -130,7 +128,6 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
         Transforms.NoTransform());
         fftw_flags = FFTW.MEASURE
     )
-    iplan = fplan  # same plan used for inverse (via ldiv! or \)
 
     pr2d = Pencil((Nx, Ny),  comm)
     pc2d = Pencil((Nx, Nyc), comm)
@@ -142,7 +139,6 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
          Transforms.RFFT());   # RFFT on y
         fftw_flags = FFTW.MEASURE
     )
-    iplan_2d = fplan_2d
 
     # Coordinate arrays
     dx = Lx / Nx
@@ -183,8 +179,8 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
             x, y, z, dz, 
             kx, ky, Krsq, invKrsq, 
             mask, z_boundary, z_grid,
-            pr3d, pc3d, fplan, iplan,
-            pr2d, pc2d, fplan_2d, iplan_2d,
+            pr3d, pc3d, fplan, 
+            pr2d, pc2d, fplan_2d, 
             aliased_fraction, kxalias, kyalias
     )
 end
