@@ -128,7 +128,6 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
         Transforms.NoTransform());
         fftw_flags = FFTW.MEASURE
     )
-    iplan = fplan  # same plan used for inverse (via ldiv! or \)
 
     pr2d = Pencil((Nx, Ny),  comm)
     pc2d = Pencil((Nx, Nyc), comm)
