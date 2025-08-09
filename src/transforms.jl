@@ -85,10 +85,10 @@ function dealias_2d!(domain::Domain, field_spec_2d)
     field_local = field_spec_2d.data
     
     # Get local ranges for this MPI process
-    range_locals = range_local(domain.pc_2d)
+    range_locals = range_local(domain.pc2d)
     
     # Apply mask to local data
-    mask_local = view(domain.mask_2d, range_locals[1], range_locals[2])
+    mask_local = view(domain.mask, range_locals[1], range_locals[2])
     
     @inbounds @views @. field_local = ifelse(mask_local, field_local, 0)
     
