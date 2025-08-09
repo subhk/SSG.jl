@@ -650,7 +650,7 @@ function ssg_spectral_smoother!(level::SSGLevel{T},
         # Apply spectral preconditioning
         r_hat_local = level.r_hat.data
         Φ_hat_local = level.Φ_hat.data
-        range_locals = range_local(domain.pc)
+        range_locals = range_local(domain.pc3d)
         
         @inbounds for k in axes(Φ_hat_local, 3)
             for (j_local, j_global) in enumerate(range_locals[2])
@@ -899,7 +899,7 @@ function solve_ssg_equation(Φ_initial::PencilArray{T, 3},
     end
     
     # Create solver
-    mg = SSGMultigridSolver{T}(levels, domain.pc.comm, ε; 
+    mg = SSGMultigridSolver{T}(levels, domain.pc3d.comm, ε; 
                               smoother_type=smoother,
                               ω=T(0.8))
     
