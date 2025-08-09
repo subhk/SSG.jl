@@ -179,8 +179,8 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
             x, y, z, dz, 
             kx, ky, Krsq, invKrsq, 
             mask, z_boundary, z_grid,
-            pr3d, pc3d, fplan, iplan, 
-            pr2d, pc2d, fplan_2d, iplan_2d, 
+            pr3d, pc3d, fplan, 
+            pr2d, pc2d, fplan_2d, 
             aliased_fraction, kxalias, kyalias
     )
 end
