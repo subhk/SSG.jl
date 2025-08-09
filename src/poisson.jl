@@ -229,20 +229,19 @@ function compute_ssg_residual!(level::SSGLevel{T}, ε::T) where T
     # Compute 3D Laplacian: ∇²Φ
     compute_3d_laplacian!(level, level.tmp_real)
     
-    # Compute nonlinear operator: DΦ
-    compute_d_operator!(level, level.r)
+    # Compute nonlinear operator: DΦ (store in separate variable)
+    compute_d_operator!(level, level.Φ_xxyy)  # Use Φ_xxyy as temporary storage for DΦ
     
     # Compute residual: r = ∇²Φ - εDΦ - RHS
-    # For surface SSG, RHS = 0 (homogeneous)
     r_local = level.r.data
     laplacian_local = level.tmp_real.data
+    dop_local = level.Φ_xxyy.data  # DΦ values
     b_local = level.b.data  # RHS
     
     @inbounds for k in axes(r_local, 3)
         for j in axes(r_local, 2)
             @simd for i in axes(r_local, 1)
-                r_local[i,j,k] = laplacian_local[i,j,k] - ε * r_local[i,j,k] #- b_local[i,j,k]
-                # Note: No additional RHS term for surface SSG (homogeneous equation)
+                r_local[i,j,k] = laplacian_local[i,j,k] - ε * dop_local[i,j,k] - b_local[i,j,k]
             end
         end
     end
