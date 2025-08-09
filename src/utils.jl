@@ -559,7 +559,7 @@ end
 Print a summary of conserved quantities for monitoring simulation health.
 """
 function print_conservation_summary(domain::Domain, fields::Fields; step::Int=0, time::Real=0.0)
-    if MPI.Comm_rank(domain.pr.comm) == 0
+    if MPI.Comm_rank(domain.pr3d.comm) == 0
         # Compute conserved quantities
         energy = compute_energy(fields.u, fields.v, domain)
         enstrophy = compute_enstrophy(fields.ω_z, domain)
