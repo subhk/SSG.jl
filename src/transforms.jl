@@ -212,7 +212,7 @@ end
 Mixed horizontal derivative ∂²/∂x∂y: multiply by -k_x k_y (all z levels).
 """
 function d2dxdy!(domain::Domain, Â, out̂)
-    range_locals = range_local(domain.pc)
+    range_locals = range_local(domain.pc3d)
     kx_local = view(domain.kx, range_locals[1])
     ky_local = view(domain.ky, range_locals[2])
     
