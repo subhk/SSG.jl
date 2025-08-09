@@ -6,7 +6,7 @@ using PencilArrays
 using PencilFFTs
 
 # Add the source directory to the load path
-push!(LOAD_PATH, joinpath(@__DIR__, "src"))
+push!(LOAD_PATH, joinpath(dirname(@__DIR__), "src"))
 
 using SSG
 
