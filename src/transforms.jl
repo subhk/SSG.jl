@@ -190,7 +190,7 @@ end
 Horizontal Laplacian: multiply by -(k_x² + k_y²) (all z levels).
 """
 function laplacian_h!(domain::Domain, Â, out̂)
-    range_locals = range_local(domain.pc)
+    range_locals = range_local(domain.pc3d)
     kx_local = view(domain.kx, range_locals[1])
     ky_local = view(domain.ky, range_locals[2])
     
