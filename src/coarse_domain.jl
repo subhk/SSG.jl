@@ -87,7 +87,7 @@ function create_coarse_domain_config(domain::Domain, factor::Int=2)
     
     # Create new pencil configuration for coarser grid
     coarse_pencil_config = (
-        comm = domain.pc.comm,
+        comm = domain.pc3d.comm,
         # Add other pencil parameters as needed
     )
     
@@ -128,7 +128,7 @@ function create_coarse_domain_fft(domain::Domain, factor::Int=2)
         Lx = domain.Lx,
         Ly = domain.Ly,
         Lz = domain.Lz,
-        pc = domain.pc  # May need to update pencil configuration
+        pc3d = domain.pc3d  # May need to update pencil configuration
     )
     
     # Initialize FFT plans for coarser grid
