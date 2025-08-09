@@ -724,7 +724,7 @@ function process_all_outputs!(manager::OutputManager{T},
     
     current_time = prob.clock.t
     current_step = prob.clock.step
-    is_root = MPI.Comm_rank(prob.domain.pc.comm) == 0
+    is_root = MPI.Comm_rank(prob.domain.pc3d.comm) == 0
     
     # Process snapshots
     if should_output(manager.snapshot_freq, current_time, current_step,

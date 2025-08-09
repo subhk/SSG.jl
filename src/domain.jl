@@ -550,9 +550,9 @@ function Base.show(io::IO, domain::Domain)
     println(io, "  dx × dy × dz: $((domain.Lx/domain.Nx)) × $((domain.Ly/domain.Ny)) × $((domain.Lz/domain.Nz))")
     println(io, "  Z boundary  : $(domain.z_boundary)")
     println(io, "  Z grid type : $(domain.z_grid)")
-    println(io, "  Real pencil : $(typeof(domain.pr))")
-    println(io, "  Spectral pencil: $(typeof(domain.pc))")
-    println(io, "  MPI processes: $(MPI.Comm_size(domain.pr.comm))")
+    println(io, "  Real pencil : $(typeof(domain.pr3d))")
+    println(io, "  Spectral pencil: $(typeof(domain.pc3d))")
+    println(io, "  MPI processes: $(MPI.Comm_size(domain.pr3d.comm))")
 end
 
 # =============================================================================
