@@ -242,38 +242,44 @@ function timestep_rk3!(fields::Fields{T}, domain::Domain,
 end
 
 """
-Apply spectral filter to remove high-frequency noise
+Apply spectral filter to remove high-frequency noise from surface buoyancy field
 """
 function apply_spectral_filter!(fields::Fields{T}, domain::Domain, 
                                filter_strength::T) where T
     
-    # Transform buoyancy to spectral space
-    rfft!(domain, fields.bₛ, fields.bhat)
+    # Transform surface buoyancy to spectral space (2D)
+    rfft_2d!(domain, fields.bₛ, fields.bhat)
     
-    # Apply exponential filter
+    # Apply exponential filter to spectral field
     apply_exponential_filter!(fields.bhat, domain, filter_strength)
     
-    # Transform back to physical space
-    irfft!(domain, fields.bhat, fields.bₛ)
+    # Transform back to physical space (2D)
+    irfft_2d!(domain, fields.bhat, fields.bₛ)
     
     return nothing
 end
 
 """
-Exponential spectral filter
+Exponential spectral filter for 2D spectral fields
 """
 function apply_exponential_filter!(bhat::PencilArray{Complex{T}, 2}, 
                                   domain::Domain, strength::T) where T
     
     bhat_data = bhat.data
     
-    # Get local wavenumber ranges
+    # Get local wavenumber ranges for 2D pencil
     range_locals = range_local(bhat.pencil)
     
     # Filter parameters
     kx_max = π * domain.Nx / domain.Lx
     ky_max = π * domain.Ny / domain.Ly
     k_cutoff = 0.65 * min(kx_max, ky_max)  # Filter starts at 65% of Nyquist
+    k_range = kx_max - k_cutoff
+    
+    # Avoid division by zero
+    if k_range < 1e-14
+        return nothing
+    end
     
     @inbounds for (j_local, j_global) in enumerate(range_locals[2])
         if j_global <= length(domain.ky)
@@ -285,8 +291,9 @@ function apply_exponential_filter!(bhat::PencilArray{Complex{T}, 2},
                     k_mag = sqrt(kx^2 + ky^2)
                     
                     if k_mag > k_cutoff
-                        # Exponential filter
-                        filter_factor = exp(-strength * ((k_mag - k_cutoff) / (kx_max - k_cutoff))^2)
+                        # Exponential filter with proper normalization
+                        filter_param = (k_mag - k_cutoff) / k_range
+                        filter_factor = exp(-strength * filter_param^2)
                         bhat_data[i_local, j_local] *= filter_factor
                     end
                 end
