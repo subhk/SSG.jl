@@ -139,7 +139,6 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
          Transforms.RFFT());   # RFFT on y
         fftw_flags = FFTW.MEASURE
     )
-    iplan_2d = fplan_2d
 
     # Coordinate arrays
     dx = Lx / Nx
