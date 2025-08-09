@@ -56,7 +56,7 @@ end
 Create a PencilArray for real-space fields.
 """
 function create_real_field(domain::Domain, ::Type{T}=FT) where T
-    return PencilArray{T}(undef, domain.pr)
+    return PencilArray{T}(undef, domain.pr3d)
 end
 
 """
