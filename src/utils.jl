@@ -65,7 +65,7 @@ end
 Create a PencilArray for spectral-space fields.
 """
 function create_spectral_field(domain::Domain, ::Type{T}=FT) where T
-    return PencilArray{Complex{T}}(undef, domain.pc)
+    return PencilArray{Complex{T}}(undef, domain.pc3d)
 end
 
 """
