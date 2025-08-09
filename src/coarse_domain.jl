@@ -32,7 +32,7 @@ function create_coarse_domain(domain::Domain, factor::Int=2)
     coarse_Ny = coarse_Ny % 2 == 0 ? coarse_Ny : coarse_Ny + 1
     
     # Get communicator and other parameters from fine domain
-    comm = domain.pr.comm
+    comm = domain.pr3d.comm
     
     # Create new domain with coarser resolution
     # This depends on your Domain constructor - here are common patterns:
