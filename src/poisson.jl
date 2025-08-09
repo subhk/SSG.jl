@@ -1018,7 +1018,7 @@ function solve_poisson_simple(Φ_initial::PencilArray{T, 3},
     # Solve in spectral space: -k²φ̂ = b̂  =>  φ̂ = -b̂/k²
     bhat_local = bhat.data
     φhat_local = φhat.data
-    range_locals = range_local(domain.pc)
+    range_locals = range_local(domain.pc3d)
     
     @inbounds for k in axes(bhat_local, 3)
         for (j_local, j_global) in enumerate(range_locals[2])
@@ -1043,7 +1043,7 @@ function solve_poisson_simple(Φ_initial::PencilArray{T, 3},
     # Transform back to physical space
     irfft!(domain, φhat, solution)
     
-    if verbose && MPI.Comm_rank(domain.pc.comm) == 0
+    if verbose && MPI.Comm_rank(domain.pc3d.comm) == 0
         @printf "Simple Poisson solver completed\n"
     end
     
