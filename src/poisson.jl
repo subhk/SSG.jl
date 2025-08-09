@@ -369,7 +369,9 @@ end
 Set surface boundary condition b̃s from buoyancy field
 Compatible with existing Fields structure
 """
-function set_surface_bc_from_buoyancy!(level::SSGLevel{T}, buoyancy_field::PencilArray{T, 3}) where T
+function set_surface_bc_from_buoyancy!(level::SSGLevel{T}, 
+                                    buoyancy_field::PencilArray{T, 3}) where T
+                                    
     # Extract surface buoyancy (top z level) for boundary condition (A4)
     b_local = buoyancy_field.data
     bs_local = parent(level.bs_surface)
