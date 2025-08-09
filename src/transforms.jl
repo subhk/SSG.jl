@@ -170,7 +170,7 @@ end
 Spectral derivative ∂/∂y for 2D surface fields.
 """
 function ddy_2d!(domain::Domain, Â, out̂)
-    range_locals = range_local(domain.pc_2d)
+    range_locals = range_local(domain.pc2d)
     ky_local = view(domain.ky, range_locals[2])
     
     Â_local = Â.data
