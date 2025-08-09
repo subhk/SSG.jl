@@ -499,33 +499,13 @@ end
 
 
 """
-    dealias_2d!(surface_domain::SurfaceDomain, field_spec_2d)
-
-Apply 2D dealiasing to surface spectral field.
-"""
-function dealias_2d!(domain::Domain, field_spec_2d)
-    # Get local array from PencilArray
-    field_local = field_spec_2d.data
-    
-    # Get local ranges for this MPI process
-    range_locals = range_local(domain.pc_2d)
-    
-    # Apply mask to local data
-    mask_local = view(domain.mask_2d, range_locals[1], range_locals[2])
-    
-    @inbounds @views @. field_local = ifelse(mask_local, field_local, 0)
-    
-    return nothing
-end
-
-"""
-    ddx_2d!(surface_domain::SurfaceDomain, Â, out̂)
+    ddx_2d!(domain::Domain, Â, out̂)
 
 Spectral derivative ∂/∂x for 2D surface fields.
 """
-function ddx_2d!(surface_domain::SurfaceDomain, Â, out̂)
-    range_locals = range_local(surface_domain.pc_2d)
-    kx_local = view(surface_domain.kx, range_locals[1])
+function ddx_2d!(domain::Domain, Â, out̂)
+    range_locals = range_local(domain.pc2d)
+    kx_local = view(domain.kx, range_locals[1])
     
     Â_local = Â.data
     out̂_local = out̂.data
@@ -538,13 +518,13 @@ function ddx_2d!(surface_domain::SurfaceDomain, Â, out̂)
 end
 
 """
-    ddy_2d!(surface_domain::SurfaceDomain, Â, out̂)
+    ddy_2d!(domain::Domain, Â, out̂)
 
 Spectral derivative ∂/∂y for 2D surface fields.
 """
-function ddy_2d!(surface_domain::SurfaceDomain, Â, out̂)
-    range_locals = range_local(surface_domain.pc_2d)
-    ky_local = view(surface_domain.ky, range_locals[2])
+function ddy_2d!(domain::Domain, Â, out̂)
+    range_locals = range_local(domain.pc2d)
+    ky_local = view(domain.ky, range_locals[2])
     
     Â_local = Â.data
     out̂_local = out̂.data
