@@ -501,7 +501,7 @@ function stepforward!(prob::SemiGeostrophicProblem{T}, nsteps::Int=1;
         # Output progress if requested
         if prob.output_settings.verbose && 
            (prob.clock.step % prob.output_settings.save_freq == 0) &&
-           MPI.Comm_rank(prob.domain.pc.comm) == 0
+           MPI.Comm_rank(prob.domain.pc3d.comm) == 0
             
             if prob.diagnostics !== nothing
                 print_diagnostics(prob.diagnostics, prob.clock.step)
