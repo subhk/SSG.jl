@@ -151,7 +151,7 @@ end
 Spectral derivative ∂/∂x for 2D surface fields.
 """
 function ddx_2d!(domain::Domain, Â, out̂)
-    range_locals = range_local(surface_domain.pc_2d)
+    range_locals = range_local(domain.pc2d)
     kx_local = view(domain.kx, range_locals[1])
     
     Â_local = Â.data
