@@ -201,35 +201,37 @@ function timestep_rk3!(fields::Fields{T}, domain::Domain,
     # Store initial state
     copy_field!(state.b_stage, fields.bₛ)
     
-    # RK3 coefficients (classical 3rd order)
+    # Classical 3rd order Runge-Kutta (RK3) coefficients
+    # This is the standard Heun's third-order method
+    
     # Stage 1: k1 = f(t_n, y_n)
     compute_tendency!(state.k1, fields, domain, params)
     
-    # Update to intermediate state: y1 = y_n + dt/2 * k1
+    # Update to intermediate state: y1 = y_n + dt/3 * k1
     b_data = fields.bₛ.data
     b_stage_data = state.b_stage.data
     k1_data = state.k1.data
     
     @inbounds @simd for i in eachindex(b_data)
-        b_data[i] = b_stage_data[i] + 0.5 * dt * k1_data[i]
+        b_data[i] = b_stage_data[i] + (dt/3.0) * k1_data[i]
     end
     
-    # Stage 2: k2 = f(t_n + dt/2, y1)
+    # Stage 2: k2 = f(t_n + dt/3, y1)
     compute_tendency!(state.k2, fields, domain, params)
     
-    # Update to second intermediate state: y2 = y_n - dt * k1 + 2 * dt * k2
+    # Update to second intermediate state: y2 = y_n + 2*dt/3 * k2
     k2_data = state.k2.data
     @inbounds @simd for i in eachindex(b_data)
-        b_data[i] = b_stage_data[i] - dt * k1_data[i] + 2.0 * dt * k2_data[i]
+        b_data[i] = b_stage_data[i] + (2.0*dt/3.0) * k2_data[i]
     end
     
-    # Stage 3: k3 = f(t_n + dt, y2)
+    # Stage 3: k3 = f(t_n + 2*dt/3, y2)
     compute_tendency!(state.k3, fields, domain, params)
     
-    # Final update: y_{n+1} = y_n + dt/6 * (k1 + 4*k2 + k3)
+    # Final update: y_{n+1} = y_n + dt/4 * (k1 + 3*k3)
     k3_data = state.k3.data
     @inbounds @simd for i in eachindex(b_data)
-        b_data[i] = b_stage_data[i] + (dt/6.0) * (k1_data[i] + 4.0*k2_data[i] + k3_data[i])
+        b_data[i] = b_stage_data[i] + (dt/4.0) * (k1_data[i] + 3.0*k3_data[i])
     end
     
     # Update time and step
