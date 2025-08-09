@@ -12,7 +12,7 @@ using PencilArrays: range_local
 Forward real FFT: real space → spectral space (horizontal directions only).
 """
 function rfft!(domain::Domain, realfield, specfield)
-    # realfield::PencilArray in domain.pr, specfield::PencilArray in domain.pc
+    # realfield::PencilArray in domain.pr3d, specfield::PencilArray in domain.pc3d
     mul!(specfield, domain.fplan, realfield)
     return nothing #specfield
 end
