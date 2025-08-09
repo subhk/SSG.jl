@@ -60,14 +60,12 @@ struct Domain{T, PR3D, PC3D, PFP3D, PR2D, PC2D, PFP2D}
     
     # FFT plans (horizontal only)
     fplan::PFP3D
-    iplan::PFP3D
 
     # 2D surface field support
     pr2d::PR2D      # 2D real-space pencil for surface
     pc2d::PC2D      # 2D complex/spectral pencil for surface
 
     fplan_2d::PFP2D  # 2D FFT plans for surface
-    iplan_2d::PFP2D
     
     # Dealiasing parameters
     aliased_fraction::T
