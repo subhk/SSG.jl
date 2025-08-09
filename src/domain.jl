@@ -122,12 +122,13 @@ function Domain(Nx::Int, Ny::Int, Nz::Int;
     
     # FFT plans: FFT on x, RFFT on y, no transform on z
     fplan = PencilFFTPlan(
-        pr,
+        pr3d,
         (Transforms.FFT(),   # complex → complex on x
         Transforms.RFFT(),   # real → complex on y
         Transforms.NoTransform());
         fftw_flags = FFTW.MEASURE
     )
+    iplan = fplan  # same plan used for inverse (via ldiv! or \)
 
     pr2d = Pencil((Nx, Ny),  comm)
     pc2d = Pencil((Nx, Nyc), comm)

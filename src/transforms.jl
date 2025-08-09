@@ -25,7 +25,7 @@ Inverse real FFT: spectral space → real space (horizontal directions only).
 """
 function irfft!(domain, specfield, realfield)
     # Use ldiv! to apply inverse transform
-    ldiv!(realfield, domain.iplan, specfield)
+    ldiv!(realfield, domain.fplan, specfield)
     return nothing #realfield
 end
 
@@ -51,7 +51,7 @@ end
 Inverse real FFT for 2D surface fields using PencilFFT plans.
 """
 function irfft_2d!(domain::Domain, specfield_2d, realfield_2d)
-    ldiv!(realfield_2d, domain.iplan_2d, specfield_2d)
+    ldiv!(realfield_2d, domain.fplan_2d, specfield_2d)
     return nothing
 end
 
