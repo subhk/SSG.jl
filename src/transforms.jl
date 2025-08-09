@@ -62,7 +62,7 @@ end
 Apply two-thirds dealiasing rule to spectral field (horizontal directions only).
 """
 function dealias!(domain::Domain, Â)
-    range_locals = range_local(domain.pc)
+    range_locals = range_local(domain.pc3d)
     mask_local   = view(domain.mask, range_locals[1], range_locals[2])
     
     # Get local array from PencilArray
