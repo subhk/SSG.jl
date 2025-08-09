@@ -453,7 +453,7 @@ Save spectral-only snapshot for frequency domain analysis (now supports 3D)
 function save_spectral_snapshot(filename::String, prob::SemiGeostrophicProblem{T};
                                include_derived_spectra::Bool=true) where T
     
-    if MPI.Comm_rank(prob.domain.pc.comm) != 0
+    if MPI.Comm_rank(prob.domain.pc3d.comm) != 0
         return filename
     end
     
