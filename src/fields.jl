@@ -91,7 +91,7 @@ function allocate_fields(domain::Domain{T}) where T
     tmp3 = PencilArray{T}(undef, domain.pr2d)
     
     # 2D Spectral fields
-    bshat  = PencilArray{Complex{T}}(undef, domain.pc2d)
+    bhat  = PencilArray{Complex{T}}(undef, domain.pc2d)
     φshat  = PencilArray{Complex{T}}(undef, domain.pc2d)
 
     # 3D spectral field
@@ -108,7 +108,7 @@ function allocate_fields(domain::Domain{T}) where T
         bₛ, φₛ, φ, u, v, 
         φ_mg, b_mg, 
         R, tmp, tmp2, tmp3,
-        bshat, φshat, φhat, 
+        bhat, φshat, φhat, 
         tmpc_2d, tmpc2_2d,
         tmpc_3d, tmpc2_3d,
     )

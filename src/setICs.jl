@@ -65,11 +65,11 @@ function set_b!(prob::SemiGeostrophicProblem{T}, b_field, domain::Domain) where 
     
     # Alternative: Direct spectral calculation as in original
     # Transform velocities to spectral space
-    rfft!(domain, prob.fields.u, prob.fields.tmpc)
-    ke_u = 0.5 * parsevalsum2(prob.fields.tmpc, domain)
+    rfft!(domain, prob.fields.u, prob.fields.tmpc_3d)
+    ke_u = 0.5 * parsevalsum2(prob.fields.tmpc_3d, domain)
     
-    rfft!(domain, prob.fields.v, prob.fields.tmpc)
-    ke_v = 0.5 * parsevalsum2(prob.fields.tmpc, domain)
+    rfft!(domain, prob.fields.v, prob.fields.tmpc_3d)
+    ke_v = 0.5 * parsevalsum2(prob.fields.tmpc_3d, domain)
     
     # Report initial energy (matching original format)
     @printf "initial surface KE 1/2 ∫(u²+v²) dx dy: %f \n" (ke_u + ke_v)
@@ -198,11 +198,11 @@ Compute total kinetic energy using spectral methods.
 """
 function compute_kinetic_energy(fields::Fields{T}, domain::Domain) where T
     # Transform velocities to spectral space
-    rfft!(domain, fields.u, fields.tmpc)
-    ke_u = 0.5 * parsevalsum2(fields.tmpc, domain)
+    rfft!(domain, fields.u, fields.tmpc_3d)
+    ke_u = 0.5 * parsevalsum2(fields.tmpc_3d, domain)
     
-    rfft!(domain, fields.v, fields.tmpc)
-    ke_v = 0.5 * parsevalsum2(fields.tmpc, domain)
+    rfft!(domain, fields.v, fields.tmpc_3d)
+    ke_v = 0.5 * parsevalsum2(fields.tmpc_3d, domain)
     
     return ke_u + ke_v
 end
