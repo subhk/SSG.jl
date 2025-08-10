@@ -126,7 +126,7 @@ function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, domain::Domain) wher
             bhat_local[i_local, j_local, :] .= 0.0
         end
     end
-    irfft!(domain, prob.fields.bhat, prob.fields.b)
+    irfft!(domain, prob.fields.bhat, prob.fields.bₛ)
     
     # Compute velocities and diagnostics
     compute_geostrophic_velocities!(prob.fields, domain)
@@ -156,12 +156,15 @@ function solve_monge_ampere_fields!(fields::Fields{T},
                                    verbose::Bool=false,
                                    ε::T=T(0,1)) where T
 
+    comm = fields.bₛ.pencil.comm
+    rank = MPI.Comm_rank(comm)
+    
     solution, diagnostics = solve_ssg_equation(fields.φ, 
-                                      fields.b, 
+                                      fields.bₛ, 
                                       ε, 
                                       domain;
                                       tol=1e-8,
-                                      verbose=(rank == 0),
+                                      verbose=(rank == 0 && verbose),
                                       smoother=:spectral)
     
     # Copy solution back to fields
