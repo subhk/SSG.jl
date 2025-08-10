@@ -37,10 +37,10 @@ module SSG
        # Exports by file:
 
        # domain.jl  
-       export Domain, make_domain, gridpoints, gridpoints_2d, dealias!
+       export Domain, make_domain, gridpoints, gridpoints_2d, dealias!, twothirds_mask
 
        # utils.jl
-       export @ensuresamegrid, twothirds_mask, create_real_field, create_spectral_field,
+       export @ensuresamegrid, create_real_field, create_spectral_field,
               copy_field!, zero_field!, norm_field, inner_product
 
        # fields.jl
