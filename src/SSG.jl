@@ -30,6 +30,7 @@ module SSG
        include("timestep.jl")
        include("output.jl")
        include("nonlinear.jl")
+       include("setICs.jl")
 
        # Optional files (if they exist)
        #isfile("nonlinear.jl") && include("nonlinear.jl")
@@ -71,13 +72,10 @@ module SSG
        # output.jl
        export save_simulation_state_full, load_simulation_state_full, OutputManager
 
-       # nonlinear.jl (if exists)
-       #if isdefined(SSG, :compute_tendency!)
+       # nonlinear.jl and setICs.jl
        export compute_tendency!, compute_geostrophic_velocities!, 
               compute_surface_geostrophic_velocities!, compute_jacobian!,
               set_b!, set_φ!, compute_kinetic_energy, compute_surface_kinetic_energy
-    
-    #end
 
 end # module SSG
 
