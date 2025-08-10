@@ -1454,8 +1454,8 @@ function test_fields_compatibility()
         fields = allocate_fields(domain)
         
         # Initialize surface buoyancy
-        range_locals = range_local(fields.b.pencil)
-        b_local = fields.b.data
+        range_locals = range_local(fields.bₛ.pencil)
+        b_local = fields.bₛ.data
         
         for (j_local, j_global) in enumerate(range_locals[2])
             y = domain.y[j_global]
