@@ -63,16 +63,21 @@ function set_b!(prob::SemiGeostrophicProblem{T}, b_field, domain::Domain) where 
     # Using spectral energy calculation for accuracy
     ke_total = compute_surface_kinetic_energy(prob.fields, domain)
     
-    # Alternative: Direct spectral calculation as in original
-    # Transform velocities to spectral space
-    rfft!(domain, prob.fields.u, prob.fields.tmpc_3d)
-    ke_u = 0.5 * parsevalsum2(prob.fields.tmpc_3d, domain)
+    # Alternative: Direct spectral calculation for surface only (for verification)
+    # Extract surface level and compute 2D spectral energy
+    u_surface_2d = similar(prob.fields.tmp)
+    v_surface_2d = similar(prob.fields.tmp2)
+    u_surface_2d.data .= view(prob.fields.u.data, :, :, 1)
+    v_surface_2d.data .= view(prob.fields.v.data, :, :, 1)
     
-    rfft!(domain, prob.fields.v, prob.fields.tmpc_3d)
-    ke_v = 0.5 * parsevalsum2(prob.fields.tmpc_3d, domain)
+    rfft_2d!(domain, u_surface_2d, prob.fields.tmpc_2d)
+    ke_u_surface = 0.5 * parsevalsum2(prob.fields.tmpc_2d, domain)
+    
+    rfft_2d!(domain, v_surface_2d, prob.fields.tmpc_2d)
+    ke_v_surface = 0.5 * parsevalsum2(prob.fields.tmpc_2d, domain)
     
     # Report initial energy (matching original format)
-    @printf "initial surface KE 1/2 ∫(u²+v²) dx dy: %f \n" (ke_u + ke_v)
+    @printf "initial surface KE 1/2 ∫(u²+v²) dx dy: %f \n" (ke_u_surface + ke_v_surface)
     
     # Update diagnostics if enabled
     if prob.diagnostics !== nothing
@@ -128,10 +133,10 @@ function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, domain::Domain) wher
     end
     irfft!(domain, prob.fields.bshat, prob.fields.bₛ)
     
-    # Compute velocities and diagnostics
+    # Compute velocities and diagnostics (using 3D streamfunction for full field)
     compute_geostrophic_velocities!(prob.fields, domain)
     
-    # Energy diagnostics
+    # Energy diagnostics (using full 3D kinetic energy)
     ke_total = compute_kinetic_energy(prob.fields, domain)
     b_stats  = field_stats(prob.fields.bₛ)
     

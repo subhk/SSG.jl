@@ -56,44 +56,4 @@ function compute_jacobian!(db_dt::PencilArray{T, 2},
 end
 
 
-"""
-    compute_surface_geostrophic_velocities!(fields::Fields{T}, domain::Domain) where T
-
-Compute surface geostrophic velocities from surface streamfunction:
-u = -∂ψₛ/∂y,  v = ∂ψₛ/∂x
-
-Stores results in the surface level of 3D velocity fields for compatibility.
-"""
-function compute_surface_geostrophic_velocities!(fields::Fields{T}, 
-                                        domain::Domain) where T
-
-    # Transform surface streamfunction to spectral space (2D)
-    rfft_2d!(domain, fields.φₛ, fields.φshat)
-    
-    # Compute u = -∂φₛ/∂y (2D) - store in temp arrays first
-    ddy_2d!(domain, fields.φshat, fields.tmpc_2d)
-    irfft_2d!(domain, fields.tmpc_2d, fields.tmp)  # tmp is 2D
-    
-    # Copy 2D surface velocity u to all levels of 3D velocity field
-    u_data = fields.u.data
-    tmp_data = fields.tmp.data
-    nz = size(u_data, 3)
-    
-    @inbounds for k = 1:nz
-        @views u_data[:, :, k] .= -tmp_data[:, :]  # Apply negative sign
-    end
-    
-    # Compute v = ∂φₛ/∂x (2D)
-    ddx_2d!(domain, fields.φshat, fields.tmpc_2d)
-    irfft_2d!(domain, fields.tmpc_2d, fields.tmp2)  # tmp2 is 2D
-    
-    # Copy 2D surface velocity v to all levels of 3D velocity field
-    v_data = fields.v.data
-    tmp2_data = fields.tmp2.data
-    
-    @inbounds for k = 1:nz
-        @views v_data[:, :, k] .= tmp2_data[:, :]
-    end
-    
-    return nothing
-end
+# compute_surface_geostrophic_velocities! is now defined in setICs.jl
