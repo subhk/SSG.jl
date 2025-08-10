@@ -78,11 +78,11 @@ function initialize_jfm_spectral_buoyancy!(fields::Fields{T}, domain::Domain;
     
     # Transform to spectral space
     zero_field!(fields.bₛ)
-    rfft_2d!(domain, fields.bₛ, fields.bhat)
+    rfft_2d!(domain, fields.bₛ, fields.bshat)
     
     # Initialize spectral field with synchronized random phases
-    bhat_local = fields.bhat.data
-    range_locals = range_local(fields.bhat.pencil)
+    bhat_local = fields.bshat.data
+    range_locals = range_local(fields.bshat.pencil)
     
     total_energy = zero(T)
     n_modes = 0
@@ -118,8 +118,8 @@ function initialize_jfm_spectral_buoyancy!(fields::Fields{T}, domain::Domain;
     end
     
     # Apply dealiasing and transform back
-    dealias_2d!(domain, fields.bhat)
-    irfft_2d!(domain, fields.bhat, fields.bₛ)
+    dealias_2d!(domain, fields.bshat)
+    irfft_2d!(domain, fields.bshat, fields.bₛ)
     
     # Remove mean (critical for periodic domains)
     remove_mean_2d!(fields.bₛ)
