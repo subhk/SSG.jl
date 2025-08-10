@@ -57,7 +57,8 @@ module SSG
 
        # filter.jl
        export ExponentialFilter, HyperviscosityFilter, CutoffFilter, 
-              apply_spectral_filter!, create_filter
+              CesaroFilter, CustomFilter, AbstractSpectralFilter,
+              apply_spectral_filter!, create_filter, apply_filter_to_field!
 
        # poisson.jl
        export solve_ssg_equation, SSGLevel, solve_monge_ampere_fields!, 

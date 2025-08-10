@@ -496,40 +496,40 @@ function apply_custom_filter!(field_local::AbstractArray{Complex{T}, N},
     end
 end
 
-# # ============================================================================
-# # LEGACY INTERFACE FROM TIMESTEP.JL
-# # ============================================================================
+# ============================================================================
+# LEGACY INTERFACE FROM TIMESTEP.JL
+# ============================================================================
 
-# """
-#     apply_spectral_filter!(fields::Fields, domain::Domain, filter_strength::Real)
+"""
+    apply_spectral_filter!(fields::Fields, domain::Domain, filter_strength::Real)
 
-# Legacy interface matching timestep.jl - applies exponential filter.
-# """
-# function apply_spectral_filter!(fields::Fields{T}, domain::Domain, 
-#                                filter_strength::Real) where T
+Legacy interface matching timestep.jl - applies exponential filter.
+"""
+function apply_spectral_filter!(fields::Fields{T}, domain::Domain, 
+                               filter_strength::Real) where T
     
-#     # Create exponential filter with legacy parameters
-#     filter = ExponentialFilter{T}(T(filter_strength), 4, T(0.65))
+    # Create exponential filter with legacy parameters
+    filter = ExponentialFilter{T}(T(filter_strength), 4, T(0.65))
     
-#     # Apply to buoyancy field
-#     apply_spectral_filter!(fields, domain, filter)
+    # Apply to buoyancy field
+    apply_spectral_filter!(fields, domain, filter)
     
-#     return nothing
-# end
+    return nothing
+end
 
-# """
-#     apply_exponential_filter!(bhat, domain::Domain, strength::Real)
+"""
+    apply_exponential_filter!(bhat, domain::Domain, strength::Real)
 
-# Direct exponential filter application (from timestep.jl).
-# """
-# function apply_exponential_filter!(bhat::PencilArray{Complex{T}, N}, 
-#                                   domain::Domain, strength::T) where {T, N}
+Direct exponential filter application (from timestep.jl).
+"""
+function apply_exponential_filter!(bhat::PencilArray{Complex{T}, N}, 
+                                  domain::Domain, strength::T) where {T, N}
     
-#     filter = ExponentialFilter{T}(strength, 4, T(0.65))
-#     apply_filter_spectral!(bhat, domain, filter)
+    filter = ExponentialFilter{T}(strength, 4, T(0.65))
+    apply_filter_spectral!(bhat, domain, filter)
     
-#     return nothing
-# end
+    return nothing
+end
 
 # ============================================================================
 # FILTER UTILITIES AND DIAGNOSTICS
