@@ -14,7 +14,7 @@
 
 """
 Compute buoyancy tendency for surface semi-geostrophic equations
-Only evolves SURFACE buoyancy - streamfunction is diagnostic
+Only evolves surface buoyancy - streamfunction is diagnostic
 ```math
     ∂b/∂t + J(ψ, b) = 0
     u = -∂ψ/∂y,  v = ∂ψ/∂x 
