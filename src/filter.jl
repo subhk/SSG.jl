@@ -183,7 +183,7 @@ function apply_spectral_filter!(fields::Fields{T}, domain::Domain,
                                dt::Union{T, Nothing}=nothing) where T
     
     # Apply filter to surface buoyancy field (2D)
-    apply_filter_to_field!(fields.bₛ, fields.bhat, domain, filter; dt=dt)
+    apply_filter_to_field!(fields.bₛ, fields.bshat, domain, filter; dt=dt)
     
     # Apply filter to surface streamfunction if needed (2D)
     apply_filter_to_field!(fields.φₛ, fields.φshat, domain, filter; dt=dt)

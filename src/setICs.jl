@@ -28,27 +28,27 @@ function set_b!(prob::SemiGeostrophicProblem{T}, b_field, domain::Domain) where 
     
     # Zero mean constraint for spectral methods (critical for periodic domains)
     # Transform to spectral space first
-    rfft_2d!(domain, prob.fields.bₛ, prob.fields.bhat)
+    rfft_2d!(domain, prob.fields.bₛ, prob.fields.bshat)
     
     # Set k=0 mode to zero (removes domain average)
     # Handle PencilArray structure and local ranges
-    range_locals = range_local(prob.fields.bhat.pencil)
-    bhat_local   = prob.fields.bhat.data
+    range_locals = range_local(prob.fields.bshat.pencil)
+    bshat_local   = prob.fields.bshat.data
     
     # Check if this process owns the k=0 mode
     if 1 in range_locals[1] && 1 in range_locals[2]
         i_local = findfirst(x -> x == 1, range_locals[1])
         j_local = findfirst(x -> x == 1, range_locals[2])
         if i_local !== nothing && j_local !== nothing
-            bhat_local[i_local, j_local, :] .= 0.0
+            bshat_local[i_local, j_local, :] .= 0.0
         end
     end
     
     # Apply dealiasing in spectral space
-    dealias_2d!(domain, prob.fields.bhat)
+    dealias_2d!(domain, prob.fields.bshat)
     
     # Transform back to physical space
-    irfft_2d!(domain, prob.fields.bhat, prob.fields.bₛ)
+    irfft_2d!(domain, prob.fields.bshat, prob.fields.bₛ)
     
     # Solve Monge-Ampère equation: det(D²φ) = b
     solve_monge_ampere_fields!(prob.fields, domain; 
@@ -110,20 +110,20 @@ function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, domain::Domain) wher
     # Compute buoyancy from streamfunction using Monge-Ampère relation
     # This would need the inverse relationship - simplified here
     rfft!(domain, prob.fields.φ, prob.fields.φhat)
-    laplacian_h!(domain, prob.fields.φhat, prob.fields.bhat)  # ∇²φ
+    laplacian_h!(domain, prob.fields.φhat, prob.fields.bshat)  # ∇²φ
     irfft!(domain, prob.fields.bhat, prob.fields.bₛ)
     
     # Apply zero mean to buoyancy as well - handle PencilArray distribution
-    rfft!(domain, prob.fields.bₛ, prob.fields.bhat)
-    range_locals = range_local(prob.fields.bhat.pencil)
-    bhat_local = prob.fields.bhat.data
+    rfft!(domain, prob.fields.bₛ, prob.fields.bshat)
+    range_locals = range_local(prob.fields.bshat.pencil)
+    bshat_local = prob.fields.bshat.data
     
     # Check if this process owns the k=0 mode
     if 1 in range_locals[1] && 1 in range_locals[2]
         i_local = findfirst(x -> x == 1, range_locals[1])
         j_local = findfirst(x -> x == 1, range_locals[2])
         if i_local !== nothing && j_local !== nothing
-            bhat_local[i_local, j_local, :] .= 0.0
+            bshat_local[i_local, j_local, :] .= 0.0
         end
     end
     irfft!(domain, prob.fields.bhat, prob.fields.bₛ)

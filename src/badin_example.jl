@@ -92,21 +92,21 @@ Solve for streamfunction using simple Poisson equation: ∇²φ = b
 function solve_streamfunction!(sim::SingleProcessSimulation{T}) where T
     
     # Transform buoyancy to spectral space
-    rfft!(sim.domain, sim.fields.bₛ, sim.fields.bhat)
+    rfft!(sim.domain, sim.fields.bₛ, sim.fields.bshat)
     
     # Solve Poisson equation in spectral space
-    bhat_data = sim.fields.bhat.data
+    bshat_data = sim.fields.bshat.data
     φhat_data = sim.fields.φhat.data
     
-    for k in axes(bhat_data, 3)
-        for j in axes(bhat_data, 2)
+    for k in axes(bshat_data, 3)
+        for j in axes(bshat_data, 2)
             ky = j <= length(sim.domain.ky) ? sim.domain.ky[j] : 0.0
-            for i in axes(bhat_data, 1)
+            for i in axes(bshat_data, 1)
                 kx = i <= length(sim.domain.kx) ? sim.domain.kx[i] : 0.0
                 
                 k2 = kx^2 + ky^2
                 if k2 > 1e-14
-                    φhat_data[i, j, k] = -bhat_data[i, j, k] / k2
+                    φhat_data[i, j, k] = -bshat_data[i, j, k] / k2
                 else
                     φhat_data[i, j, k] = 0.0
                 end
@@ -166,10 +166,10 @@ function compute_jacobian!(result, φ, b, sim::SingleProcessSimulation{T}) where
     
     # Transform fields to spectral space
     rfft!(sim.domain, φ, sim.fields.φhat)
-    rfft!(sim.domain, b, sim.fields.bhat)
+    rfft!(sim.domain, b, sim.fields.bshat)
     
     φhat_data = sim.fields.φhat.data
-    bhat_data = sim.fields.bhat.data
+    bshat_data = sim.fields.bshat.data
     tmpc_data = sim.fields.tmpc.data
     tmpc2_data = sim.fields.tmpc2.data
     
@@ -196,22 +196,22 @@ function compute_jacobian!(result, φ, b, sim::SingleProcessSimulation{T}) where
     irfft!(sim.domain, sim.fields.tmpc, sim.fields.tmp2)  # ∂φ/∂y in physical space
     
     # Compute ∂b/∂x
-    for k in axes(bhat_data, 3)
-        for j in axes(bhat_data, 2)
-            for i in axes(bhat_data, 1)
+    for k in axes(bshat_data, 3)
+        for j in axes(bshat_data, 2)
+            for i in axes(bshat_data, 1)
                 kx = i <= length(sim.domain.kx) ? sim.domain.kx[i] : 0.0
-                tmpc_data[i, j, k] = im * kx * bhat_data[i, j, k]
+                tmpc_data[i, j, k] = im * kx * bshat_data[i, j, k]
             end
         end
     end
     irfft!(sim.domain, sim.fields.tmpc, sim.fields.tmp3)  # ∂b/∂x in physical space
     
     # Compute ∂b/∂y
-    for k in axes(bhat_data, 3)
-        for j in axes(bhat_data, 2)
+    for k in axes(bshat_data, 3)
+        for j in axes(bshat_data, 2)
             ky = j <= length(sim.domain.ky) ? sim.domain.ky[j] : 0.0
-            for i in axes(bhat_data, 1)
-                tmpc2_data[i, j, k] = im * ky * bhat_data[i, j, k]
+            for i in axes(bshat_data, 1)
+                tmpc2_data[i, j, k] = im * ky * bshat_data[i, j, k]
             end
         end
     end
