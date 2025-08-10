@@ -435,14 +435,14 @@ function initialize_spectral_buoyancy!(fields::Fields{T}, domain::Domain,
     zero_field!(fields.bₛ)
     
     # Transform to spectral space for initialization
-    rfft!(domain, fields.bₛ, fields.bhat)
+    rfft!(domain, fields.bₛ, fields.bshat)
     
     # Get local spectral array and ranges
-    bhat_local = fields.bhat.data
-    local_ranges = local_range(fields.bhat.pencil)
+    bshat_local = fields.bshat.data
+    local_ranges = local_range(fields.bshat.pencil)
     
     # Apply spectral initialization
-    @inbounds for k_z in axes(bhat_local, 3)
+    @inbounds for k_z in axes(bshat_local, 3)
         for (j_local, j_global) in enumerate(local_ranges[2])
             if j_global <= length(domain.ky)
                 ky = domain.ky[j_global]
@@ -455,7 +455,7 @@ function initialize_spectral_buoyancy!(fields::Fields{T}, domain::Domain,
                         
                         # Skip k=0 mode (mean is zero)
                         if k_mag < 1e-14
-                            bhat_local[i_local, j_local, k_z] = Complex{T}(0)
+                            bshat_local[i_local, j_local, k_z] = Complex{T}(0)
                             continue
                         end
                         
@@ -467,25 +467,25 @@ function initialize_spectral_buoyancy!(fields::Fields{T}, domain::Domain,
                         random_phase = 2π * rand(T)
                         
                         # Set complex amplitude with random phase
-                        bhat_local[i_local, j_local, k_z] = Complex{T}(
+                        bshat_local[i_local, j_local, k_z] = Complex{T}(
                             spectral_amplitude * cos(random_phase),
                             spectral_amplitude * sin(random_phase)
                         )
                     else
-                        bhat_local[i_local, j_local, k_z] = Complex{T}(0)
+                        bshat_local[i_local, j_local, k_z] = Complex{T}(0)
                     end
                 end
             else
-                @views bhat_local[:, j_local, k_z] .= Complex{T}(0)
+                @views bshat_local[:, j_local, k_z] .= Complex{T}(0)
             end
         end
     end
     
     # Apply dealiasing to prevent high-frequency contamination
-    dealias!(domain, fields.bhat)
+    dealias!(domain, fields.bshat)
     
     # Transform back to physical space
-    irfft!(domain, fields.bhat, fields.bₛ)
+    irfft!(domain, fields.bshat, fields.bₛ)
     
     # Ensure zero mean (required for periodic domains)
     remove_mean!(fields.bₛ)
@@ -611,14 +611,14 @@ function plot_initial_spectrum(fields::Fields{T}, domain::Domain;
     end
     
     # Transform to spectral space
-    rfft!(domain, fields.bₛ, fields.bhat)
+    rfft!(domain, fields.bₛ, fields.bshat)
     
     # Gather spectral data to root (simplified version for surface field)
-    bhat_gathered = gather_spectral_to_root_2d(fields.bhat)
+    bshat_gathered = gather_spectral_to_root_2d(fields.bshat)
     
-    if bhat_gathered !== nothing
+    if bshat_gathered !== nothing
         # Compute radial spectrum
-        k_bins, spectrum = compute_radial_spectrum_2d(bhat_gathered, domain)
+        k_bins, spectrum = compute_radial_spectrum_2d(bshat_gathered, domain)
         
         # Theoretical spectrum shape
         k_theory = k_bins

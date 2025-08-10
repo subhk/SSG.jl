@@ -31,13 +31,13 @@ function initialize_spectral_buoyancy!(fields::Fields{T}, domain::Domain,
     
     # Zero field and transform to spectral space
     zero_field!(fields.bₛ)
-    rfft!(domain, fields.bₛ, fields.bhat)
+    rfft!(domain, fields.bₛ, fields.bshat)
     
     # Initialize spectral field on each process's local domain
-    bhat_local = fields.bhat.data
-    local_ranges = local_range(fields.bhat.pencil)
+    bshat_local = fields.bshat.data
+    local_ranges = local_range(fields.bshat.pencil)
     
-    @inbounds for k_z in axes(bhat_local, 3)
+    @inbounds for k_z in axes(bshat_local, 3)
         for (j_local, j_global) in enumerate(local_ranges[2])
             j_global > length(domain.ky) && continue
             ky = domain.ky[j_global]
@@ -56,15 +56,15 @@ function initialize_spectral_buoyancy!(fields::Fields{T}, domain::Domain,
                 Random.seed!(seed + 1000*i_global + j_global)
                 phase = 2π * rand(T)
                 
-                bhat_local[i_local, j_local, k_z] = Complex{T}(
+                bshat_local[i_local, j_local, k_z] = Complex{T}(
                     spec_amp * cos(phase), spec_amp * sin(phase))
             end
         end
     end
     
     # Transform back and solve for streamfunction
-    dealias!(domain, fields.bhat)
-    irfft!(domain, fields.bhat, fields.bₛ)
+    dealias!(domain, fields.bshat)
+    irfft!(domain, fields.bshat, fields.bₛ)
     remove_mean!(fields.bₛ)
     
     solve_monge_ampere_fields!(fields, domain; tol=T(1e-10), maxiter=20, verbose=false)
