@@ -129,7 +129,7 @@ function compute_velocities!(sim::SingleProcessSimulation{T}) where T
     rfft!(sim.domain, sim.fields.φ, sim.fields.φhat)
     
     φhat_data = sim.fields.φhat.data
-    tmpc_data = sim.fields.tmpc.data
+    tmpc_data = sim.fields.tmpc_3d.data
     
     # Compute u = -∂φ/∂y
     for k in axes(φhat_data, 3)
@@ -141,7 +141,7 @@ function compute_velocities!(sim::SingleProcessSimulation{T}) where T
         end
     end
     
-    irfft!(sim.domain, sim.fields.tmpc, sim.fields.u)
+    irfft!(sim.domain, sim.fields.tmpc_3d, sim.fields.u)
     sim.fields.u.data .*= -1  # Apply negative sign
     
     # Compute v = ∂φ/∂x
@@ -154,7 +154,7 @@ function compute_velocities!(sim::SingleProcessSimulation{T}) where T
         end
     end
     
-    irfft!(sim.domain, sim.fields.tmpc, sim.fields.v)
+    irfft!(sim.domain, sim.fields.tmpc_3d, sim.fields.v)
     
     return nothing
 end
@@ -170,8 +170,8 @@ function compute_jacobian!(result, φ, b, sim::SingleProcessSimulation{T}) where
     
     φhat_data = sim.fields.φhat.data
     bshat_data = sim.fields.bshat.data
-    tmpc_data = sim.fields.tmpc.data
-    tmpc2_data = sim.fields.tmpc2.data
+    tmpc_data = sim.fields.tmpc_3d.data
+    tmpc2_data = sim.fields.tmpc2_3d.data
     
     # Compute ∂φ/∂x
     for k in axes(φhat_data, 3)
@@ -182,7 +182,7 @@ function compute_jacobian!(result, φ, b, sim::SingleProcessSimulation{T}) where
             end
         end
     end
-    irfft!(sim.domain, sim.fields.tmpc, sim.fields.tmp)  # ∂φ/∂x in physical space
+    irfft!(sim.domain, sim.fields.tmpc_3d, sim.fields.tmp)  # ∂φ/∂x in physical space
     
     # Compute ∂φ/∂y
     for k in axes(φhat_data, 3)
@@ -193,7 +193,7 @@ function compute_jacobian!(result, φ, b, sim::SingleProcessSimulation{T}) where
             end
         end
     end
-    irfft!(sim.domain, sim.fields.tmpc, sim.fields.tmp2)  # ∂φ/∂y in physical space
+    irfft!(sim.domain, sim.fields.tmpc_3d, sim.fields.tmp2)  # ∂φ/∂y in physical space
     
     # Compute ∂b/∂x
     for k in axes(bshat_data, 3)
@@ -204,7 +204,7 @@ function compute_jacobian!(result, φ, b, sim::SingleProcessSimulation{T}) where
             end
         end
     end
-    irfft!(sim.domain, sim.fields.tmpc, sim.fields.tmp3)  # ∂b/∂x in physical space
+    irfft!(sim.domain, sim.fields.tmpc_3d, sim.fields.tmp3)  # ∂b/∂x in physical space
     
     # Compute ∂b/∂y
     for k in axes(bshat_data, 3)
@@ -215,7 +215,7 @@ function compute_jacobian!(result, φ, b, sim::SingleProcessSimulation{T}) where
             end
         end
     end
-    irfft!(sim.domain, sim.fields.tmpc2, result)  # ∂b/∂y in physical space
+    irfft!(sim.domain, sim.fields.tmpc2_3d, result)  # ∂b/∂y in physical space
     
     # Compute Jacobian: J = ∂φ/∂x * ∂b/∂y - ∂φ/∂y * ∂b/∂x
     result_data = result.data
