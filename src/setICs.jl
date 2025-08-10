@@ -1,5 +1,5 @@
 
-using PencilArray: range_local
+using PencilArrays: range_local
 
 """
     set_b!(prob, b_field, domain::Domain)
@@ -143,39 +143,7 @@ function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, domain::Domain) wher
     return nothing
 end
 
-"""
-    solve_monge_ampere_fields!(fields::Fields, domain::Domain; kwargs...)
-
-Solve Monge-Ampère equation using SSG.jl's multigrid solver.
-Wrapper to integrate with the fields structure.
-"""
-function solve_monge_ampere_fields!(fields::Fields{T}, 
-                                   domain::Domain;
-                                   tol::T=T(1e-10),
-                                   maxiter::Int=20,
-                                   verbose::Bool=false,
-                                   ε::T=T(0,1)) where T
-
-    comm = fields.bₛ.pencil.comm
-    rank = MPI.Comm_rank(comm)
-    
-    solution, diagnostics = solve_ssg_equation(fields.φ, 
-                                      fields.bₛ, 
-                                      ε, 
-                                      domain;
-                                      tol=1e-8,
-                                      verbose=(rank == 0 && verbose),
-                                      smoother=:spectral)
-    
-    # Copy solution back to fields
-    copy_field!(fields.φ, solution)
-    
-    if verbose && !diagnostics.converged
-        @warn "Monge-Ampère solver did not converge: $(diagnostics.final_residual)"
-    end
-    
-    return diagnostics.converged
-end
+# solve_monge_ampere_fields! is defined in poisson.jl
 
 """
     compute_geostrophic_velocities!(fields::Fields, domain::Domain)
