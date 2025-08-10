@@ -498,43 +498,7 @@ end
 
 
 
-"""
-    ddx_2d!(domain::Domain, Â, out̂)
-
-Spectral derivative ∂/∂x for 2D surface fields.
-"""
-function ddx_2d!(domain::Domain, Â, out̂)
-    range_locals = range_local(domain.pc2d)
-    kx_local = view(domain.kx, range_locals[1])
-    
-    Â_local = Â.data
-    out̂_local = out̂.data
-    
-    @inbounds for (i_local, i_global) in enumerate(range_locals[1])
-        kx = kx_local[i_local]
-        @views out̂_local[i_local, :] = (im * kx) .* Â_local[i_local, :]
-    end
-    return out̂
-end
-
-"""
-    ddy_2d!(domain::Domain, Â, out̂)
-
-Spectral derivative ∂/∂y for 2D surface fields.
-"""
-function ddy_2d!(domain::Domain, Â, out̂)
-    range_locals = range_local(domain.pc2d)
-    ky_local = view(domain.ky, range_locals[2])
-    
-    Â_local = Â.data
-    out̂_local = out̂.data
-    
-    @inbounds for (j_local, j_global) in enumerate(range_locals[2])
-        ky = ky_local[j_local]
-        @views out̂_local[:, j_local] = (im * ky) .* Â_local[:, j_local]
-    end
-    return out̂
-end
+# ddx_2d! and ddy_2d! are already defined above (lines 153, 172)
 
 
 """
@@ -962,28 +926,7 @@ function divergence_3d!(domain::Domain, u, v, w, û, div, tmp_spec; fd_order=2)
 end
 
 
-"""
-    copy_field!(dest, src)
-
-Copy one PencilArray to another.
-"""
-function copy_field!(dest, src)
-    dest_local = dest.data
-    src_local = src.data
-    @. dest_local = src_local
-    #return dest
-end
-
-"""
-    zero_field!(field)
-
-Set all values in a PencilArray to zero.
-"""
-function zero_field!(field)
-    field_local = field.data
-    fill!(field_local, 0)
-    #return field
-end
+# copy_field! and zero_field! are defined in fields.jl
 
 """
     norm_field(field; p=2)
@@ -1159,88 +1102,7 @@ end
 # FIELD STATISTICS AND ANALYSIS
 # =============================================================================
 
-"""
-    enhanced_field_stats(fields::Fields) -> Dict
-
-Compute enhanced statistics for all fields in Fields structure.
-"""
-function enhanced_field_stats(fields::Fields)
-    stats = Dict{Symbol, NamedTuple}()
-    
-    for field_name in fieldnames(typeof(fields))
-        field = getfield(fields, field_name)
-        if isa(field, PencilArray) && eltype(field) <: Real
-            field_data = field.data
-            
-            # Local statistics
-            local_mean = mean(field_data)
-            local_var = var(field_data)
-            local_min = minimum(field_data)
-            local_max = maximum(field_data)
-            local_count = length(field_data)
-            
-            # Global statistics via MPI
-            global_sum = MPI.Allreduce(local_mean * local_count, MPI.SUM, field.pencil.comm)
-            global_count = MPI.Allreduce(local_count, MPI.SUM, field.pencil.comm)
-            global_mean = global_sum / global_count
-            
-            global_min = MPI.Allreduce(local_min, MPI.MIN, field.pencil.comm)
-            global_max = MPI.Allreduce(local_max, MPI.MAX, field.pencil.comm)
-            
-            # Global variance (simplified)
-            local_var_contrib = sum((field_data .- global_mean).^2)
-            global_var = MPI.Allreduce(local_var_contrib, MPI.SUM, field.pencil.comm) / global_count
-            global_std = sqrt(global_var)
-            
-            stats[field_name] = (
-                mean = global_mean,
-                std = global_std,
-                min = global_min,
-                max = global_max,
-                count = global_count
-            )
-        end
-    end
-    
-    return stats
-end
-
-"""
-    field_stats(field) -> (mean, std, min, max)
-
-Compute basic statistics for a single field (backward compatibility).
-"""
-function field_stats(field)
-    if isa(field, PencilArray)
-        field_data = field.data
-        
-        # Local statistics
-        local_mean = mean(field_data)
-        local_var = var(field_data)
-        local_min = minimum(field_data)
-        local_max = maximum(field_data)
-        local_count = length(field_data)
-        
-        # Global statistics via MPI
-        global_sum = MPI.Allreduce(local_mean * local_count, MPI.SUM, field.pencil.comm)
-        global_count = MPI.Allreduce(local_count, MPI.SUM, field.pencil.comm)
-        global_mean = global_sum / global_count
-        
-        global_min = MPI.Allreduce(local_min, MPI.MIN, field.pencil.comm)
-        global_max = MPI.Allreduce(local_max, MPI.MAX, field.pencil.comm)
-        
-        # Simplified global std calculation
-        local_var_contrib = sum((field_data .- global_mean).^2)
-        global_var = MPI.Allreduce(local_var_contrib, MPI.SUM, field.pencil.comm) / global_count
-        global_std = sqrt(global_var)
-        
-        return (global_mean, global_std, global_min, global_max)
-    else
-        # Regular array
-        vals = Array(field)
-        return (mean(vals), std(vals), minimum(vals), maximum(vals))
-    end
-end
+# enhanced_field_stats and field_stats are defined in fields.jl
 
 # =============================================================================
 # GRID UTILITY FUNCTIONS (FROM UTILS.JL)
@@ -1288,21 +1150,4 @@ macro ensuresamegrid(a, b)
     end
 end
 
-"""
-    ensure_same_grid(dest::PencilArray, src::PencilArray)
-
-Function version of grid compatibility check.
-"""
-function ensure_same_grid(dest::PencilArray, src::PencilArray)
-    # Check compatible sizes
-    if size(dest) != size(src)
-        throw(ArgumentError("PencilArrays have incompatible sizes: $(size(dest)) vs $(size(src))"))
-    end
-    
-    # Check MPI communicator compatibility
-    if dest.pencil.comm != src.pencil.comm
-        throw(ArgumentError("PencilArrays have different MPI communicators"))
-    end
-    
-    return true
-end
+# ensure_same_grid is defined in fields.jl
