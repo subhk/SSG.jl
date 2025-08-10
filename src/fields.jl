@@ -46,16 +46,16 @@ struct Fields{T, PR2D, PR3D, PC2D, PC3D}
     tmp3::PencilArray{T, 2, PR2D}                   # additional scratch (2D)
     
     # Spectral arrays (2D)
-    bshat::PencilArray{Complex{T}, 2, PC2D}         # spectral surface buoyancy
+    bhat::PencilArray{Complex{T}, 2, PC2D}         # spectral surface buoyancy
     φshat::PencilArray{Complex{T}, 2, PC2D}         # spectral surface streamfunction
 
-    φhat::PencilArray{Complex{T},  3, PC3D}         # spectral surface streamfunction
+    φhat::PencilArray{Complex{T},  3, PC3D}         # spectral 3D streamfunction
 
-    tmpc_2d::PencilArray{Complex{T},  2, PC2D}      # spectral scratch
-    tmpc1_2d::PencilArray{Complex{T}, 2, PC2D}      # spectral scratch
+    tmpc_2d::PencilArray{Complex{T},  2, PC2D}      # spectral scratch 2D
+    tmpc2_2d::PencilArray{Complex{T}, 2, PC2D}      # spectral scratch 2D
 
-    tmpc_3d::PencilArray{Complex{T},  3, PC3D}      # spectral scratch
-    tmpc1_3d::PencilArray{Complex{T}, 3, PC3D}      # spectral scratch
+    tmpc_3d::PencilArray{Complex{T},  3, PC3D}      # spectral scratch 3D
+    tmpc2_3d::PencilArray{Complex{T}, 3, PC3D}      # spectral scratch 3D
 end
 
 """
@@ -91,7 +91,7 @@ function allocate_fields(domain::Domain{T}) where T
     tmp3 = PencilArray{T}(undef, domain.pr2d)
     
     # 2D Spectral fields
-    bshat  = PencilArray{Complex{T}}(undef, domain.pc2d)
+    bhat  = PencilArray{Complex{T}}(undef, domain.pc2d)
     φshat  = PencilArray{Complex{T}}(undef, domain.pc2d)
 
     φhat   = PencilArray{Complex{T}}(undef, domain.pc3d)
@@ -107,7 +107,7 @@ function allocate_fields(domain::Domain{T}) where T
         bₛ, φₛ, φ, u, v, 
         φ_mg, b_mg, 
         R, tmp, tmp2, tmp3,
-        bshat, φshat, φhat, 
+        bhat, φshat, φhat, 
         tmpc_2d, tmpc2_2d,
         tmpc_3d, tmpc2_3d,
     )
