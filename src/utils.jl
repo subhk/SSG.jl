@@ -329,6 +329,42 @@ end
 # advection_term! and vorticity_advection! functions removed
 
 # =============================================================================
+# VORTICITY CALCULATIONS
+# =============================================================================
+
+"""
+    compute_vorticity!(ω, u, v, domain::Domain, tmp_spec1, tmp_spec2)
+
+Compute the vertical component of vorticity ω = ∂v/∂x - ∂u/∂y from 3D velocity fields.
+The result is stored in the output field ω.
+
+# Arguments
+- `ω`: Output vorticity field (3D PencilArray)
+- `u`: x-component of velocity (3D PencilArray)  
+- `v`: y-component of velocity (3D PencilArray)
+- `domain`: Domain structure
+- `tmp_spec1`, `tmp_spec2`: Temporary spectral arrays for computation
+"""
+function compute_vorticity!(ω, u, v, domain::Domain, tmp_spec1, tmp_spec2)
+    # Compute ∂v/∂x
+    rfft!(domain, v, tmp_spec1)
+    ddx!(domain, tmp_spec1, tmp_spec2)
+    irfft!(domain, tmp_spec2, ω)  # ω now contains ∂v/∂x
+    
+    # Compute ∂u/∂y  
+    rfft!(domain, u, tmp_spec1)
+    ddy!(domain, tmp_spec1, tmp_spec2)
+    irfft!(domain, tmp_spec2, tmp_spec1)  # Reuse tmp_spec1 as real array for ∂u/∂y
+    
+    # Compute vorticity: ω = ∂v/∂x - ∂u/∂y
+    ω_data = ω.data
+    dudy_data = tmp_spec1.data  # This contains ∂u/∂y in real space
+    @. ω_data -= dudy_data
+    
+    return ω
+end
+
+# =============================================================================
 # ENERGY AND ENSTROPHY CALCULATIONS
 # =============================================================================
 
@@ -342,6 +378,32 @@ Uses PencilFFTs for spectral transform.
 function compute_enstrophy(ω, domain::Domain)
     # Create temporary spectral field
     ω_spec = create_spectral_field(domain)
+    
+    # Transform to spectral space using PencilFFTs
+    rfft!(domain, ω, ω_spec)
+    
+    # Compute enstrophy using Parseval's theorem
+    enstrophy = 0.5 * parsevalsum2(ω_spec, domain)
+    
+    return enstrophy
+end
+
+"""
+    compute_enstrophy(u, v, domain::Domain) -> Float64
+
+Compute the total enstrophy (0.5 * ∫ω² dA) from velocity fields u and v.
+This version computes vorticity from the velocity fields first.
+Uses PencilFFTs for spectral transforms.
+"""
+function compute_enstrophy(u, v, domain::Domain)
+    # Create temporary fields
+    ω = create_real_field(domain)
+    ω_spec = create_spectral_field(domain)
+    tmp_spec1 = create_spectral_field(domain)
+    tmp_spec2 = create_spectral_field(domain)
+    
+    # Compute vorticity from velocity fields
+    compute_vorticity!(ω, u, v, domain, tmp_spec1, tmp_spec2)
     
     # Transform to spectral space using PencilFFTs
     rfft!(domain, ω, ω_spec)
@@ -510,8 +572,8 @@ function print_conservation_summary(domain::Domain, fields::Fields; step::Int=0,
     if MPI.Comm_rank(domain.pr3d.comm) == 0
         # Compute conserved quantities
         energy = compute_energy(fields.u, fields.v, domain)
-        # Compute enstrophy from velocity field (simplified placeholder)
-        enstrophy = 0.0  # TODO: implement proper enstrophy calculation from velocities
+        # Compute enstrophy from velocity fields
+        enstrophy = compute_enstrophy(fields.u, fields.v, domain)
         total_buoyancy = compute_total_buoyancy(fields.bₛ, domain)
         
         println("=" ^60)

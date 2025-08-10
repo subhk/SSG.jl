@@ -41,7 +41,7 @@ module SSG
 
        # utils.jl
        export @ensuresamegrid, create_real_field, create_spectral_field,
-              copy_field!, zero_field!, norm_field, inner_product
+              copy_field!, zero_field!, norm_field, inner_product, compute_vorticity!
 
        # fields.jl
        export Fields, allocate_fields, zero_fields!, field_stats, enhanced_field_stats
