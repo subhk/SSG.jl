@@ -22,7 +22,7 @@ Container for all simulation fields (prognostic, diagnostic, and scratch).
 - `tmp, tmp2`: General scratch arrays
 
 ## Spectral arrays
-- `bhat, φhat`: Spectral versions of b and φ
+- `bshat, φhat`: Spectral versions of surface b and φ
 - `tmpc`: Spectral scratch array
 """
 struct Fields{T, PR2D, PR3D, PC2D, PC3D}
@@ -47,7 +47,7 @@ struct Fields{T, PR2D, PR3D, PC2D, PC3D}
     tmp3::PencilArray{T, 2, PR2D}                   # additional scratch (2D)
     
     # Spectral arrays (2D)
-    bhat::PencilArray{Complex{T}, 2, PC2D}         # spectral surface buoyancy
+    bshat::PencilArray{Complex{T}, 2, PC2D}         # spectral surface buoyancy
     φshat::PencilArray{Complex{T}, 2, PC2D}         # spectral surface streamfunction
 
     φhat::PencilArray{Complex{T},  3, PC3D}         # spectral 3D streamfunction
@@ -92,7 +92,7 @@ function allocate_fields(domain::Domain{T}) where T
     tmp3 = PencilArray{T}(undef, domain.pr2d)
     
     # 2D Spectral fields
-    bhat  = PencilArray{Complex{T}}(undef, domain.pc2d)
+    bshat  = PencilArray{Complex{T}}(undef, domain.pc2d)
     φshat  = PencilArray{Complex{T}}(undef, domain.pc2d)
 
     # 3D spectral field
@@ -109,7 +109,7 @@ function allocate_fields(domain::Domain{T}) where T
         bₛ, φₛ, φ, u, v, 
         φ_mg, b_mg, 
         R, tmp, tmp2, tmp3,
-        bhat, φshat, φhat, 
+        bshat, φshat, φhat, 
         tmpc_2d, tmpc2_2d,
         tmpc_3d, tmpc2_3d,
     )
