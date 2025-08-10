@@ -72,10 +72,12 @@ module SSG
        # output.jl
        export save_simulation_state_full, load_simulation_state_full, OutputManager
 
-       # nonlinear.jl and setICs.jl
-       export compute_tendency!, compute_geostrophic_velocities!, 
-              compute_surface_geostrophic_velocities!, compute_jacobian!,
-              set_b!, set_φ!, compute_kinetic_energy, compute_surface_kinetic_energy
+       # nonlinear.jl
+       export compute_tendency!, compute_jacobian!
+
+       # setICs.jl
+       export set_b!, set_φ!, compute_geostrophic_velocities!, 
+              compute_surface_geostrophic_velocities!, compute_kinetic_energy, compute_surface_kinetic_energy
 
 end # module SSG
 
