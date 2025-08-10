@@ -81,7 +81,7 @@ function initialize_jfm_spectral_buoyancy!(fields::Fields{T}, domain::Domain;
     rfft_2d!(domain, fields.bₛ, fields.bshat)
     
     # Initialize spectral field with synchronized random phases
-    bhat_local = fields.bshat.data
+    bshat_local = fields.bshat.data
     range_locals = range_local(fields.bshat.pencil)
     
     total_energy = zero(T)
@@ -106,13 +106,13 @@ function initialize_jfm_spectral_buoyancy!(fields::Fields{T}, domain::Domain;
             phase = 2π * rand(T)
             
             # Set spectral coefficient
-            bhat_local[i_local, j_local] = Complex{T}(
+            bshat_local[i_local, j_local] = Complex{T}(
                 spec_amplitude * cos(phase), 
                 spec_amplitude * sin(phase)
             )
             
             # Track energy for diagnostics
-            total_energy += abs2(bhat_local[i_local, j_local])
+            total_energy += abs2(bshat_local[i_local, j_local])
             n_modes += 1
         end
     end
