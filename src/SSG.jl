@@ -73,7 +73,8 @@ module SSG
 
        # nonlinear.jl (if exists)
        #if isdefined(SSG, :compute_tendency!)
-       export compute_tendency!, compute_geostrophic_velocities!
+       export compute_tendency!, compute_geostrophic_velocities!, 
+              compute_surface_geostrophic_velocities!, compute_jacobian!
     
     #end
 
