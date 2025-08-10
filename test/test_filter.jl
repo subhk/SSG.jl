@@ -103,7 +103,7 @@ function test_2d_filtering()
     
     # Test exponential filter
     exp_filter = ExponentialFilter{Float64}(1.0, 4, 0.65)
-    apply_filter_to_field!(fields.bₛ, fields.bhat, domain, exp_filter)
+    apply_filter_to_field!(fields.bₛ, fields.bshat, domain, exp_filter)
     
     final_max = maximum(abs, b_data)
     reduction_ratio = final_max / initial_max
@@ -151,7 +151,7 @@ function test_cutoff_filter_accuracy()
     
     # Apply 2/3 cutoff filter
     cutoff_filter = CutoffFilter{Float64}(2/3)
-    apply_filter_to_field!(fields.bₛ, fields.bhat, domain, cutoff_filter)
+    apply_filter_to_field!(fields.bₛ, fields.bshat, domain, cutoff_filter)
     
     # Check final energy
     final_energy = sum(abs2, b_data)
@@ -199,7 +199,7 @@ function test_hyperviscosity_damping()
     # Apply hyperviscosity filter
     dt = 0.01
     hyper_filter = HyperviscosityFilter{Float64}(1e-2, 2)  # Strong damping
-    apply_filter_to_field!(fields.bₛ, fields.bhat, domain, hyper_filter; dt=dt)
+    apply_filter_to_field!(fields.bₛ, fields.bshat, domain, hyper_filter; dt=dt)
     
     final_max = maximum(abs, b_data)
     damping_ratio = final_max / initial_max
@@ -236,7 +236,7 @@ function test_filter_conservation()
     
     # Apply exponential filter
     exp_filter = ExponentialFilter{Float64}(0.5, 4, 0.6)
-    apply_filter_to_field!(fields.bₛ, fields.bhat, domain, exp_filter)
+    apply_filter_to_field!(fields.bₛ, fields.bshat, domain, exp_filter)
     
     final_sum = sum(fields.bₛ.data)
     final_sum_global = MPI.Allreduce(final_sum, MPI.SUM, comm)
@@ -294,7 +294,7 @@ function test_filter_stability()
         # Manual filtering every few steps (simulating what happens in timestepper)
         if step % 5 == 0
             filter = ExponentialFilter{Float64}(0.1, 4, 0.7)
-            apply_filter_to_field!(fields.bₛ, fields.bhat, domain, filter)
+            apply_filter_to_field!(fields.bₛ, fields.bshat, domain, filter)
         end
     end
     

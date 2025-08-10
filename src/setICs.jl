@@ -111,7 +111,7 @@ function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, domain::Domain) wher
     # This would need the inverse relationship - simplified here
     rfft!(domain, prob.fields.φ, prob.fields.φhat)
     laplacian_h!(domain, prob.fields.φhat, prob.fields.bshat)  # ∇²φ
-    irfft!(domain, prob.fields.bhat, prob.fields.bₛ)
+    irfft!(domain, prob.fields.bshat, prob.fields.bₛ)
     
     # Apply zero mean to buoyancy as well - handle PencilArray distribution
     rfft!(domain, prob.fields.bₛ, prob.fields.bshat)
@@ -126,7 +126,7 @@ function set_φ!(prob::SemiGeostrophicProblem{T}, φ_field, domain::Domain) wher
             bshat_local[i_local, j_local, :] .= 0.0
         end
     end
-    irfft!(domain, prob.fields.bhat, prob.fields.bₛ)
+    irfft!(domain, prob.fields.bshat, prob.fields.bₛ)
     
     # Compute velocities and diagnostics
     compute_geostrophic_velocities!(prob.fields, domain)
