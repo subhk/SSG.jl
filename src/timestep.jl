@@ -248,13 +248,13 @@ function apply_spectral_filter!(fields::Fields{T}, domain::Domain,
                                filter_strength::T) where T
     
     # Transform surface buoyancy to spectral space (2D)
-    rfft_2d!(domain, fields.bₛ, fields.bhat)
+    rfft_2d!(domain, fields.bₛ, fields.bshat)
     
     # Apply exponential filter to spectral field
-    apply_exponential_filter!(fields.bhat, domain, filter_strength)
+    apply_exponential_filter!(fields.bshat, domain, filter_strength)
     
     # Transform back to physical space (2D)
-    irfft_2d!(domain, fields.bhat, fields.bₛ)
+    irfft_2d!(domain, fields.bshat, fields.bₛ)
     
     return nothing
 end
