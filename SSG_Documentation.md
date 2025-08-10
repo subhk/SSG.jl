@@ -6,14 +6,14 @@
 
 ### Key Features
 
-- ⚡ **Spectral Methods**: FFT-based spectral derivatives for high accuracy
-- 🔧 **Multigrid Solvers**: Advanced 3D Semi-Geostrophic equation solver with adaptive smoothers
-- 🌐 **MPI Parallel**: Distributed computation using PencilArrays.jl for domain decomposition
-- 📈 **Advanced Time Integration**: Multiple schemes (Adams-Bashforth, Runge-Kutta) with adaptive time stepping
-- 🎯 **Flexible Filtering**: Spectral filters for numerical stability
-- 📊 **Comprehensive Diagnostics**: Energy, enstrophy, and turbulence statistics
+-  **Spectral Methods**: FFT-based spectral derivatives for high accuracy
+-  **Multigrid Solvers**: Advanced 3D Semi-Geostrophic equation solver with adaptive smoothers
+-  **MPI Parallel**: Distributed computation using PencilArrays.jl for domain decomposition
+-  **Advanced Time Integration**: Multiple schemes (Adams-Bashforth, Runge-Kutta) with adaptive time stepping
+-  **Flexible Filtering**: Spectral filters for numerical stability
+-  **Comprehensive Diagnostics**: Energy, enstrophy, and turbulence statistics
 
-## 📚 Table of Contents
+##  Table of Contents
 
 1. [Mathematical Theory](#-mathematical-theory)
 2. [Code Architecture](#️-code-architecture)
@@ -27,7 +27,7 @@
 
 ---
 
-## 🧮 Mathematical Theory
+##  Mathematical Theory
 
 ### Surface Semi-Geostrophic Equations
 
@@ -162,7 +162,7 @@ end
 
 ---
 
-## 💻 Installation & Setup
+## Installation & Setup
 
 ### Prerequisites
 
@@ -201,7 +201,7 @@ mpirun -np 4 julia --project=. test/runtests.jl
 
 ---
 
-## 🚀 Quick Start Guide
+##  Quick Start Guide
 
 ### Basic Simulation Setup
 
@@ -251,7 +251,7 @@ println("Final kinetic energy: ", diag.kinetic_energy[end])
 
 ---
 
-## 📖 Core API Reference
+## Core API Reference
 
 ### Domain Creation
 
@@ -381,7 +381,7 @@ Computes spectral integrals and squared integrals.
 
 ---
 
-## 🔬 Advanced Features
+##  Advanced Features
 
 ### MPI Parallelization
 
@@ -479,7 +479,7 @@ println("Final residual: $(diag.final_residual)")
 
 ---
 
-## 📊 Examples & Tutorials
+## Examples & Tutorials
 
 ### Example 1: Basic Taylor-Green Vortex
 
@@ -682,7 +682,7 @@ Profile.print()
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 ### Development Setup
 
@@ -731,7 +731,7 @@ mpirun -np 4 julia --project=. test/test_parallel.jl
 
 ---
 
-## 📄 References
+##  References
 
 ### Scientific Papers
 
@@ -755,27 +755,25 @@ mpirun -np 4 julia --project=. test/test_parallel.jl
 
 ---
 
-## 📞 Support & Community
+##  Support & Community
 
-- **Issues:** [GitHub Issues](https://github.com/your-username/SSG.jl/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/your-username/SSG.jl/discussions)
-- **Email:** [your-email@domain.com](mailto:your-email@domain.com)
+- **Issues:** [GitHub Issues](https://github.com/subhk/SSG.jl/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/subhk/SSG.jl/discussions)
+- **Email:** [subhajitkar19@gmail.com](mailto:subhajitkar19@gmail.com)
 
 ---
 
-## 📜 License
+##  License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🏆 Acknowledgments
+## Acknowledgments
 
 - Built with [Julia](https://julialang.org/) - "A fresh approach to technical computing"
 - Uses [PencilArrays.jl](https://github.com/jipolanco/PencilArrays.jl) for MPI parallelization
 - FFT operations via [PencilFFTs.jl](https://github.com/jipolanco/PencilFFTs.jl)
 - Inspired by classical geophysical fluid dynamics codes
 
----
 
-*Generated with ❤️ for the Julia & Geophysical Fluid Dynamics communities*
