@@ -340,10 +340,10 @@ function save_simulation_state_full(filename::String,
     # Skip gathering temporary/workspace fields to reduce file size
     
     # Gather spectral data if requested
-    local bshat_global, φshat_global, φhat_global
+    local bhat_global, φshat_global, φhat_global
     if save_spectral
         # 2D spectral fields
-        bshat_global    = gather_spectral_to_root(prob.fields.bshat)
+        bhat_global    = gather_spectral_to_root(prob.fields.bhat)
         φshat_global    = gather_spectral_to_root(prob.fields.φshat)
         
         # 3D spectral fields  
@@ -389,8 +389,8 @@ function save_simulation_state_full(filename::String,
         # Spectral fields
         if save_spectral
             # 2D spectral fields
-            file["fields/spectral/2d/buoyancy_real"]        = real(bshat_global)
-            file["fields/spectral/2d/buoyancy_imag"]        = imag(bshat_global)
+            file["fields/spectral/2d/buoyancy_real"]        = real(bhat_global)
+            file["fields/spectral/2d/buoyancy_imag"]        = imag(bhat_global)
             file["fields/spectral/2d/streamfunction_real"]  = real(φshat_global)
             file["fields/spectral/2d/streamfunction_imag"]  = imag(φshat_global)
             
@@ -460,11 +460,11 @@ function save_spectral_snapshot(filename::String, prob::SemiGeostrophicProblem{T
     mkpath(dirname(filename))
     
     # Ensure spectral fields are up to date
-    rfft_2d!(prob.domain, prob.fields.bₛ, prob.fields.bshat)
+    rfft_2d!(prob.domain, prob.fields.bₛ, prob.fields.bhat)
     rfft!(   prob.domain, prob.fields.φ,  prob.fields.φhat)
     
     # Gather spectral data
-    bshat_global = gather_spectral_to_root(prob.fields.bshat)
+    bhat_global = gather_spectral_to_root(prob.fields.bhat)
     φhat_global  = gather_spectral_to_root(prob.fields.φhat)
     
     # Compute derived spectral quantities if requested
@@ -494,7 +494,7 @@ function save_spectral_snapshot(filename::String, prob::SemiGeostrophicProblem{T
         file["kr"] = collect(rfftfreq(prob.domain.Nx, 2π*prob.domain.Nx/prob.domain.Lx))
         
         # Spectral fields (as complex numbers)
-        file["buoyancy_hat"]        = bshat_global
+        file["buoyancy_hat"]        = bhat_global
         file["streamfunction_hat"]  = φhat_global
         
         # Derived spectra
@@ -1084,13 +1084,13 @@ function load_simulation_state_full(filename::String, domain::Domain{T};
             # 2D spectral fields
             bshat_real      = file["fields/spectral/2d/buoyancy_real"]
             bshat_imag      = file["fields/spectral/2d/buoyancy_imag"]
-            bshat_global    = complex.(bshat_real, bshat_imag)
+            bhat_global    = complex.(bshat_real, bshat_imag)
             
             φshat_real      = file["fields/spectral/2d/streamfunction_real"]
             φshat_imag      = file["fields/spectral/2d/streamfunction_imag"]
             φshat_global    = complex.(φshat_real, φshat_imag)
             
-            distribute_spectral_from_root!(prob.fields.bshat, bshat_global)
+            distribute_spectral_from_root!(prob.fields.bhat, bhat_global)
             distribute_spectral_from_root!(prob.fields.φshat, φshat_global)
             
             # 3D spectral fields
