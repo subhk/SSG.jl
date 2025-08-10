@@ -1,10 +1,10 @@
 # API Reference
 
-## 📖 Overview
+##  Overview
 
 This document provides a comprehensive reference for all **public functions** and **types** in SSG.jl. Functions are organized by module and functionality, with complete parameter descriptions, return values, and usage examples.
 
-## 📚 Table of Contents
+##  Table of Contents
 
 1. [Domain Creation](#domain-creation)
 2. [Field Operations](#field-operations)
@@ -1112,7 +1112,3 @@ Manages simulation output and checkpointing.
 - `save_freq::Int = 100`: Field saving frequency
 - `checkpoint_freq::Int = 1000`: Checkpoint frequency
 - `diagnostic_freq::Int = 10`: Diagnostic output frequency
-
----
-
-*This completes the API reference for SSG.jl. For usage examples demonstrating these functions, see the Usage Examples documentation.*

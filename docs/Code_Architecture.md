@@ -1,10 +1,10 @@
 # Code Structure and Architecture
 
-## 🏗️ Overview
+##  Overview
 
 This document describes the **software architecture** and **code organization** of SSG.jl. The package follows a **modular design** with clear separation of concerns, making it maintainable, extensible, and suitable for high-performance computing applications.
 
-## 📚 Table of Contents
+##  Table of Contents
 
 1. [Package Structure](#package-structure)
 2. [Core Data Structures](#core-data-structures)
@@ -579,7 +579,3 @@ function apply_filter!(field_hat, filter::YourCustomFilter, domain)
     # Apply your filter in spectral space
 end
 ```
-
----
-
-*This document describes the current architecture of SSG.jl. For implementation details of specific algorithms, see the Theory and Mathematics documentation.*

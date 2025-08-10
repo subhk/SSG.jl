@@ -1,10 +1,10 @@
 # Advanced Features
 
-## 🚀 Overview
+##  Overview
 
 This document covers the **most sophisticated capabilities** of SSG.jl, including advanced solvers, high-performance computing features, and cutting-edge numerical methods. These features are designed for **research applications** and **production-scale simulations**.
 
-## 📚 Table of Contents
+##  Table of Contents
 
 1. [3D Semi-Geostrophic Solver](#3d-semi-geostrophic-solver)
 2. [Multigrid Methods](#multigrid-methods)
@@ -1252,7 +1252,3 @@ end
 
 end  # module ExperimentalFeatures
 ```
-
----
-
-*This concludes the comprehensive documentation for SSG.jl's advanced features. The package provides a powerful foundation for cutting-edge research in geophysical fluid dynamics with state-of-the-art numerical methods and high-performance computing capabilities.*

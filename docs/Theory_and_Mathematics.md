@@ -1,18 +1,17 @@
 # Theory and Mathematical Background
 
-## 🧮 Overview
+##  Overview
 
 This document provides a comprehensive mathematical foundation for the **Surface Semi-Geostrophic (SSG)** equations implemented in SSG.jl. The package solves sophisticated geophysical fluid dynamics problems with spectral accuracy and advanced numerical methods.
 
-## 📚 Table of Contents
+##  Table of Contents
 
 1. [Surface Semi-Geostrophic Equations](#surface-semi-geostrophic-equations)
 2. [3D Semi-Geostrophic Theory](#3d-semi-geostrophic-theory)
 3. [Spectral Methods](#spectral-methods)
 4. [Boundary Conditions](#boundary-conditions)
 5. [Numerical Methods](#numerical-methods)
-6. [Physical Interpretation](#physical-interpretation)
-7. [References](#references)
+6. [References](#references)
 
 ---
 
@@ -309,80 +308,6 @@ where:
 \text{CFL} = \max\left(\frac{|u|\Delta t}{\Delta x}, \frac{|v|\Delta t}{\Delta y}\right)
 ```
 
----
-
-## Physical Interpretation
-
-### Geophysical Context
-
-The semi-geostrophic equations describe **rapidly rotating fluid motion** where:
-
-1. **Geostrophic Balance**: Pressure gradient ≈ Coriolis force
-2. **Hydrostatic Balance**: Vertical pressure gradient ≈ buoyancy  
-3. **Slow Evolution**: Dynamics evolve on **inertial time scale** f⁻¹
-
-### Application Domains
-
-#### Ocean Mesoscale Eddies
-- **Length scales**: 10-100 km
-- **Time scales**: Days to months
-- **Velocities**: 0.1-1 m/s
-- **Rossby number**: ε ~ 0.1
-
-#### Atmospheric Fronts  
-- **Length scales**: 100-1000 km
-- **Time scales**: Days to weeks  
-- **Velocities**: 10-50 m/s
-- **Rossby number**: ε ~ 0.1-1
-
-### Energy Cascades
-
-The SSG equations exhibit **dual cascades**:
-
-1. **Inverse Energy Cascade**: Energy transfers to **larger scales**
-2. **Forward Enstrophy Cascade**: Enstrophy transfers to **smaller scales**
-
-This leads to characteristic **k⁻³** energy spectra in 2D turbulence.
-
-### Stability Properties
-
-#### Linear Stability
-Small perturbations to geostrophic equilibrium satisfy:
-```math
-\frac{\partial}{\partial t}\begin{pmatrix} \zeta \\ b \end{pmatrix} = 
-\begin{pmatrix} 0 & -\nabla^2 \\ N^2 & 0 \end{pmatrix}
-\begin{pmatrix} \zeta \\ b \end{pmatrix}
-```
-
-Leading to **inertia-gravity waves** with frequency ω = N|k|.
-
-#### Nonlinear Stability  
-The SSG equations conserve **potential enstrophy**:
-```math
-Q = \frac{1}{2}\int q^2 \, dx \, dy
-```
-where **q = ∇²ψ + b** is potential vorticity.
-
----
-
-## References
-
-### Foundational Papers
-
-1. **Hoskins, B. J.** (1975). The geostrophic momentum approximation and the semi-geostrophic equations. *Journal of the Atmospheric Sciences*, 32(2), 233-242.
-
-2. **Cullen, M. J. P., & Purser, R. J.** (1984). An extended Lagrangian theory of semi-geostrophic frontogenesis. *Journal of the Atmospheric Sciences*, 41(9), 1477-1497.
-
-3. **Benamou, J. D., & Brenier, Y.** (2000). A computational fluid mechanics solution to the Monge-Kantorovich mass transfer problem. *Numerische Mathematik*, 84(3), 375-393.
-
-### Semi-Geostrophic Theory
-
-4. **McIntyre, M. E., & Norton, W. A.** (2000). Potential vorticity inversion on a hemisphere. *Journal of the Atmospheric Sciences*, 57(9), 1214-1235.
-
-5. **Cullen, M. J. P.** (2006). A mathematical theory of large-scale atmosphere/ocean flow. *Imperial College Press*.
-
-6. **Badin, G., & Crisciani, F.** (2018). *Variational Formulation of Fluid and Geophysical Fluid Dynamics*. Springer.
-
 ### Numerical Methods
 
 7. **Boyd, J. P.** (2001). *Chebyshev and Fourier spectral methods*. Dover Publications.
@@ -400,5 +325,3 @@ where **q = ∇²ψ + b** is potential vorticity.
 12. **Salmon, R.** (1998). *Lectures on geophysical fluid dynamics*. Oxford University Press.
 
 ---
-
-*This document provides the theoretical foundation for understanding and extending the SSG.jl codebase. For implementation details, see the Code Architecture documentation.*
