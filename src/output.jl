@@ -5,6 +5,8 @@
 
 using PencilArrays: range_local, size_global 
 using AbstractFFTs: fftfreq, rfftfreq
+using JLD2: jldopen
+using MPI
 
 #####################################################################
 # JLD2 OUTPUT SYSTEM FOR SEMI-GEOSTROPHIC SIMULATIONS
