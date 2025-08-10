@@ -2,6 +2,7 @@
 # Field allocation and management
 
 using PencilArrays: PencilArray
+using Statistics: mean, std
 
 """
     struct Fields{T, PA, PC}
