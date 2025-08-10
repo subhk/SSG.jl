@@ -14,7 +14,7 @@ Forward real FFT: real space → spectral space (horizontal directions only).
 function rfft!(domain::Domain, realfield, specfield)
     # realfield::PencilArray in domain.pr3d, specfield::PencilArray in domain.pc3d
     mul!(specfield, domain.fplan, realfield)
-    return nothing #specfield
+    return nothing 
 end
 
 
@@ -26,7 +26,7 @@ Inverse real FFT: spectral space → real space (horizontal directions only).
 function irfft!(domain, specfield, realfield)
     # Use ldiv! to apply inverse transform
     ldiv!(realfield, domain.fplan, specfield)
-    return nothing #realfield
+    return nothing 
 end
 
 
@@ -71,7 +71,7 @@ function dealias!(domain::Domain, Â)
     @inbounds for k in axes(Â_local, 3)
         @views @. Â_local[:, :, k] = ifelse(mask_local, Â_local[:, :, k], 0)
     end
-    return nothing #Â
+    return nothing 
 end
 
 
@@ -119,7 +119,7 @@ function ddx!(domain::Domain, Â, out̂)
             @views out̂_local[i_local, :, k] = (im * kx) .* Â_local[i_local, :, k]
         end
     end
-    return nothing #out̂
+    return nothing 
 end
 
 """
@@ -141,7 +141,7 @@ function ddy!(domain::Domain, Â, out̂)
             @views out̂_local[:, j_local, k] = (im * ky) .* Â_local[:, j_local, k]
         end
     end
-    return nothing #out̂
+    return nothing 
 end
 
 
@@ -161,7 +161,7 @@ function ddx_2d!(domain::Domain, Â, out̂)
         kx = kx_local[i_local]
         @views out̂_local[i_local, :] = (im * kx) .* Â_local[i_local, :]
     end
-    return nothing #out̂
+    return nothing 
 end
 
 """
@@ -180,7 +180,7 @@ function ddy_2d!(domain::Domain, Â, out̂)
         ky = ky_local[j_local]
         @views out̂_local[:, j_local] = (im * ky) .* Â_local[:, j_local]
     end
-    return nothing #out̂
+    return nothing 
 end
 
 
@@ -203,7 +203,7 @@ function laplacian_h!(domain::Domain, Â, out̂)
             end
         end
     end
-    return nothing #out̂
+    return nothing 
 end
 
 """
@@ -225,7 +225,7 @@ function d2dxdy!(domain::Domain, Â, out̂)
             end
         end
     end
-    return nothing #out̂
+    return nothing 
 end
 
 # =============================================================================
@@ -434,7 +434,7 @@ function jacobian!(output, a, b, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1
     # Complete Jacobian: ∂a/∂x * ∂b/∂y - ∂a/∂y * ∂b/∂x
     output.data .-= tmp_real1.data .* tmp_real2.data
     
-    #return output
+    return nothing
 end
 
 
@@ -493,7 +493,7 @@ function gradient_h!(domain::Domain, field, field_spec, ∂x, ∂y, tmp_spec1, t
     ddy!(domain, field_spec, tmp_spec2)
     irfft!(domain, tmp_spec2, ∂y)
     
-    return ∂x, ∂y
+    return nothing #∂x, ∂y
 end
 
 
@@ -640,7 +640,7 @@ function ddz!(domain::Domain, A, out; order=2, bc=:default)
         error("Unsupported finite difference order: $order. Use 2, 4, or 6.")
     end
     
-    return out
+    return nothing #out
 end
 
 """
@@ -668,6 +668,8 @@ function ddz_o2!(domain::Domain, A, out, bc)
     
     # Boundary conditions
     # apply_vertical_bc_ddz!(domain, A, out, bc, 1)
+
+    return nothing
 end
 
 """
@@ -695,6 +697,8 @@ function ddz_o4!(domain::Domain, A, out, bc)
     
     # Boundary conditions
     # apply_vertical_bc_ddz!(domain, A, out, bc, 2)
+
+    return nothing
 end
 
 """
@@ -725,6 +729,8 @@ function ddz_o6!(domain::Domain, A, out, bc)
     
     # Boundary conditions
     # apply_vertical_bc_ddz!(domain, A, out, bc, 3)
+
+    return nothing
 end
 
 """
@@ -754,6 +760,8 @@ function ddz_o2_single!(domain::Domain, A, out, k)
         γ = 2 / (dzp * (dzm + dzp))
         @views out_local[:, :, k] = -α .* A_local[:, :, k-1] + β .* A_local[:, :, k] - γ .* A_local[:, :, k+1]
     end
+
+    return nothing
 end
 
 """
@@ -778,6 +786,8 @@ function apply_vertical_bc_ddz!(domain::Domain, A, out, bc, stencil_width)
             ddz_o2_single!(domain, A, out, domain.Nz)
         end
     end
+
+    return out
 end
 
 """
@@ -814,6 +824,8 @@ function apply_periodic_bc_ddz!(domain::Domain, A, out, stencil_width)
             @views out_local[:, :, kt] = (A_local[:, :, 1] - A_local[:, :, k_m1]) / (2*h)
         end
     end
+
+    return out
 end
 
 """
@@ -872,7 +884,7 @@ function d2dz2!(domain::Domain, A, out; order=2, bc=:default)
     #     @views out_local[:, :, Nz] .= 0
     # end
     
-    return out
+    return nothing
 end
 
 """
@@ -894,7 +906,7 @@ function laplacian_3d!(domain::Domain, A, Â, lap, tmp_spec, tmp_real; fd_order=
     tmp_real_local = tmp_real.data
     @. lap_local += tmp_real_local
     
-    return lap
+    return nothing
 end
 
 """
@@ -922,7 +934,7 @@ function divergence_3d!(domain::Domain, u, v, w, û, div, tmp_spec; fd_order=2)
     ddz!(domain, w, tmp_spec; order=fd_order)
     @. div_local += tmp_spec_local
     
-    return div
+    return nothing #div
 end
 
 
@@ -949,6 +961,8 @@ function norm_field(field; p=2)
         global_norm_p = MPI.Allreduce(local_norm^p, MPI.SUM, field.pencil.comm)
         return global_norm_p^(1/p)
     end
+
+    return nothing
 end
 
 """
@@ -1014,7 +1028,7 @@ function compute_vorticity_z!(domain::Domain, u, v, û, ω_z, tmp_spec)
     tmp_spec_local = tmp_spec.data
     @. ω_z_local -= tmp_spec_local
     
-    return ω_z
+    return nothing #ω_z
 end
 
 # =============================================================================
@@ -1117,7 +1131,6 @@ function gridpoints(domain::Domain)
     X = [domain.x[i] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
     Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
     Z = [domain.z[k] for i=1:domain.Nx, j=1:domain.Ny, k=1:domain.Nz]
-    
     return X, Y, Z
 end
 
@@ -1129,7 +1142,6 @@ Return 2D horizontal coordinate arrays for the domain.
 function gridpoints_2d(domain::Domain)
     X = [domain.x[i] for i=1:domain.Nx, j=1:domain.Ny]
     Y = [domain.y[j] for i=1:domain.Nx, j=1:domain.Ny]
-    
     return X, Y
 end
 
