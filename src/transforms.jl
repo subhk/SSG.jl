@@ -1035,61 +1035,7 @@ end
 # ENHANCED DIAGNOSTICS AND FIELD ANALYSIS
 # =============================================================================
 
-"""
-    compute_spectral_diagnostics(field_spec, domain::Domain) -> NamedTuple
-
-Compute spectral diagnostics including energy in different wavenumber bands.
-"""
-function compute_spectral_diagnostics(field_spec, domain::Domain)
-    field_local = field_spec.data
-    range_locals = range_local(field_spec.pencil)
-    
-    # Initialize energy counters for different scales
-    large_scale_energy = 0.0   # Low wavenumbers
-    small_scale_energy = 0.0   # High wavenumbers
-    total_energy = 0.0
-    
-    # Define scale separation (can be adjusted)
-    k_cutoff = min(domain.Nx, length(domain.ky)) ÷ 3
-    
-    for k in axes(field_local, 3)
-        for (j_local, j_global) in enumerate(range_locals[2])
-            for (i_local, i_global) in enumerate(range_locals[1])
-                energy_density = abs2(field_local[i_local, j_local, k])
-                
-                # Apply conjugate symmetry factor for real FFT
-                if size(field_local, 1) == domain.Nx && 1 < i_global < domain.Nx÷2 + 1
-                    energy_density *= 2
-                end
-                
-                total_energy += energy_density
-                
-                # Classify by scale
-                k_mag = sqrt(domain.kx[i_global]^2 + domain.ky[j_global]^2)
-                if k_mag < k_cutoff * 2π / max(domain.Lx, domain.Ly)
-                    large_scale_energy += energy_density
-                else
-                    small_scale_energy += energy_density
-                end
-            end
-        end
-    end
-    
-    # MPI reductions
-    total_energy = MPI.Allreduce(total_energy, MPI.SUM, field_spec.pencil.comm)
-    large_scale_energy = MPI.Allreduce(large_scale_energy, MPI.SUM, field_spec.pencil.comm)
-    small_scale_energy = MPI.Allreduce(small_scale_energy, MPI.SUM, field_spec.pencil.comm)
-    
-    # Normalization
-    norm_factor = (domain.Lx * domain.Ly * domain.Lz) / (domain.Nx^2 * domain.Ny^2 * domain.Nz)
-    
-    return (
-        total_energy = total_energy * norm_factor,
-        large_scale_energy = large_scale_energy * norm_factor,
-        small_scale_energy = small_scale_energy * norm_factor,
-        scale_ratio = small_scale_energy / max(large_scale_energy, 1e-16)
-    )
-end
+# compute_spectral_diagnostics removed - using total energy only
 
 """
     print_conservation_summary(domain::Domain, fields::Fields; step::Int=0, time::Real=0.0)
