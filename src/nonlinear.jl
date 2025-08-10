@@ -52,8 +52,6 @@ function compute_jacobian!(db_dt::PencilArray{T, 2},
     # Apply negative sign for advection: ∂b/∂t = -J(ψ,b)
     db_dt.data .*= -1
     
-    return db_dt
+    return nothing
 end
 
-
-# compute_surface_geostrophic_velocities! is now defined in setICs.jl
