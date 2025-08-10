@@ -563,7 +563,7 @@ function print_conservation_summary(domain::Domain, fields::Fields; step::Int=0,
         # Compute conserved quantities
         energy = compute_energy(fields.u, fields.v, domain)
         enstrophy = compute_enstrophy(fields.ω_z, domain)
-        total_buoyancy = compute_total_buoyancy(fields.b, domain)
+        total_buoyancy = compute_total_buoyancy(fields.bₛ, domain)
         
         println("=" ^60)
         println("Conservation Summary - Step: $step, Time: $(round(time, digits=4))")
