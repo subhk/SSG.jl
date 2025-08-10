@@ -56,12 +56,12 @@ function set_b!(prob::SemiGeostrophicProblem{T}, b_field, domain::Domain) where 
                               maxiter=20, 
                               verbose=false)
     
-    # Compute geostrophic velocities from streamfunction
-    compute_geostrophic_velocities!(prob.fields, domain)
+    # Compute surface geostrophic velocities from surface streamfunction
+    compute_surface_geostrophic_velocities!(prob.fields, domain)
     
     # Calculate surface kinetic energy diagnostics
     # Using spectral energy calculation for accuracy
-    ke_total = compute_kinetic_energy(prob.fields, domain)
+    ke_total = compute_surface_kinetic_energy(prob.fields, domain)
     
     # Alternative: Direct spectral calculation as in original
     # Transform velocities to spectral space
@@ -146,26 +146,107 @@ end
 # solve_monge_ampere_fields! is defined in poisson.jl
 
 """
-    compute_geostrophic_velocities!(fields::Fields, domain::Domain)
+    compute_surface_geostrophic_velocities!(fields::Fields, domain::Domain)
 
-Compute geostrophic velocities from streamfunction using spectral derivatives.
-u = -∂φ/∂y, v = ∂φ/∂x
+Compute surface geostrophic velocities from surface streamfunction:
+u = -∂ψₛ/∂y,  v = ∂ψₛ/∂x
+
+Stores results in the surface level of 3D velocity fields and calculates surface KE only.
 """
-function compute_geostrophic_velocities!(fields::Fields{T}, domain::Domain) where T
-    # For surface semi-geostrophic equations, compute velocities from surface streamfunction
-    # This ensures consistency with the surface SSG physics
-    compute_surface_geostrophic_velocities!(fields, domain)
+function compute_surface_geostrophic_velocities!(fields::Fields{T}, domain::Domain) where T
+    
+    # Transform surface streamfunction to spectral space (2D)
+    rfft_2d!(domain, fields.φₛ, fields.φshat)
+    
+    # Compute u = -∂φₛ/∂y (2D) - store in temp arrays first
+    ddy_2d!(domain, fields.φshat, fields.tmpc_2d)
+    irfft_2d!(domain, fields.tmpc_2d, fields.tmp)  # tmp is 2D
+    
+    # Copy 2D surface velocity u to all levels of 3D velocity field
+    u_data = fields.u.data
+    tmp_data = fields.tmp.data
+    nz = size(u_data, 3)
+    
+    @inbounds for k = 1:nz
+        @views u_data[:, :, k] .= -tmp_data[:, :]  # Apply negative sign
+    end
+    
+    # Compute v = ∂φₛ/∂x (2D)
+    ddx_2d!(domain, fields.φshat, fields.tmpc_2d)
+    irfft_2d!(domain, fields.tmpc_2d, fields.tmp2)  # tmp2 is 2D
+    
+    # Copy 2D surface velocity v to all levels of 3D velocity field
+    v_data = fields.v.data
+    tmp2_data = fields.tmp2.data
+    
+    @inbounds for k = 1:nz
+        @views v_data[:, :, k] .= tmp2_data[:, :]
+    end
     
     return nothing
 end
 
 """
+    compute_geostrophic_velocities!(fields::Fields, domain::Domain)
+
+Compute full 3D geostrophic velocities from 3D streamfunction:
+u = -∂φ/∂y, v = ∂φ/∂x
+
+Computes velocities at all vertical levels for full 3D kinetic energy.
+"""
+function compute_geostrophic_velocities!(fields::Fields{T}, domain::Domain) where T
+    
+    # Transform 3D streamfunction to spectral space
+    rfft!(domain, fields.φ, fields.φhat)
+    
+    # Compute u = -∂φ/∂y (3D)
+    ddy!(domain, fields.φhat, fields.tmpc_3d)
+    irfft!(domain, fields.tmpc_3d, fields.u)
+    fields.u.data .*= -1  # Apply negative sign
+    
+    # Compute v = ∂φ/∂x (3D)
+    ddx!(domain, fields.φhat, fields.tmpc_3d)
+    irfft!(domain, fields.tmpc_3d, fields.v)
+    
+    return nothing
+end
+
+"""
+    compute_surface_kinetic_energy(fields::Fields, domain::Domain) -> Real
+
+Compute surface kinetic energy using 2D spectral methods.
+Only calculates KE from the surface velocity components.
+"""
+function compute_surface_kinetic_energy(fields::Fields{T}, domain::Domain) where T
+    # Extract surface velocities (k=1, surface level)
+    u_surface = view(fields.u.data, :, :, 1)
+    v_surface = view(fields.v.data, :, :, 1)
+    
+    # Create temporary 2D arrays for surface calculation
+    u_2d = similar(fields.tmp)  # Use existing 2D scratch array
+    v_2d = similar(fields.tmp2) # Use existing 2D scratch array
+    
+    # Copy surface data
+    u_2d.data .= u_surface
+    v_2d.data .= v_surface
+    
+    # Transform surface velocities to 2D spectral space
+    rfft_2d!(domain, u_2d, fields.tmpc_2d)
+    ke_u = 0.5 * parsevalsum2(fields.tmpc_2d, domain)
+    
+    rfft_2d!(domain, v_2d, fields.tmpc_2d)
+    ke_v = 0.5 * parsevalsum2(fields.tmpc_2d, domain)
+    
+    return ke_u + ke_v
+end
+
+"""
     compute_kinetic_energy(fields::Fields, domain::Domain) -> Real
 
-Compute total kinetic energy using spectral methods.
+Compute total 3D kinetic energy using spectral methods.
 """
 function compute_kinetic_energy(fields::Fields{T}, domain::Domain) where T
-    # Transform velocities to spectral space
+    # Transform 3D velocities to spectral space
     rfft!(domain, fields.u, fields.tmpc_3d)
     ke_u = 0.5 * parsevalsum2(fields.tmpc_3d, domain)
     
