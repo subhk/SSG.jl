@@ -259,50 +259,7 @@ function apply_spectral_filter!(fields::Fields{T}, domain::Domain,
     return nothing
 end
 
-"""
-Exponential spectral filter for 2D spectral fields
-"""
-function apply_exponential_filter!(bhat::PencilArray{Complex{T}, 2}, 
-                                  domain::Domain, strength::T) where T
-    
-    bhat_data = bhat.data
-    
-    # Get local wavenumber ranges for 2D pencil
-    range_locals = range_local(bhat.pencil)
-    
-    # Filter parameters
-    kx_max = π * domain.Nx / domain.Lx
-    ky_max = π * domain.Ny / domain.Ly
-    k_cutoff = 0.65 * min(kx_max, ky_max)  # Filter starts at 65% of Nyquist
-    k_range = kx_max - k_cutoff
-    
-    # Avoid division by zero
-    if k_range < 1e-14
-        return nothing
-    end
-    
-    @inbounds for (j_local, j_global) in enumerate(range_locals[2])
-        if j_global <= length(domain.ky)
-            ky = domain.ky[j_global]
-            for (i_local, i_global) in enumerate(range_locals[1])
-                if i_global <= length(domain.kx)
-                    kx = domain.kx[i_global]
-                    
-                    k_mag = sqrt(kx^2 + ky^2)
-                    
-                    if k_mag > k_cutoff
-                        # Exponential filter with proper normalization
-                        filter_param = (k_mag - k_cutoff) / k_range
-                        filter_factor = exp(-strength * filter_param^2)
-                        bhat_data[i_local, j_local] *= filter_factor
-                    end
-                end
-            end
-        end
-    end
-    
-    return nothing
-end
+# apply_exponential_filter! is defined in filter.jl
 
 """
 Take one time step using specified scheme
