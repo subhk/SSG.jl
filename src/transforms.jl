@@ -441,36 +441,43 @@ end
 """
     jacobian_2d!(output, a, b, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
 
-Compute 2D Jacobian J(a,b) = ∂a/∂x ∂b/∂y - ∂a/∂y ∂b/∂x using PencilFFTs.
+Compute 2D Jacobian J(a,b) using conservative form for geostrophic flows.
+For streamfunction ψ and tracer b: J(ψ,b) = ∇ · (u b) where u = (-∂ψ/∂y, ∂ψ/∂x).
+This conservative form preserves integral quantities and is more accurate for non-divergent flows.
 """
 function jacobian_2d!(output, a, b, domain::Domain, tmp_spec1, tmp_spec2, tmp_real1, tmp_real2)
-    # Transform to spectral space
-    rfft_2d!(domain, a, tmp_spec1)
+    # Conservative form: J(ψ,b) = ∇ · (u b) = ∂(u_x b)/∂x + ∂(u_y b)/∂y
+    # where u_x = -∂ψ/∂y and u_y = ∂ψ/∂x (geostrophic velocities)
     
-    # Compute ∂a/∂x
-    ddx_2d!(domain, tmp_spec1, tmp_spec2)
-    irfft_2d!(domain, tmp_spec2, tmp_real1)  # ∂a/∂x
-    
-    # Compute ∂b/∂y
-    rfft_2d!(domain, b, tmp_spec1)
-    ddy_2d!(domain, tmp_spec1, tmp_spec2)
-    irfft_2d!(domain, tmp_spec2, tmp_real2)  # ∂b/∂y
-    
-    # First term: ∂a/∂x * ∂b/∂y
-    output.data .= tmp_real1.data .* tmp_real2.data
-    
-    # Compute ∂a/∂y
+    # Step 1: Compute u_x = -∂a/∂y (u-component of geostrophic velocity)
     rfft_2d!(domain, a, tmp_spec1)
     ddy_2d!(domain, tmp_spec1, tmp_spec2)
-    irfft_2d!(domain, tmp_spec2, tmp_real1)  # ∂a/∂y
+    irfft_2d!(domain, tmp_spec2, tmp_real1)
+    tmp_real1.data .*= -1  # Apply negative sign: u_x = -∂ψ/∂y
     
-    # Compute ∂b/∂x
-    rfft_2d!(domain, b, tmp_spec1)
+    # Step 2: Compute flux u_x * b
+    tmp_real1.data .*= b.data  # tmp_real1 now contains u_x * b
+    
+    # Step 3: Compute ∂(u_x * b)/∂x
+    rfft_2d!(domain, tmp_real1, tmp_spec1)
     ddx_2d!(domain, tmp_spec1, tmp_spec2)
-    irfft_2d!(domain, tmp_spec2, tmp_real2)  # ∂b/∂x
+    irfft_2d!(domain, tmp_spec2, output)  # output = ∂(u_x * b)/∂x
     
-    # Complete Jacobian: J = ∂a/∂x * ∂b/∂y - ∂a/∂y * ∂b/∂x
-    output.data .-= tmp_real1.data .* tmp_real2.data   
+    # Step 4: Compute u_y = ∂a/∂x (v-component of geostrophic velocity)
+    rfft_2d!(domain, a, tmp_spec1)
+    ddx_2d!(domain, tmp_spec1, tmp_spec2)
+    irfft_2d!(domain, tmp_spec2, tmp_real1)  # tmp_real1 = u_y = ∂ψ/∂x
+    
+    # Step 5: Compute flux u_y * b
+    tmp_real1.data .*= b.data  # tmp_real1 now contains u_y * b
+    
+    # Step 6: Compute ∂(u_y * b)/∂y and add to get complete divergence
+    rfft_2d!(domain, tmp_real1, tmp_spec1)
+    ddy_2d!(domain, tmp_spec1, tmp_spec2)
+    irfft_2d!(domain, tmp_spec2, tmp_real2)  # tmp_real2 = ∂(u_y * b)/∂y
+    
+    # Step 7: Complete conservative Jacobian: J = ∂(u_x * b)/∂x + ∂(u_y * b)/∂y
+    output.data .+= tmp_real2.data
 
     return nothing
 end
@@ -582,33 +589,6 @@ function compute_buoyancy_variance(b, domain::Domain)
     return variance
 end
 
-# """
-#     compute_cfl_number(u, v, domain::Domain, dt::Real) -> Float64
-
-# Compute the maximum CFL number for the current velocity field.
-# """
-# function compute_cfl_number(u, v, domain::Domain, dt::Real)
-#     u_local = u.data
-#     v_local = v.data
-    
-#     # Local maximum velocity
-#     u_max_local = maximum(abs.(u_local))
-#     v_max_local = maximum(abs.(v_local))
-#     vel_max_local = max(u_max_local, v_max_local)
-    
-#     # Global maximum across all processes
-#     vel_max_global = MPI.Allreduce(vel_max_local, MPI.MAX, u.pencil.comm)
-    
-#     # Grid spacing
-#     dx = domain.Lx / domain.Nx
-#     dy = domain.Ly / domain.Ny
-#     h_min = min(dx, dy)
-    
-#     # CFL number
-#     cfl = vel_max_global * dt / h_min
-    
-#     return cfl
-# end
 
 # =============================================================================
 # VERTICAL FINITE DIFFERENCE DERIVATIVES
