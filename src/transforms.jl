@@ -75,25 +75,7 @@ function dealias!(domain::Domain, Â)
 end
 
 
-"""
-    dealias_2d!(surface_domain::SurfaceDomain, field_spec_2d)
-
-Apply 2D dealiasing to surface spectral field.
-"""
-function dealias_2d!(domain::Domain, field_spec_2d)
-    # Get local array from PencilArray
-    field_local = field_spec_2d.data
-    
-    # Get local ranges for this MPI process
-    range_locals = range_local(domain.pc2d)
-    
-    # Apply mask to local data
-    mask_local = view(domain.mask, range_locals[1], range_locals[2])
-    
-    @inbounds @views @. field_local = ifelse(mask_local, field_local, 0)
-    
-    return nothing
-end
+# dealias_2d! is defined in domain.jl
 
 
 # =============================================================================
